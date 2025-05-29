@@ -79,7 +79,7 @@ export default function CreateFundForm() {
       setIsSubmitting(true);
 
       try {
-        const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+        const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
         const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
         const creator = wallet.publicKey;
 
@@ -123,6 +123,14 @@ export default function CreateFundForm() {
           programId
         );
 
+        const [userSpecificPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from("user"),
+            fundAccountPda.toBuffer(),
+            creator.toBuffer(),
+          ], programId
+        );
+
         // Instruction data
         const nameBytes = new TextEncoder().encode(fundName);
         console.log("Fund name in bytes : ", nameBytes);
@@ -147,7 +155,9 @@ export default function CreateFundForm() {
             {pubkey: metadataPda, isSigner: false, isWritable: true},
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
             {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
-            {pubkey: userAccountPda, isSigner: false, isWritable: true}
+            {pubkey: userAccountPda, isSigner: false, isWritable: true},
+            {pubkey: userSpecificPda, isSigner: false, isWritable: true},
+            
           ],
           programId,
           data: instructionData

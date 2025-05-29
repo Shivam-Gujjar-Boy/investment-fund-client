@@ -31,7 +31,7 @@ interface FundCardProps {
 
 export default function FundCard({ fund, status }: FundCardProps) {
   const navigate = useNavigate();
-  const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+  const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
   const wallet = useWallet();
   const {connection} = useConnection();
 
@@ -147,6 +147,71 @@ export default function FundCard({ fund, status }: FundCardProps) {
       toast.error('Error while depositing!');
     }
   }
+
+  const handleLeave = async () => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      return;
+    }
+    const user = wallet.publicKey;
+    const [fundAccountPda] = PublicKey.findProgramAddressSync([
+      Buffer.from("fund"),
+      Buffer.from(fund.name),
+    ], programId);
+
+    const [userSpecificPda] = PublicKey.findProgramAddressSync([
+      Buffer.from("user"),
+      fundAccountPda.toBuffer(),
+      user.toBuffer(),
+    ], programId);
+
+    const [userAccountPda] = PublicKey.findProgramAddressSync([
+      Buffer.from("user"),
+      user.toBuffer(),
+    ], programId);
+
+    try {
+      const nameBytes = Buffer.from(fund.name);
+      const instructionData = Buffer.from([10, ...nameBytes]);
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: userSpecificPda, isSigner: false, isWritable: true},
+          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+          {pubkey: userAccountPda, isSigner: false, isWritable: true}
+        ],
+        programId,
+        data: instructionData
+      });
+
+      const transaction = new Transaction().add(instruction);
+
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+      toast.success("Nikal gya bhadva");
+    } catch (err) {
+      console.log(err);
+      toast.error("Not removed from fund");
+    }
+  }
+
 // 
   return (
     <div onClick={() => navigate(`${fund.fund_address.toBase58()}`)} className="bg-gray-800 rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-purple-900/30 hover:scale-[1.015] duration-300 cursor-pointer">
@@ -200,6 +265,11 @@ export default function FundCard({ fund, status }: FundCardProps) {
           <div className='flex justify-end' onClick={handleDeposit}>
             <button className='flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors'>
               Deposit
+              </button>
+          </div>
+          <div className='flex justify-end' onClick={handleLeave}>
+            <button className='flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors'>
+              Leave 
               </button>
           </div>
           <div className="flex justify-end">

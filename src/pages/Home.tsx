@@ -24,7 +24,7 @@ export default function Home() {
       setLoading(true);
 
       console.log(user, connected);
-      const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+      const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
 
       const [userAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('user'), user.toBuffer()],

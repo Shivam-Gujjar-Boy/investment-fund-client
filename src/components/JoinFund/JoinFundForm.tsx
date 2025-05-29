@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
+import toast from 'react-hot-toast';
 
 export default function JoinFundForm() {
   const [fundName, setFundName] = useState('');
@@ -34,8 +35,8 @@ export default function JoinFundForm() {
 
     setLoading(true);
 
-    const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
-    const recipient = new PublicKey('9FWCQbk3Tup2DGY6zYEzzmy6ybL8wFEPn6yAeUrw6pxn');
+    const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+    // const recipient = new PublicKey('9FWCQbk3Tup2DGY6zYEzzmy6ybL8wFEPn6yAeUrw6pxn');
     const user = wallet.publicKey;
 
     if (!user) throw new Error('Wallet not connected');
@@ -51,20 +52,60 @@ export default function JoinFundForm() {
         programId,
       );
 
+      const [userSpecificPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("user"),
+          fundAccountPda.toBuffer(),
+          user.toBuffer(),
+        ], programId
+      );
+
+      const accounts = [
+        {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+        {pubkey: user, isSigner: true, isWritable: true},
+        {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+        {pubkey: userAccountPda, isSigner: false, isWritable: true},
+        {pubkey: userSpecificPda, isSigner: false, isWritable: true},
+      ];
+
+      const userSpecificAccounts = await connection.getProgramAccounts(programId, {
+        filters: [
+          {
+            dataSize: 90,
+          },
+          {
+            memcmp: {
+              offset: 32,
+              bytes: fundAccountPda.toBase58(),
+            },
+          },
+        ],
+        dataSlice: {offset: 0, length: 0},
+        commitment: "confirmed"
+      });
+
+      if (userSpecificAccounts.length !== 0) {
+        for (const acc of userSpecificAccounts) {
+          const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+          if (!accountInfo) continue;
+          const buffer = Buffer.from(accountInfo?.data);
+          const pubkey = new PublicKey(buffer.slice(0, 32));
+          accounts.push({
+            pubkey,
+            isSigner: false,
+            isWritable: true,
+          });
+          console.log(pubkey.toBase58());
+        }
+      }
+
       console.log(userAccountPda.toBase58());
 
       const nameBytes = new TextEncoder().encode(fundName);
       const instructionData = Buffer.from([4, ...nameBytes]);
 
       const instruction = new TransactionInstruction({
-        keys: [
-          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
-          {pubkey: user, isSigner: true, isWritable: true},
-          {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-          {pubkey: userAccountPda, isSigner: false, isWritable: true},
-          {pubkey: recipient, isSigner: false, isWritable: true},
-          {pubkey: recipient, isSigner: false, isWritable: true},
-        ],
+        keys: accounts,
         programId,
         data: instructionData
       });
@@ -90,9 +131,12 @@ export default function JoinFundForm() {
         lastValidBlockHeight
       });
 
+      toast.success('Successfully joined the Fund!');
       setLoading(false);
     } catch (err) {
       console.log("Error adding to the fund : ", err);
+      toast.error('Failed to join the fund :(');
+      setLoading(false);
     }
     
     // Reset form

@@ -83,7 +83,7 @@ interface Fund {
   is_private: number;
 }
 
-const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
 
 export default function FundsList() {
   const [funds, setFunds] = useState<Fund[] | null>(null);
