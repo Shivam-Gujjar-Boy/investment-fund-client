@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import FundCard from './FundCard';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
+import toast from 'react-hot-toast';
 
 interface Fund {
   fund_address: PublicKey,
@@ -56,8 +57,17 @@ export default function FundsList() {
             funds_pubkey.push(fund_pubkey)
           }
 
+          console.log(funds_pubkey);
+          
+          toast.success(" Fund Pubkeys nikal li");
+
           const fundAccountInfos = await connection.getMultipleAccountsInfo(funds_pubkey);
-          if (!fundAccountInfos) return;
+          console.log(fundAccountInfos);
+          toast.success(" Fund Infos nikal liye hai");
+          if (!fundAccountInfos) {
+            toast.error(" Fund Infos khali hai bsdk");
+            return;
+          }
 
           const fundDataArray: Fund[] = fundAccountInfos.map((acc, i) => {
             if (!acc || !acc.data) return null;
@@ -102,11 +112,13 @@ export default function FundsList() {
 
           setFunds(fundDataArray);
         } else {
+          toast.error(" User Info khali hai jiiiii");
           setFunds([]);
         }
       } catch (error) {
         console.error('Error fetching user data: ', error);
         setFunds([]);
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -115,8 +127,8 @@ export default function FundsList() {
     getUserFunds();
   }, [connected, wallet]);
 
-  const activeFunds = funds?.filter(fund => fund.totalDeposit) ?? [];
-  const pendingFunds = funds?.filter(fund => !fund.totalDeposit) ?? [];
+  const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n) ?? [];
+  const pendingFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];
   const currentFunds = activeTab === 'active' ? activeFunds : pendingFunds;
 
   return (
