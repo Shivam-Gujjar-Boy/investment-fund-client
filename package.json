@@ -12,6 +12,7 @@
   "dependencies": {
     "@civic/auth": "^0.5.4",
     "@civic/auth-web3": "^0.5.8",
+    "@raydium-io/raydium-sdk-v2": "^0.1.138-alpha",
     "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-base": "^0.9.26",
     "@solana/wallet-adapter-react": "^0.15.38",

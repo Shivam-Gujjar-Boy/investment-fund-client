@@ -51,7 +51,7 @@ export default function FundsList() {
           const funds_pubkey: PublicKey[] = [];
 
           for (let i=0; i<num_of_funds; i++) {
-            const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 36+i*50+32));
+            const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 68+i*50));
             console.log(fund_pubkey.toBase58());
             funds_pubkey.push(fund_pubkey)
           }
