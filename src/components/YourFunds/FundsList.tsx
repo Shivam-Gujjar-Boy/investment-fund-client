@@ -18,7 +18,7 @@ interface Fund {
   is_private: number;
 }
 
-const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
 
 export default function FundsList() {
   const [funds, setFunds] = useState<Fund[] | null>(null);
@@ -50,6 +50,8 @@ export default function FundsList() {
           console.log("Number of funds: ", num_of_funds);
 
           const funds_pubkey: PublicKey[] = [];
+          
+          if (num_of_funds === 0) return;
 
           for (let i=0; i<num_of_funds; i++) {
             const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 68+i*50));
@@ -58,41 +60,52 @@ export default function FundsList() {
           }
 
           console.log(funds_pubkey);
-          
-          toast.success(" Fund Pubkeys nikal li");
 
           const fundAccountInfos = await connection.getMultipleAccountsInfo(funds_pubkey);
           console.log(fundAccountInfos);
-          toast.success(" Fund Infos nikal liye hai");
+
           if (!fundAccountInfos) {
-            toast.error(" Fund Infos khali hai bsdk");
+
             return;
           }
 
           const fundDataArray: Fund[] = fundAccountInfos.map((acc, i) => {
             if (!acc || !acc.data) return null;
             console.log(i);
-            const buffer = Buffer.from(acc?.data);
-            const name_dummy = buffer.slice(0, 32).toString();
+            const acc_buffer = Buffer.from(acc?.data);
+            console.log("Length of account data is : ", acc_buffer.length);
+            console.log('Account data is : ', acc_buffer);
+            const name_dummy = acc_buffer.slice(0, 32).toString();
             let name = '';
             for (const c of name_dummy) {
                 if (c === '\x00') break;
                 name += c;
             }
             console.log(name);
+
+            const totalDeposit = acc_buffer.readBigInt64LE(32);
+            console.log(totalDeposit);
+            const governanceMint = new PublicKey(acc_buffer.slice(40, 72));
+            console.log(governanceMint.toBase58());
+            const vault = new PublicKey(acc_buffer.slice(72, 104));
+            console.log(vault.toBase58());
+            const isInitialized = acc_buffer.readUInt8(104) ? true : false;
+            console.log(isInitialized);
+            const created_at = acc_buffer.readBigInt64LE(105);
+            console.log(created_at);
+            const is_private = acc_buffer.readUInt8(113);
+            console.log(is_private);
             const members: PublicKey[] = [];
-            const numOfMembers = buffer.readUInt32LE(114);
+            console.log(members);
+            const numOfMembers = acc_buffer.readUInt32LE(114);
+            console.log(numOfMembers);
+            const creator = new PublicKey(acc_buffer.slice(118, 150));
+            console.log(creator.toBase58());
             for (let i=0; i<numOfMembers; i++) {
-              members.push(new PublicKey(buffer.slice(118+32*i, 150+32*i)));
+              members.push(new PublicKey(acc_buffer.slice(118+(i*32), 150+(i*32))));
+              console.log(members);
             }
-            const creator = new PublicKey(buffer.slice(118, 150));
-            const totalDeposit = buffer.readBigInt64LE(32);
-            const governanceMint = new PublicKey(buffer.slice(40, 72));
-            const vault = new PublicKey(buffer.slice(72, 104));
-            const isInitialized = buffer.readUInt8(104) ? true : false;
-            const created_at = buffer.readBigInt64LE(105);
-            const is_private = buffer.readUInt8(113);
-            // const raw = borsh.deserialize(fundSchema, FundAccount, acc.data);
+
             return {
               fund_address: funds_pubkey[i],
               name,

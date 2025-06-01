@@ -35,7 +35,7 @@ export default function JoinFundForm() {
 
     setLoading(true);
 
-    const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+    const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
     // const recipient = new PublicKey('9FWCQbk3Tup2DGY6zYEzzmy6ybL8wFEPn6yAeUrw6pxn');
     const user = wallet.publicKey;
 
@@ -52,52 +52,12 @@ export default function JoinFundForm() {
         programId,
       );
 
-      // const [userSpecificPda] = PublicKey.findProgramAddressSync(
-      //   [
-      //     Buffer.from("user"),
-      //     fundAccountPda.toBuffer(),
-      //     user.toBuffer(),
-      //   ], programId
-      // );
-
       const accounts = [
         {pubkey: fundAccountPda, isSigner: false, isWritable: true},
         {pubkey: user, isSigner: true, isWritable: true},
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
         {pubkey: userAccountPda, isSigner: false, isWritable: true},
-        // {pubkey: userSpecificPda, isSigner: false, isWritable: true},
       ];
-
-      // const userSpecificAccounts = await connection.getProgramAccounts(programId, {
-      //   filters: [
-      //     {
-      //       dataSize: 90,
-      //     },
-      //     {
-      //       memcmp: {
-      //         offset: 32,
-      //         bytes: fundAccountPda.toBase58(),
-      //       },
-      //     },
-      //   ],
-      //   dataSlice: {offset: 0, length: 0},
-      //   commitment: "confirmed"
-      // });
-
-      // if (userSpecificAccounts.length !== 0) {
-      //   for (const acc of userSpecificAccounts) {
-      //     const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-      //     if (!accountInfo) continue;
-      //     const buffer = Buffer.from(accountInfo?.data);
-      //     const pubkey = new PublicKey(buffer.slice(0, 32));
-      //     accounts.push({
-      //       pubkey,
-      //       isSigner: false,
-      //       isWritable: true,
-      //     });
-      //     console.log(pubkey.toBase58());
-      //   }
-      // }
 
       console.log(userAccountPda.toBase58());
 
@@ -130,6 +90,36 @@ export default function JoinFundForm() {
         blockhash,
         lastValidBlockHeight
       });
+
+      // Printing created accounts data for debugging
+      const fundAccountInfo = await connection.getAccountInfo(fundAccountPda);
+      if (!fundAccountInfo) return;
+      const fund_buffer = Buffer.from(fundAccountInfo.data);
+      const name_dummy = fund_buffer.slice(0, 32).toString();
+      let name = '';
+      for (const c of name_dummy) {
+          if (c === '\x00') break;
+          name += c;
+      }
+      console.log(name);
+      const totalDeposit = fund_buffer.readBigInt64LE(32);
+      console.log(totalDeposit);
+      const governance_mint = new PublicKey(fund_buffer.slice(40, 72));
+      console.log(governance_mint);
+      const vault = new PublicKey(fund_buffer.slice(72, 104));
+      console.log(vault);
+      const isInitialized = fund_buffer.readUInt8(104) ? true : false;
+      console.log(isInitialized);
+      const created_at = fund_buffer.readBigInt64LE(105);
+      console.log(created_at);
+      const is_private = fund_buffer.readUInt8(113);
+      console.log(is_private);
+      const members: PublicKey[] = [];
+      console.log(members);
+      const numOfMembers = fund_buffer.readUInt32LE(114);
+      console.log(numOfMembers);
+      const fund_creator = new PublicKey(fund_buffer.slice(118, 150));
+      console.log(fund_creator.toBase58());
 
       toast.success('Successfully joined the Fund!');
       setLoading(false);

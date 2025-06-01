@@ -80,7 +80,7 @@ export default function CreateFundForm() {
       setIsSubmitting(true);
 
       try {
-        const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+        const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
         const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
         const creator = wallet.publicKey;
 
@@ -124,14 +124,6 @@ export default function CreateFundForm() {
           programId
         );
 
-        // const [userSpecificPda] = PublicKey.findProgramAddressSync(
-        //   [
-        //     Buffer.from("user"),
-        //     fundAccountPda.toBuffer(),
-        //     creator.toBuffer(),
-        //   ], programId
-        // );
-
         // Instruction data
         const nameBytes = new TextEncoder().encode(fundName);
         console.log("Fund name in bytes : ", nameBytes);
@@ -157,7 +149,6 @@ export default function CreateFundForm() {
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
             {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
-            // {pubkey: userSpecificPda, isSigner: false, isWritable: true},
             
           ],
           programId,
@@ -192,6 +183,36 @@ export default function CreateFundForm() {
         });
 
         toast.success('Successfully created fund');
+
+        // Printing created accounts data for debugging
+        const fundAccountInfo = await connection.getAccountInfo(fundAccountPda);
+        if (!fundAccountInfo) return;
+        const fund_buffer = Buffer.from(fundAccountInfo.data);
+        const name_dummy = fund_buffer.slice(0, 32).toString();
+        let name = '';
+        for (const c of name_dummy) {
+            if (c === '\x00') break;
+            name += c;
+        }
+        console.log(name);
+        const totalDeposit = fund_buffer.readBigInt64LE(32);
+        console.log(totalDeposit);
+        const governance_mint = new PublicKey(fund_buffer.slice(40, 72));
+        console.log(governance_mint);
+        const vault = new PublicKey(fund_buffer.slice(72, 104));
+        console.log(vault);
+        const isInitialized = fund_buffer.readUInt8(104) ? true : false;
+        console.log(isInitialized);
+        const created_at = fund_buffer.readBigInt64LE(105);
+        console.log(created_at);
+        const is_private = fund_buffer.readUInt8(113);
+        console.log(is_private);
+        const members: PublicKey[] = [];
+        console.log(members);
+        const numOfMembers = fund_buffer.readUInt32LE(114);
+        console.log(numOfMembers);
+        const fund_creator = new PublicKey(fund_buffer.slice(118, 150));
+        console.log(fund_creator.toBase58());
 
         // Reset form
         setFundName('');

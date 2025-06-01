@@ -42,7 +42,7 @@ export default function FundDetails() {
   const {connection} = useConnection();
   const {fundId} = useParams();
 
-  const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+  const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
 
   // fetch current fund data
   const fetchFundData = useCallback(async () => {
@@ -74,17 +74,17 @@ export default function FundDetails() {
       }
       console.log(name);
       const members: PublicKey[] = [];
-      const numOfMembers = buffer.readUInt32LE(32);
+      const numOfMembers = buffer.readUInt32LE(114);
       for (let i=0; i<numOfMembers; i++) {
-        members.push(new PublicKey(buffer.slice(36+32*i, 68+32*i)));
+        members.push(new PublicKey(buffer.slice(118+32*i, 150+32*i)));
       }
-      const creator = new PublicKey(buffer.slice(36, 68));
-      const totalDeposit = buffer.readBigInt64LE(68);
-      const governanceMint = new PublicKey(buffer.slice(76, 108));
-      const vault = new PublicKey(buffer.slice(108, 140));
-      const isInitialized = buffer.readUInt8(140) ? true : false;
-      const created_at = buffer.readBigInt64LE(141);
-      const is_private = buffer.readUInt8(149);
+      const creator = new PublicKey(buffer.slice(118, 150));
+      const totalDeposit = buffer.readBigInt64LE(32);
+      const governanceMint = new PublicKey(buffer.slice(40, 72));
+      const vault = new PublicKey(buffer.slice(72, 104));
+      const isInitialized = buffer.readUInt8(104) ? true : false;
+      const created_at = buffer.readBigInt64LE(105);
+      const is_private = buffer.readUInt8(113);
       setFund({
         fund_address: fundAccountPda,
         name,

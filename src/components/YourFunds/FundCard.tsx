@@ -32,7 +32,7 @@ interface FundCardProps {
 
 export default function FundCard({ fund, status }: FundCardProps) {
   const navigate = useNavigate();
-  const programId = new PublicKey('4d2eF5fwAaLYfuKhTGpVgdb8nMeeyQtZj4UDdU24HT3Q');
+  const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
   const wallet = useWallet();
   const {connection} = useConnection();
 
