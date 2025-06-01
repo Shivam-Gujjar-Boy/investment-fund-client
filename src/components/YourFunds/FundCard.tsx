@@ -12,10 +12,11 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 interface Fund {
-  fund_address: PublicKey;
+  fund_address: PublicKey,
   name: string;
-  creator: PublicKey;
-  members: bigint;
+  creator: PublicKey,
+  numOfMembers: number,
+  members: PublicKey[];
   totalDeposit: bigint;
   governanceMint: PublicKey;
   vault: PublicKey;
@@ -97,6 +98,8 @@ export default function FundCard({ fund, status }: FundCardProps) {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
+      console.log('Governance Token Account: ', governanceATA.toBase58());
+
       const instruction = new TransactionInstruction({
         keys: [
           {pubkey: governanceMint, isSigner: false, isWritable: true},
@@ -171,7 +174,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
     try {
       const nameBytes = Buffer.from(fund.name);
-      const instructionData = Buffer.from([10, ...nameBytes]);
+      const instructionData = Buffer.from([9, ...nameBytes]);
 
       const instruction = new TransactionInstruction({
         keys: [
@@ -205,7 +208,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
         lastValidBlockHeight
       });
 
-      toast.success("Nikal gya bhadva");
+      toast.success("You lef the fund");
     } catch (err) {
       console.log(err);
       toast.error("Not removed from fund");
@@ -219,7 +222,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
         <h3 className="text-xl font-bold text-white tracking-tight">{fund.name}</h3>
         {status === 'inactive' && (
           <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-300">
-            Pending
+            Inactive
           </span>
         )}
       </div>
@@ -227,7 +230,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
       <div className="space-y-3 mb-6">
         <div className="flex items-center text-sm text-gray-400">
           <Users className="w-4 h-4 mr-2" />
-          {fund.members.toString()} Members
+          {fund.numOfMembers.toString()} Members
         </div>
 
         <div className="flex items-center text-sm text-gray-400">

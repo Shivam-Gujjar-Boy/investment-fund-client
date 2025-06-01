@@ -52,57 +52,57 @@ export default function JoinFundForm() {
         programId,
       );
 
-      const [userSpecificPda] = PublicKey.findProgramAddressSync(
-        [
-          Buffer.from("user"),
-          fundAccountPda.toBuffer(),
-          user.toBuffer(),
-        ], programId
-      );
+      // const [userSpecificPda] = PublicKey.findProgramAddressSync(
+      //   [
+      //     Buffer.from("user"),
+      //     fundAccountPda.toBuffer(),
+      //     user.toBuffer(),
+      //   ], programId
+      // );
 
       const accounts = [
         {pubkey: fundAccountPda, isSigner: false, isWritable: true},
         {pubkey: user, isSigner: true, isWritable: true},
         {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
         {pubkey: userAccountPda, isSigner: false, isWritable: true},
-        {pubkey: userSpecificPda, isSigner: false, isWritable: true},
+        // {pubkey: userSpecificPda, isSigner: false, isWritable: true},
       ];
 
-      const userSpecificAccounts = await connection.getProgramAccounts(programId, {
-        filters: [
-          {
-            dataSize: 90,
-          },
-          {
-            memcmp: {
-              offset: 32,
-              bytes: fundAccountPda.toBase58(),
-            },
-          },
-        ],
-        dataSlice: {offset: 0, length: 0},
-        commitment: "confirmed"
-      });
+      // const userSpecificAccounts = await connection.getProgramAccounts(programId, {
+      //   filters: [
+      //     {
+      //       dataSize: 90,
+      //     },
+      //     {
+      //       memcmp: {
+      //         offset: 32,
+      //         bytes: fundAccountPda.toBase58(),
+      //       },
+      //     },
+      //   ],
+      //   dataSlice: {offset: 0, length: 0},
+      //   commitment: "confirmed"
+      // });
 
-      if (userSpecificAccounts.length !== 0) {
-        for (const acc of userSpecificAccounts) {
-          const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-          if (!accountInfo) continue;
-          const buffer = Buffer.from(accountInfo?.data);
-          const pubkey = new PublicKey(buffer.slice(0, 32));
-          accounts.push({
-            pubkey,
-            isSigner: false,
-            isWritable: true,
-          });
-          console.log(pubkey.toBase58());
-        }
-      }
+      // if (userSpecificAccounts.length !== 0) {
+      //   for (const acc of userSpecificAccounts) {
+      //     const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+      //     if (!accountInfo) continue;
+      //     const buffer = Buffer.from(accountInfo?.data);
+      //     const pubkey = new PublicKey(buffer.slice(0, 32));
+      //     accounts.push({
+      //       pubkey,
+      //       isSigner: false,
+      //       isWritable: true,
+      //     });
+      //     console.log(pubkey.toBase58());
+      //   }
+      // }
 
       console.log(userAccountPda.toBase58());
 
       const nameBytes = new TextEncoder().encode(fundName);
-      const instructionData = Buffer.from([4, ...nameBytes]);
+      const instructionData = Buffer.from([3, ...nameBytes]);
 
       const instruction = new TransactionInstruction({
         keys: accounts,

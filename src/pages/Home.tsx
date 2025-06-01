@@ -43,7 +43,7 @@ export default function Home() {
           }
 
           try {
-            const instructionData = Buffer.from([7]);
+            const instructionData = Buffer.from([6]);
 
             const instruction = new TransactionInstruction({
               keys: [

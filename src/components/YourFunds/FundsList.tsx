@@ -1,80 +1,14 @@
 import { useEffect, useState } from 'react';
 import FundCard from './FundCard';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import BN from 'bn.js';
 import { PublicKey } from '@solana/web3.js';
-import * as borsh from 'borsh';
-
-class UserAccount {
-  user: Uint8Array;
-  funds: Uint8Array[];
-
-  constructor(obj: { user: Uint8Array; funds: Uint8Array[] }) {
-    this.user = obj.user;
-    this.funds = obj.funds;
-  }
-}
-
-class FundAccount {
-  name: Uint8Array;
-  creator: Uint8Array;
-  members: BN;
-  total_deposit: BN;
-  governance_mint: Uint8Array;
-  vault: Uint8Array;
-  is_initialized: number;
-  created_at: BN;
-  is_private: number;
-
-  constructor(props: {
-    name: Uint8Array;
-    creator: Uint8Array;
-    members: BN;
-    total_deposit: BN;
-    governance_mint: Uint8Array;
-    vault: Uint8Array;
-    is_initialized: number;
-    created_at: BN;
-    is_private: number;
-  }) {
-    this.name = props.name;
-    this.creator = props.creator;
-    this.members = props.members;
-    this.total_deposit = props.total_deposit;
-    this.governance_mint = props.governance_mint;
-    this.vault = props.vault;
-    this.is_initialized = props.is_initialized;
-    this.created_at = props.created_at;
-    this.is_private = props.is_private;
-  }
-}
-
-const userSchema = new Map([
-  [UserAccount, { kind: 'struct', fields: [['user', [32]], ['funds', [[32]]]] }],
-]);
-
-const fundSchema = new Map([
-  [FundAccount, {
-    kind: 'struct',
-    fields: [
-      ['name', [32]],
-      ['creator', [32]],
-      ['members', [8]],
-      ['total_deposit', [8]],
-      ['governance_mint', [32]],
-      ['vault', [32]],
-      ['is_initialized', 'u8'],
-      ['created_at', [8]],
-      ['is_private', 'u8'],
-    ],
-  }],
-]);
 
 interface Fund {
   fund_address: PublicKey,
   name: string;
-  creator: PublicKey;
-  members: bigint;
+  creator: PublicKey,
+  numOfMembers: number,
+  members: PublicKey[];
   totalDeposit: bigint;
   governanceMint: PublicKey;
   vault: PublicKey;
@@ -93,12 +27,6 @@ export default function FundsList() {
   const { connection } = useConnection();
   const { connected } = wallet;
 
-  function bytesToString(bytes: Uint8Array): string {
-    let end = bytes.length;
-    while (end > 0 && bytes[end - 1] === 0) end--;
-    return new TextDecoder().decode(bytes.slice(0, end));
-  }
-
   useEffect(() => {
     const getUserFunds = async () => {
       if (!connected || !wallet || !wallet.publicKey) return;
@@ -116,35 +44,61 @@ export default function FundsList() {
         if (userAccountInfo !== null) {
           const buffer = userAccountInfo.data;
           console.log(buffer);
-          const user = borsh.deserialize(userSchema, UserAccount, buffer);
-          console.log(user);
 
-          if (user.funds.length === 0) {
-            setFunds([]);
-            setLoading(false);
-            return;
+          const num_of_funds = buffer.readUInt32LE(32);
+          console.log("Number of funds: ", num_of_funds);
+
+          const funds_pubkey: PublicKey[] = [];
+
+          for (let i=0; i<num_of_funds; i++) {
+            const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 36+i*50+32));
+            console.log(fund_pubkey.toBase58());
+            funds_pubkey.push(fund_pubkey)
           }
 
-          const funds_pubkey = user.funds.map(bytes => new PublicKey(bytes));
           const fundAccountInfos = await connection.getMultipleAccountsInfo(funds_pubkey);
+          if (!fundAccountInfos) return;
 
           const fundDataArray: Fund[] = fundAccountInfos.map((acc, i) => {
             if (!acc || !acc.data) return null;
             console.log(i);
-            const raw = borsh.deserialize(fundSchema, FundAccount, acc.data);
+            const buffer = Buffer.from(acc?.data);
+            const name_dummy = buffer.slice(0, 32).toString();
+            let name = '';
+            for (const c of name_dummy) {
+                if (c === '\x00') break;
+                name += c;
+            }
+            console.log(name);
+            const members: PublicKey[] = [];
+            const numOfMembers = buffer.readUInt32LE(114);
+            for (let i=0; i<numOfMembers; i++) {
+              members.push(new PublicKey(buffer.slice(118+32*i, 150+32*i)));
+            }
+            const creator = new PublicKey(buffer.slice(118, 150));
+            const totalDeposit = buffer.readBigInt64LE(32);
+            const governanceMint = new PublicKey(buffer.slice(40, 72));
+            const vault = new PublicKey(buffer.slice(72, 104));
+            const isInitialized = buffer.readUInt8(104) ? true : false;
+            const created_at = buffer.readBigInt64LE(105);
+            const is_private = buffer.readUInt8(113);
+            // const raw = borsh.deserialize(fundSchema, FundAccount, acc.data);
             return {
               fund_address: funds_pubkey[i],
-              name: bytesToString(raw.name),
-              creator: new PublicKey(raw.creator),
-              members: BigInt((new BN(raw.members, 'le')).toString()),
-              totalDeposit: BigInt((new BN(raw.total_deposit, 'le')).toString()),
-              governanceMint: new PublicKey(raw.governance_mint),
-              vault: new PublicKey(raw.vault),
-              isInitialized: raw.is_initialized === 1,
-              created_at: BigInt((new BN(raw.created_at, 'le')).toString()),
-              is_private: raw.is_private,
+              name,
+              creator,
+              numOfMembers,
+              members,
+              totalDeposit,
+              governanceMint,
+              vault,
+              isInitialized,
+              created_at,
+              is_private,
             };
           }).filter((f): f is Fund => f !== null);
+
+          console.log(fundDataArray);
 
           setFunds(fundDataArray);
         } else {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useToast } from '../../hooks/useToast';
+// import { useToast } from '../../hooks/useToast';
+import {toast} from 'react-hot-toast';
 import { 
   // Keypair, 
   PublicKey, 
@@ -24,7 +25,7 @@ export default function CreateFundForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [privacy, setPrivacy] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -123,13 +124,13 @@ export default function CreateFundForm() {
           programId
         );
 
-        const [userSpecificPda] = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("user"),
-            fundAccountPda.toBuffer(),
-            creator.toBuffer(),
-          ], programId
-        );
+        // const [userSpecificPda] = PublicKey.findProgramAddressSync(
+        //   [
+        //     Buffer.from("user"),
+        //     fundAccountPda.toBuffer(),
+        //     creator.toBuffer(),
+        //   ], programId
+        // );
 
         // Instruction data
         const nameBytes = new TextEncoder().encode(fundName);
@@ -156,7 +157,7 @@ export default function CreateFundForm() {
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
             {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
-            {pubkey: userSpecificPda, isSigner: false, isWritable: true},
+            // {pubkey: userSpecificPda, isSigner: false, isWritable: true},
             
           ],
           programId,
@@ -190,6 +191,8 @@ export default function CreateFundForm() {
           lastValidBlockHeight
         });
 
+        toast.success('Successfully created fund');
+
         // Reset form
         setFundName('');
         setFundCode('');
@@ -197,18 +200,15 @@ export default function CreateFundForm() {
         setStep(1);
       } catch (error) {
         console.error('Error creating fund:', error);
+        toast.error('Error creating fund');
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  const copyToClipboard = (text: string, message: string) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: 'Copied',
-      description: message,
-    });
   };
 
   return (
@@ -274,7 +274,7 @@ export default function CreateFundForm() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-300">Fund Code</span>
                 <button
-                  onClick={() => copyToClipboard(fundCode, 'Fund code copied to clipboard')}
+                  onClick={() => copyToClipboard(fundCode)}
                   className="text-indigo-400 hover:text-indigo-300 text-sm"
                 >
                   Copy
@@ -289,7 +289,7 @@ export default function CreateFundForm() {
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-300">Invite Link</span>
                 <button
-                  onClick={() => copyToClipboard(inviteLink, 'Invite link copied to clipboard')}
+                  onClick={() => copyToClipboard(inviteLink)}
                   className="text-indigo-400 hover:text-indigo-300 text-sm"
                 >
                   Copy
