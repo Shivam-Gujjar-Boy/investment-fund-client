@@ -24,7 +24,7 @@ interface Fund {
   totalDeposit: bigint;
   governanceMint: PublicKey;
   vault: PublicKey;
-  isInitialized: boolean;
+  currentIndex: number;
   created_at: bigint;
   is_private: number;
 }
@@ -82,7 +82,7 @@ export default function FundDetails() {
       const totalDeposit = buffer.readBigInt64LE(32);
       const governanceMint = new PublicKey(buffer.slice(40, 72));
       const vault = new PublicKey(buffer.slice(72, 104));
-      const isInitialized = buffer.readUInt8(104) ? true : false;
+      const currentIndex = buffer.readUInt8(104);
       const created_at = buffer.readBigInt64LE(105);
       const is_private = buffer.readUInt8(113);
       setFund({
@@ -94,7 +94,7 @@ export default function FundDetails() {
         totalDeposit,
         governanceMint,
         vault,
-        isInitialized,
+        currentIndex,
         created_at,
         is_private,
       });

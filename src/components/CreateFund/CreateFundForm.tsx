@@ -124,6 +124,11 @@ export default function CreateFundForm() {
           programId
         );
 
+        const [proposalAggregatorAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from('proposal-aggregator'), Buffer.from([0]), fundAccountPda.toBuffer()],
+          programId
+        );
+
         // Instruction data
         const nameBytes = new TextEncoder().encode(fundName);
         console.log("Fund name in bytes : ", nameBytes);
@@ -149,7 +154,7 @@ export default function CreateFundForm() {
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
             {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
-            
+            {pubkey: proposalAggregatorAccount, isSigner: false, isWritable: true}
           ],
           programId,
           data: instructionData
@@ -162,6 +167,7 @@ export default function CreateFundForm() {
         console.log("Vault account key : ", vaultPda.toBase58());
         console.log("Fund account key : ", fundAccountPda.toBase58());
         console.log("User account key : ", userAccountPda.toBase58());
+        console.log("Proposal Aggregator key : ", proposalAggregatorAccount.toBase58());
         
         // Get recent blockhash
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
