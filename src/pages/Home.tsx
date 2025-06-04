@@ -115,7 +115,7 @@ export default function Home() {
     };
 
     handleUser();
-  }, [connected, navigate, wallet]);
+  }, [connected, navigate, wallet, connection]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">

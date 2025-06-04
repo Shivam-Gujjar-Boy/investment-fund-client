@@ -13,7 +13,7 @@ interface Fund {
   totalDeposit: bigint;
   governanceMint: PublicKey;
   vault: PublicKey;
-  isInitialized: boolean;
+  currentIndex: number;
   created_at: bigint;
   is_private: number;
 }
@@ -89,8 +89,8 @@ export default function FundsList() {
             console.log(governanceMint.toBase58());
             const vault = new PublicKey(acc_buffer.slice(72, 104));
             console.log(vault.toBase58());
-            const isInitialized = acc_buffer.readUInt8(104) ? true : false;
-            console.log(isInitialized);
+            const currentIndex = acc_buffer.readUInt8(104);
+            console.log(currentIndex);
             const created_at = acc_buffer.readBigInt64LE(105);
             console.log(created_at);
             const is_private = acc_buffer.readUInt8(113);
@@ -115,7 +115,7 @@ export default function FundsList() {
               totalDeposit,
               governanceMint,
               vault,
-              isInitialized,
+              currentIndex,
               created_at,
               is_private,
             };
@@ -138,7 +138,7 @@ export default function FundsList() {
     };
 
     getUserFunds();
-  }, [connected, wallet]);
+  }, [connected, wallet, connection]);
 
   const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n) ?? [];
   const pendingFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];

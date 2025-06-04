@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {toast} from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -29,8 +29,23 @@ interface Fund {
   is_private: number;
 }
 
+interface Proposal {
+  proposer: PublicKey,
+  fromAssets: PublicKey[],
+  toAssets: PublicKey[],
+  amounts: bigint[],
+  slippages: number[],
+  votesYes: bigint,
+  votesNo: bigint,
+  creationTime: bigint,
+  deadline: bigint,
+  executed: boolean
+}
+
 export default function FundDetails() {
-  const [selectedProposal, setSelectedProposal] = useState(null);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [vecIndex, setVecIndex] = useState(0);
+  const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
@@ -42,7 +57,11 @@ export default function FundDetails() {
   const {connection} = useConnection();
   const {fundId} = useParams();
 
-  const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+  // const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+  const programId = useMemo(
+    () => new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG'),
+    []
+  );
 
   // fetch current fund data
   const fetchFundData = useCallback(async () => {
@@ -102,11 +121,118 @@ export default function FundDetails() {
       toast.error('Error fetching fund data');
       console.log(err);
     }
-  }, [fundId, connection]);
+  }, [fundId, connection, wallet.publicKey]);
+
+  const fetchProposalsData = useCallback(async () => {
+    if (!wallet.publicKey) {
+      return;
+    }
+
+    if (!fundId) {
+      return;
+    }
+
+    const fundAccountpda = new PublicKey(fundId);
+
+    try {
+      const currentIndex = fund?.currentIndex;
+      if (!currentIndex) {
+        console.log('current index not defined');
+        return;
+      }
+      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex & 0xff]), fundAccountpda.toBuffer()],
+        programId
+      );
+
+      const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+      if (!currentAggregatorInfo) {
+        console.log('No proposal aggregator found');
+        return;
+      }
+      const aggregatorBuffer = Buffer.from(currentAggregatorInfo?.data);
+      const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
+      if (fundAddress != fundAccountpda) {
+        console.log('Wrong Aggregator');
+        return;
+      }
+
+      const proposalIndex = aggregatorBuffer.readUInt8(32);
+      console.log('Aggregator Index : ', proposalIndex);
+
+      const numOfProposals = aggregatorBuffer.readUInt32LE(33);
+      setVecIndex(numOfProposals-1);
+      let nextByte = 37;
+
+      const proposalss: Proposal[] = [];
+
+      for (let i=0; i<numOfProposals; i++) {
+        const proposer = new PublicKey(aggregatorBuffer.slice(nextByte, nextByte+32));
+        nextByte += 32;
+        const numOfFromAssets = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const fromAssets: PublicKey[] = [];
+        for (let j=0; j<numOfFromAssets; j++) {
+          fromAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte+32)));
+          nextByte += 32;
+        }
+        const numOfToAssets = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const toAssets: PublicKey[] = [];
+        for (let j=0; j<numOfToAssets; j++) {
+          toAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte+32)));
+          nextByte += 32;
+        }
+        const numOfAmounts = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const amounts: bigint[] = [];
+        for (let j=0; j<numOfAmounts; j++) {
+          amounts.push(aggregatorBuffer.readBigInt64LE(nextByte));
+          nextByte += 8;
+        }
+        const numOfSlippages = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const slippages: number[] = [];
+        for (let j=0; j<numOfSlippages; j++) {
+          slippages.push(aggregatorBuffer.readUInt16LE(nextByte));
+          nextByte += 2;
+        }
+        const votesYes = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const votesNo = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const deadline = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
+        nextByte += 1;
+
+        proposalss.push({
+          proposer,
+          fromAssets,
+          toAssets,
+          amounts,
+          slippages,
+          votesYes,
+          votesNo,
+          creationTime,
+          deadline,
+          executed
+        });
+      }
+
+      setProposals(proposalss);
+      console.log(proposals);
+    } catch (err) {
+      console.log('Error fetching fund proposals: ', err);
+    }
+  }, [fundId, wallet.publicKey, connection, fund?.currentIndex, programId, proposals])
 
   useEffect(() => {
     fetchFundData();
-  }, [fetchFundData]);
+    fetchProposalsData();
+  }, [fetchFundData, fetchProposalsData]);
 
   const dummyActivities = [
     'Alice deposited 100 USDC',
@@ -114,10 +240,10 @@ export default function FundDetails() {
     'Charlie voted on Proposal #1'
   ];
 
-  const dummyProposals = [
-    { id: 1, title: 'Increase investment cap', description: 'Proposal to increase cap to 10,000 USDC' },
-    { id: 2, title: 'Change governance threshold', description: 'Proposal to change voting threshold to 60%' },
-  ];
+  // const dummyProposals = [
+  //   { id: 1, title: 'Increase investment cap', description: 'Proposal to increase cap to 10,000 USDC' },
+  //   { id: 2, title: 'Change governance threshold', description: 'Proposal to change voting threshold to 60%' },
+  // ];
 
   // To open the Deposit modal
   const openDepositModal = async () => {
@@ -315,6 +441,123 @@ export default function FundDetails() {
     }
   };
 
+  const handleProposalCreation = async () => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      return;
+    }
+
+    if (!fund) {
+      return;
+    }
+
+    const user = wallet.publicKey;
+
+    const instructionTag = 1;
+    const numOfSwaps = 1;
+    const amount = BigInt(1000000);
+    const slippage = 500;
+    const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(1200);
+    const fund_name = fund?.name ?? "";
+
+    const nameBytes = Buffer.from(fund_name, 'utf8');
+    const nameLength = nameBytes.length;
+
+    const buffer = Buffer.alloc(1 + 1 + 8 + 2 + 8 + nameLength);
+    let offset = 0;
+
+    buffer.writeUInt8(instructionTag, offset);
+    console.log(buffer);
+    offset += 1;
+    buffer.writeUInt8(numOfSwaps, offset);
+    console.log(buffer);
+    offset += 1;
+    buffer.writeBigInt64LE(amount, offset);
+    console.log(buffer);
+    offset += 8;
+    buffer.writeUInt16LE(slippage, offset);
+    console.log(buffer);
+    offset += 2;
+    buffer.writeBigInt64LE(deadline, offset);
+    console.log(buffer);
+    offset += 8;
+    nameBytes.copy(buffer, offset);
+    console.log(buffer);
+
+    const instructionData = buffer;
+    console.log(instructionData);
+
+    const [userAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('user'), user.toBuffer()],
+      programId
+    );
+
+    const [fundAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('fund'), Buffer.from(fund?.name)],
+      programId
+    );
+
+    const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex]), fundAccountPda.toBuffer()],
+      programId
+    );
+
+    const [newAggregatorPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex + 1]), fundAccountPda.toBuffer()],
+      programId
+    );
+
+    const [voteAccountPda1] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote'), Buffer.from([fund.currentIndex & 0xff]), Buffer.from([(vecIndex + 1) & 0xff]), fundAccountPda.toBuffer()],
+      programId
+    );
+
+    const [voteAccountPda2] = PublicKey.findProgramAddressSync(
+      [Buffer.from('vote'), Buffer.from([fund.currentIndex + 1 & 0xff]), Buffer.from([0 & 0xff]), fundAccountPda.toBuffer()],
+      programId
+    );
+
+    const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+    const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
+
+    const instruction = new TransactionInstruction({
+      keys: [
+        {pubkey: user, isSigner: true, isWritable: true},
+        {pubkey: userAccountPda, isSigner: false, isWritable: true},
+        {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+        {pubkey: currentAggregatorPda, isSigner: false, isWritable: true},
+        {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
+        {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
+        {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
+        {pubkey: solMint, isSigner: false, isWritable: true},
+        {pubkey: usdcMint, isSigner: false, isWritable: true},
+      ],
+      programId,
+      data: instructionData
+    });
+
+    const transaction = new Transaction().add(instruction);
+
+    // Get recent blockhash
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey;
+
+    // Sign the transaction
+    // transaction.partialSign(governanceMint);
+    const signedTransaction = await wallet.signTransaction(transaction);
+    
+    // Send and confirm transaction
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+    
+    // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+    await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight
+    });
+  }
+
   return (
     <div className="p-6 text-white min-h-screen bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
       <h1 className="text-3xl font-bold mb-6">Fund Details</h1>
@@ -367,9 +610,9 @@ export default function FundDetails() {
         {/* Proposals */}
         <div className="bg-[#1f2937] p-6 rounded-2xl overflow-y-auto max-h-[calc(100vh-6rem)]">
           <h2 className="text-xl font-semibold mb-4">Proposals</h2>
-          {dummyProposals.map(p => (
+          {(proposals ?? []).map(p => (
             <div
-              key={p.id}
+              key={p.creationTime}
               className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition"
               onClick={(e) => {
                 if (!(e.target as HTMLElement).closest('button')) {
@@ -377,13 +620,14 @@ export default function FundDetails() {
                 }
               }}
             >
-              <div className="text-lg font-medium mb-2">{p.title}</div>
+              {/* <div className="text-lg font-medium mb-2">{p.}</div> */}
               <div className="flex justify-end gap-2">
                 <button className="bg-green-600 px-3 py-1 rounded">YES</button>
                 <button className="bg-red-600 px-3 py-1 rounded">NO</button>
               </div>
             </div>
           ))}
+          <button onClick={handleProposalCreation} className='bg-green-600 px-4 py-2 rounded disabled:opacity-50'>Create Proposal</button>
         </div>
       </div>
 
@@ -391,8 +635,8 @@ export default function FundDetails() {
       {selectedProposal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-[#1f2937] p-6 rounded-2xl w-[90%] max-w-2xl text-white">
-            <h2 className="text-2xl font-semibold mb-4">{selectedProposal.title}</h2>
-            <p className="mb-4">{selectedProposal.description}</p>
+            {/* <h2 className="text-2xl font-semibold mb-4">{selectedProposal.title}</h2> */}
+            {/* <p className="mb-4">{selectedProposal.description}</p> */}
             <div className="flex gap-4 justify-end">
               <button className="bg-green-600 px-4 py-2 rounded">YES</button>
               <button className="bg-red-600 px-4 py-2 rounded">NO</button>

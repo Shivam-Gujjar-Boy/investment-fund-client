@@ -20,7 +20,7 @@ interface Fund {
   totalDeposit: bigint;
   governanceMint: PublicKey;
   vault: PublicKey;
-  isInitialized: boolean;
+  currentIndex: number;
   created_at: bigint;
   is_private: number;
 }
