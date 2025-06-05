@@ -30,6 +30,8 @@ interface Fund {
 }
 
 interface Proposal {
+  proposalIndex: number,
+  vecIndex: number,
   proposer: PublicKey,
   fromAssets: PublicKey[],
   toAssets: PublicKey[],
@@ -217,6 +219,8 @@ export default function FundDetails() {
         nextByte += 1;
 
         proposalss.push({
+          proposalIndex: currentIndex,
+          vecIndex: i,
           proposer,
           fromAssets,
           toAssets,
@@ -585,8 +589,124 @@ export default function FundDetails() {
       toast.success("Proposal created successfully");
     } catch (err) {
       console.log(err);
-      toast.error('aditya behen ka lund hai');
+      toast.error('shivam behen ka lund hai');
     }
+  }
+
+  const handleVote = async (vote: number, proposalIndex: number, vecIndex: number) => {
+    console.log('proposal index: ', proposalIndex);
+    console.log('vote index: ', vecIndex);
+
+    if (!fund) {
+      console.log('fund hi na hai');
+      return;
+    }
+
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      console.log('wallet hi na hai');
+      return;
+    }
+
+    const user = wallet.publicKey;
+    try {
+      const instructionTag = 2;
+      const fundName = fund.name;
+      const nameBytes = Buffer.from(fundName, 'utf8');
+      console.log(fundName);
+      const [fundpda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fund'), Buffer.from(fundName)],
+        programId
+      );
+      console.log('fund: ', fundpda.toBase58());
+      const nameLength = nameBytes.length;
+
+      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + nameLength);
+      let offset = 0;
+
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(vote, offset);
+      offset += 1;
+      buffer.writeUInt8(proposalIndex, offset);
+      offset += 1;
+      buffer.writeUInt8(vecIndex, offset);
+      offset += 1;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+      if (!fundId) {
+        console.log('fund id hi na hai');
+        return;
+      }
+      const fundAccountPda = new PublicKey(fundId);
+
+      const [voteAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('vote'), Buffer.from([proposalIndex]), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const governanceATA = await getAssociatedTokenAddress(
+        fund?.governanceMint,
+        user,
+        false,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const governanceMint = new PublicKey(fund.governanceMint);
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: voteAccountPda, isSigner: false, isWritable: true},
+          {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+          {pubkey: governanceMint, isSigner: false, isWritable: true},
+          {pubkey: governanceATA, isSigner: false, isWritable: true},
+        ],
+        programId,
+        data: instructionData,
+      });
+
+      const transaction = new Transaction().add(instruction);
+
+      console.log('fund account: ', fundAccountPda.toBase58());
+      console.log('vote account: ', voteAccountPda.toBase58());
+      console.log('governance ata: ', governanceATA.toBase58());
+      console.log('proposal aggregator: ', proposalAggregatorPda.toBase58());
+
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+      toast.success('kar diya vote launde ne');
+    } catch (err) {
+      console.log('vote nahi kar paya tu: ', err);
+      toast.error('Sorry bhai tu vote nhi kar paaya');
+    }
+
+
   }
 
   return (
@@ -653,8 +773,8 @@ export default function FundDetails() {
             >
               {/* <div className="text-lg font-medium mb-2">{p.}</div> */}
               <div className="flex justify-end gap-2">
-                <button className="bg-green-600 px-3 py-1 rounded">YES</button>
-                <button className="bg-red-600 px-3 py-1 rounded">NO</button>
+                <button className="bg-green-600 px-3 py-1 rounded" onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}>YES</button>
+                <button className="bg-red-600 px-3 py-1 rounded" onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}>NO</button>
               </div>
             </div>
           ))}
