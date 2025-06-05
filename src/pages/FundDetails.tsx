@@ -85,6 +85,7 @@ export default function FundDetails() {
         return;
       }
       const buffer = Buffer.from(accountInfo?.data);
+      console.log(buffer);
       const name_dummy = buffer.slice(0, 32).toString();
       let name = '';
       for (const c of name_dummy) {
@@ -117,6 +118,7 @@ export default function FundDetails() {
         created_at,
         is_private,
       });
+      console.log(fund);
     } catch (err) {
       toast.error('Error fetching fund data');
       console.log(err);
@@ -132,16 +134,21 @@ export default function FundDetails() {
       return;
     }
 
-    const fundAccountpda = new PublicKey(fundId);
+    const fundAccountPda = new PublicKey(fundId);
 
     try {
-      const currentIndex = fund?.currentIndex;
-      if (!currentIndex) {
-        console.log('current index not defined');
+      if (!fund) {
+        console.log('fund nahi hai gandu');
         return;
       }
+
+      const currentIndex = fund?.currentIndex;
+      // if (!currentIndex) {
+      //   console.log('current index not defined');
+      //   return;
+      // }
       const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex & 0xff]), fundAccountpda.toBuffer()],
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex]), fundAccountPda.toBuffer()],
         programId
       );
 
@@ -150,9 +157,10 @@ export default function FundDetails() {
         console.log('No proposal aggregator found');
         return;
       }
-      const aggregatorBuffer = Buffer.from(currentAggregatorInfo?.data);
+      const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
       const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
-      if (fundAddress != fundAccountpda) {
+      console.log(fundAddress.toBase58());
+      if (fundAddress.toBase58() != fundAccountPda.toBase58()) {
         console.log('Wrong Aggregator');
         return;
       }
@@ -161,7 +169,7 @@ export default function FundDetails() {
       console.log('Aggregator Index : ', proposalIndex);
 
       const numOfProposals = aggregatorBuffer.readUInt32LE(33);
-      setVecIndex(numOfProposals-1);
+      setVecIndex(numOfProposals);
       let nextByte = 37;
 
       const proposalss: Proposal[] = [];
@@ -227,11 +235,18 @@ export default function FundDetails() {
     } catch (err) {
       console.log('Error fetching fund proposals: ', err);
     }
-  }, [fundId, wallet.publicKey, connection, fund?.currentIndex, programId, proposals])
+  }, [fundId, wallet.publicKey, connection, fund?.currentIndex, programId])
 
   useEffect(() => {
-    fetchFundData();
-    fetchProposalsData();
+    const load = async () => {
+      await fetchFundData();
+      await fetchProposalsData();
+    }
+
+    load();
+
+    // fetchFundData();
+    // fetchProposalsData();
   }, [fetchFundData, fetchProposalsData]);
 
   const dummyActivities = [
@@ -454,110 +469,124 @@ export default function FundDetails() {
 
     const user = wallet.publicKey;
 
-    const instructionTag = 1;
-    const numOfSwaps = 1;
-    const amount = BigInt(1000000);
-    const slippage = 500;
-    const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(1200);
-    const fund_name = fund?.name;
+    try {
+      const instructionTag = 1;
+      const numOfSwaps = 1;
+      const amount = BigInt(1000000);
+      const slippage = 500;
+      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(1200);
+      const fund_name = fund?.name;
 
-    const nameBytes = Buffer.from(fund_name, 'utf8');
-    const nameLength = nameBytes.length;
+      const nameBytes = Buffer.from(fund_name, 'utf8');
+      const nameLength = nameBytes.length;
 
-    const buffer = Buffer.alloc(1 + 1 + 8 + 2 + 8 + nameLength);
-    let offset = 0;
+      const buffer = Buffer.alloc(1 + 1 + 8 + 2 + 8 + nameLength);
+      let offset = 0;
 
-    buffer.writeUInt8(instructionTag, offset);
-    console.log(buffer);
-    offset += 1;
-    buffer.writeUInt8(numOfSwaps, offset);
-    console.log(buffer);
-    offset += 1;
-    buffer.writeBigInt64LE(amount, offset);
-    console.log(buffer);
-    offset += 8;
-    buffer.writeUInt16LE(slippage, offset);
-    console.log(buffer);
-    offset += 2;
-    buffer.writeBigInt64LE(deadline, offset);
-    console.log(buffer);
-    offset += 8;
-    nameBytes.copy(buffer, offset);
-    console.log(buffer);
+      buffer.writeUInt8(instructionTag, offset);
+      // console.log(buffer);
+      offset += 1;
+      buffer.writeUInt8(numOfSwaps, offset);
+      // console.log(buffer);
+      offset += 1;
+      buffer.writeBigInt64LE(amount, offset);
+      // console.log(buffer);
+      offset += 8;
+      buffer.writeUInt16LE(slippage, offset);
+      // console.log(buffer);
+      offset += 2;
+      buffer.writeBigInt64LE(deadline, offset);
+      // console.log(buffer);
+      offset += 8;
+      nameBytes.copy(buffer, offset);
+      // console.log(buffer);
 
-    const instructionData = buffer;
-    console.log(instructionData);
+      const instructionData = buffer;
+      console.log(instructionData);
 
-    const [userAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('user'), user.toBuffer()],
-      programId
-    );
+      const [userAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('user'), user.toBuffer()],
+        programId
+      );
 
-    const [fundAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('fund'), Buffer.from(fund?.name)],
-      programId
-    );
+      const [fundAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fund'), Buffer.from(fund.name)],
+        programId
+      );
 
-    const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex]), fundAccountPda.toBuffer()],
-      programId
-    );
+      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
 
-    const [newAggregatorPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex + 1]), fundAccountPda.toBuffer()],
-      programId
-    );
+      const [newAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([fund.currentIndex + 1]), fundAccountPda.toBuffer()],
+        programId
+      );
 
-    const [voteAccountPda1] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vote'), Buffer.from([fund.currentIndex & 0xff]), Buffer.from([(vecIndex + 1) & 0xff]), fundAccountPda.toBuffer()],
-      programId
-    );
+      console.log(fundAccountPda.toBase58());
+      const [voteAccountPda1] = PublicKey.findProgramAddressSync(
+        [Buffer.from('vote'), Buffer.from([fund.currentIndex]), Buffer.from([(vecIndex + 1)]), fundAccountPda.toBuffer()],
+        programId
+      );
 
-    const [voteAccountPda2] = PublicKey.findProgramAddressSync(
-      [Buffer.from('vote'), Buffer.from([fund.currentIndex + 1 & 0xff]), Buffer.from([0 & 0xff]), fundAccountPda.toBuffer()],
-      programId
-    );
+      const [voteAccountPda2] = PublicKey.findProgramAddressSync(
+        [Buffer.from('vote'), Buffer.from([fund.currentIndex + 1]), Buffer.from([0]), fundAccountPda.toBuffer()],
+        programId
+      );
 
-    const solMint = new PublicKey('So11111111111111111111111111111111111111112');
-    const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
+      const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+      const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
 
-    const instruction = new TransactionInstruction({
-      keys: [
-        {pubkey: user, isSigner: true, isWritable: true},
-        {pubkey: userAccountPda, isSigner: false, isWritable: true},
-        {pubkey: fundAccountPda, isSigner: false, isWritable: true},
-        {pubkey: currentAggregatorPda, isSigner: false, isWritable: true},
-        {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
-        {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
-        {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
-        {pubkey: solMint, isSigner: false, isWritable: false},
-        {pubkey: usdcMint, isSigner: false, isWritable: false},
-      ],
-      programId,
-      data: instructionData
-    });
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: userAccountPda, isSigner: false, isWritable: true},
+          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+          {pubkey: currentAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
+          {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
+          {pubkey: solMint, isSigner: false, isWritable: false},
+          {pubkey: usdcMint, isSigner: false, isWritable: false},
+        ],
+        programId,
+        data: instructionData
+      });
 
-    const transaction = new Transaction().add(instruction);
+      const transaction = new Transaction().add(instruction);
 
-    // Get recent blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockhash;
-    transaction.feePayer = wallet.publicKey;
+      console.log("current index: ", fund.currentIndex);
+      console.log("Current aggregator: ", currentAggregatorPda.toBase58());
+      console.log("New aggregator: ", newAggregatorPda.toBase58());
+      console.log("vote account 1: ", voteAccountPda1.toBase58());
+      console.log("vote account 2: ", voteAccountPda2.toBase58());
 
-    // Sign the transaction
-    // transaction.partialSign(governanceMint);
-    const signedTransaction = await wallet.signTransaction(transaction);
-    
-    // Send and confirm transaction
-    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-    
-    // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
-    await connection.confirmTransaction({
-      signature,
-      blockhash,
-      lastValidBlockHeight
-    });
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+      toast.success("Proposal created successfully");
+    } catch (err) {
+      console.log(err);
+      toast.error('aditya behen ka lund hai');
+    }
   }
 
   return (
