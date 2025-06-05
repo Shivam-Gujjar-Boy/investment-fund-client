@@ -6,6 +6,8 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
+import {findAmmConfig} from '../functions/pool_accounts'
+import { findTickArrayAccounts } from '../functions/tick_array';
 
 type Token = {
   pubkey: PublicKey,
@@ -479,8 +481,8 @@ export default function FundDetails() {
       const instructionTag = 1;
       const numOfSwaps = 1;
       const amount = BigInt(1000000);
-      const slippage = 500;
-      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(1200);
+      const slippage = 9000;
+      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(120);
       const fund_name = fund?.name;
 
       const nameBytes = Buffer.from(fund_name, 'utf8');
@@ -728,57 +730,127 @@ export default function FundDetails() {
     }
 
     const user = wallet.publicKey;
+    try {
+      const proposal = proposals[vecIndex];
+      const numOfSwaps = proposal.numOfSwaps;
 
-    const proposal = proposals[vecIndex];
-    const numOfSwaps = proposal.numOfSwaps;
+      const transaction = new Transaction();
 
-    let transaction = new Transaction();
+      for (let i=0; i<numOfSwaps; i++) {
+        const instructionTag = 4;
+        const fundName = fund.name;
+        const nameBytes = Buffer.from(fundName, 'utf8');
+        console.log(fundName);
+        const [fundpda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('fund'), Buffer.from(fundName)],
+          programId
+        );
+        console.log('fund: ', fundpda.toBase58());
+        const nameLength = nameBytes.length;
 
-    for (let i=0; i<numOfSwaps; i++) {
-      const instructionTag = 4;
-      const fundName = fund.name;
-      const nameBytes = Buffer.from(fundName, 'utf8');
-      console.log(fundName);
-      const [fundpda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('fund'), Buffer.from(fundName)],
-        programId
-      );
-      console.log('fund: ', fundpda.toBase58());
-      const nameLength = nameBytes.length;
+        const buffer = Buffer.alloc(1 + 1 + 1 + 1 + nameLength);
+        let offset = 0;
 
-      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + nameLength);
-      let offset = 0;
+        buffer.writeUInt8(instructionTag, offset);
+        offset += 1;
+        buffer.writeUInt8(i, offset);
+        offset += 1;
+        buffer.writeUInt8(proposalIndex, offset);
+        offset += 1;
+        buffer.writeUInt8(vecIndex, offset);
+        offset += 1;
+        nameBytes.copy(buffer, offset);
 
-      buffer.writeUInt8(instructionTag, offset);
-      offset += 1;
-      buffer.writeUInt8(numOfSwaps, offset);
-      offset += 1;
-      buffer.writeUInt8(proposalIndex, offset);
-      offset += 1;
-      buffer.writeUInt8(vecIndex, offset);
-      offset += 1;
-      nameBytes.copy(buffer, offset);
+        const instructionData = buffer;
+        console.log('instruction data hai ye: ', instructionData);
 
-      const instructionData = buffer;
-      console.log('instruction data hai ye: ', instructionData);
+        const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('proposal-aggregator'), Buffer.from([proposalIndex]), fundpda.toBuffer()],
+          programId
+        );
+        const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+        const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
 
-      const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('proposal-aggregator'), Buffer.from([proposalIndex]), fundpda.toBuffer()],
-        programId
-      );
+        const raydiumClmmProgram = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
+        const input_token_account = await getAssociatedTokenAddress(
+          solMint,
+          fund.vault,
+          true,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        const output_token_account = await getAssociatedTokenAddress(
+          usdcMint,
+          fund.vault,
+          true,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+        const memo_program = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
-      const raydiumClmmProgram = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
+        const accs = await findAmmConfig();
+        if (!accs) return;
+        console.log("Input vault: ", accs[2].toBase58())
+        console.log("Output vault: ", accs[3].toBase58())
+        const keys = [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: fundpda, isSigner: false, isWritable: true},
+          {pubkey: fund.vault, isSigner: false, isWritable: true},
+          {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: raydiumClmmProgram, isSigner: false, isWritable: false},
+          {pubkey: accs[0], isSigner: false, isWritable: true},
+          {pubkey: accs[1], isSigner: false, isWritable: true},
+          {pubkey: input_token_account, isSigner: false, isWritable: true},
+          {pubkey: output_token_account, isSigner: false, isWritable: true},
+          {pubkey: accs[2], isSigner: false, isWritable: true},
+          {pubkey: accs[3], isSigner: false, isWritable: true},
+          {pubkey: accs[4], isSigner: false, isWritable: true},
+          {pubkey: solMint, isSigner: false, isWritable: true},
+          {pubkey: usdcMint, isSigner: false, isWritable: true},
+          {pubkey: memo_program, isSigner: false, isWritable: false},
+          {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
+        ];
+        const ticks = await findTickArrayAccounts(accs[1]);
+        if (!ticks) return;
+        for (const tick of ticks) {
+          keys.push({
+            pubkey: tick, isSigner: false, isWritable: true
+          });
+        }
+        const instruction = new TransactionInstruction({
+          keys,
+          programId,
+          data: instructionData,
+        });
+        transaction.add(instruction);
+      }
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
 
-      const keys = [
-        {pubkey: user, isSigner: true, isWritable: true},
-        {pubkey: fundpda, isSigner: false, isWritable: true},
-        {pubkey: fund.vault, isSigner: false, isWritable: true},
-        {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
-        {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
-        {pubkey: raydiumClmmProgram, isSigner: false, isWritable: false},
-        
-      ]
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+      toast.success("Ho gya execute betche");
+    } catch (err) {
+      console.log(err);
+      toast.error("Didn't execute!");
     }
   }
 
