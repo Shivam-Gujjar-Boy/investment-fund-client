@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {toast} from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
@@ -33,6 +33,7 @@ interface Proposal {
   proposalIndex: number,
   vecIndex: number,
   proposer: PublicKey,
+  numOfSwaps: number,
   fromAssets: PublicKey[],
   toAssets: PublicKey[],
   amounts: bigint[],
@@ -222,6 +223,7 @@ export default function FundDetails() {
           proposalIndex: currentIndex,
           vecIndex: i,
           proposer,
+          numOfSwaps: numOfAmounts,
           fromAssets,
           toAssets,
           amounts,
@@ -709,6 +711,77 @@ export default function FundDetails() {
 
   }
 
+  const handleExecute = async (proposalIndex: number, vecIndex: number) => {
+    if (!proposals) {
+      console.log('proposals khali hai');
+      return;
+    }
+
+    if (!fund) {
+      console.log('fund hi na hai');
+      return;
+    }
+
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      console.log('wallet hi na hai');
+      return;
+    }
+
+    const user = wallet.publicKey;
+
+    const proposal = proposals[vecIndex];
+    const numOfSwaps = proposal.numOfSwaps;
+
+    let transaction = new Transaction();
+
+    for (let i=0; i<numOfSwaps; i++) {
+      const instructionTag = 4;
+      const fundName = fund.name;
+      const nameBytes = Buffer.from(fundName, 'utf8');
+      console.log(fundName);
+      const [fundpda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fund'), Buffer.from(fundName)],
+        programId
+      );
+      console.log('fund: ', fundpda.toBase58());
+      const nameLength = nameBytes.length;
+
+      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + nameLength);
+      let offset = 0;
+
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(numOfSwaps, offset);
+      offset += 1;
+      buffer.writeUInt8(proposalIndex, offset);
+      offset += 1;
+      buffer.writeUInt8(vecIndex, offset);
+      offset += 1;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+      console.log('instruction data hai ye: ', instructionData);
+
+      const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([proposalIndex]), fundpda.toBuffer()],
+        programId
+      );
+
+      const raydiumClmmProgram = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
+
+      const keys = [
+        {pubkey: user, isSigner: true, isWritable: true},
+        {pubkey: fundpda, isSigner: false, isWritable: true},
+        {pubkey: fund.vault, isSigner: false, isWritable: true},
+        {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+        {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: raydiumClmmProgram, isSigner: false, isWritable: false},
+        
+      ]
+    }
+  }
+
   function formatTimestamp(timestamp: bigint): string {
     const date = new Date(Number(timestamp) * 1000);
     return date.toLocaleString(undefined, {
@@ -789,7 +862,7 @@ export default function FundDetails() {
                 </div>
 
                 <div className="flex items-center text-sm text-gray-400">
-                  Total Value: {p.vecIndex.toString()}
+                  Vec Index: {p.vecIndex.toString()}
                 </div>
 
                 <div className="flex items-center text-sm text-gray-400">
@@ -798,6 +871,7 @@ export default function FundDetails() {
                 </div>
               </div>
               <div className="flex justify-end gap-2">
+                <button className="bg-blue-600 px-3 py-1 rounded" onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}>Execute</button>
                 <button className="bg-green-600 px-3 py-1 rounded" onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}>YES</button>
                 <button className="bg-red-600 px-3 py-1 rounded" onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}>NO</button>
               </div>
