@@ -450,6 +450,8 @@ export default function FundDetails() {
       return;
     }
 
+    console.log(fund);
+
     const user = wallet.publicKey;
 
     const instructionTag = 1;
@@ -457,7 +459,7 @@ export default function FundDetails() {
     const amount = BigInt(1000000);
     const slippage = 500;
     const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(1200);
-    const fund_name = fund?.name ?? "";
+    const fund_name = fund?.name;
 
     const nameBytes = Buffer.from(fund_name, 'utf8');
     const nameLength = nameBytes.length;
@@ -529,8 +531,8 @@ export default function FundDetails() {
         {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
         {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
         {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
-        {pubkey: solMint, isSigner: false, isWritable: true},
-        {pubkey: usdcMint, isSigner: false, isWritable: true},
+        {pubkey: solMint, isSigner: false, isWritable: false},
+        {pubkey: usdcMint, isSigner: false, isWritable: false},
       ],
       programId,
       data: instructionData
