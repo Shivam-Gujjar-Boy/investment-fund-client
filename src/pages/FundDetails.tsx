@@ -709,6 +709,17 @@ export default function FundDetails() {
 
   }
 
+  function formatTimestamp(timestamp: bigint): string {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
   return (
     <div className="p-6 text-white min-h-screen bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
       <h1 className="text-3xl font-bold mb-6">Fund Details</h1>
@@ -772,6 +783,20 @@ export default function FundDetails() {
               }}
             >
               {/* <div className="text-lg font-medium mb-2">{p.}</div> */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center text-sm text-gray-400">
+                  Proposal Index: {p.proposalIndex.toString()}
+                </div>
+
+                <div className="flex items-center text-sm text-gray-400">
+                  Total Value: {p.vecIndex.toString()}
+                </div>
+
+                <div className="flex items-center text-sm text-gray-400">
+                  {/* <Calendar className="w-4 h-4 mr-2" /> */}
+                  Created: {formatTimestamp(p.creationTime)}
+                </div>
+              </div>
               <div className="flex justify-end gap-2">
                 <button className="bg-green-600 px-3 py-1 rounded" onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}>YES</button>
                 <button className="bg-red-600 px-3 py-1 rounded" onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}>NO</button>
