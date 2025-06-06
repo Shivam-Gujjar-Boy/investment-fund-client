@@ -64,13 +64,13 @@ export async function findAmmConfig() {
 
         const accounts_arr = [];
         // const pool_info = await connection.getAccountInfo(pool.pubkey, 'confirmed');
-        const pool_info = await connection.getAccountInfo(new PublicKey('GBNzmD4w2TJeDnPJhwBoLWAy3xjxHR9XRBMo2MKuTUcK'), 'confirmed');
+        const pool_info = await connection.getAccountInfo(new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw'), 'confirmed');
         if (!pool_info) return;
         const buffer = Buffer.from(pool_info.data);
         const ammInfo = new PublicKey(buffer.slice(9, 41));
         accounts_arr.push(ammInfo);
         // accounts_arr.push(pool.pubkey);
-        accounts_arr.push(new PublicKey('GBNzmD4w2TJeDnPJhwBoLWAy3xjxHR9XRBMo2MKuTUcK'));
+        accounts_arr.push(new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw'));
         const token0Vault = new PublicKey(buffer.slice(137, 169));
         accounts_arr.push(token0Vault);
         const token1Vault = new PublicKey(buffer.slice(169, 201));
@@ -79,7 +79,7 @@ export async function findAmmConfig() {
         accounts_arr.push(obsKey);
 
         const [tickArrayBitmapAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from('pool_tick_array_bitmap_extension'), (new PublicKey('GBNzmD4w2TJeDnPJhwBoLWAy3xjxHR9XRBMo2MKuTUcK')).toBuffer()],
+            [Buffer.from('pool_tick_array_bitmap_extension'), (new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw')).toBuffer()],
             programId
         );
 
