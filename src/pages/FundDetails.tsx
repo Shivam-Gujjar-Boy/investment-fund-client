@@ -786,6 +786,8 @@ export default function FundDetails() {
           TOKEN_PROGRAM_ID,
           ASSOCIATED_TOKEN_PROGRAM_ID
         );
+        console.log('input token account = ', input_token_account.toBase58());
+        console.log('output token account = ', output_token_account.toBase58());
         const memo_program = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
         const accs = await findAmmConfig();
@@ -821,6 +823,9 @@ export default function FundDetails() {
             pubkey: tick, isSigner: false, isWritable: true
           });
         }
+        keys.push({
+          pubkey: accs[5], isSigner: false, isWritable: true
+        });
         const instruction = new TransactionInstruction({
           keys,
           programId,
