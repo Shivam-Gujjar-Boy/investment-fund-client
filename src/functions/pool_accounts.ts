@@ -2,7 +2,7 @@ import {Connection, PublicKey} from '@solana/web3.js';
 
 // config();
 
-export async function findAmmConfig() {
+export async function findAmmConfig(i: number) {
     try {
         // if (!process.env.SOLANA_RPC_URL_MAINNET) {
         //     throw Error(`Gaand ke pille DEVNET rpc url dede tameej me, nahi to gandiya ke chhidde cahude kar diye jayenge`);
@@ -12,65 +12,69 @@ export async function findAmmConfig() {
 
         // const programId = new PublicKey('CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK');
         const programId = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
-        const dataSize = 1544;
-        const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+        // const dataSize = 1544;
+        // const solMint = new PublicKey('So11111111111111111111111111111111111111112');
         // const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
         // const btrumpMint = new PublicKey('84fb2MuMr6e2ziwqNJRwZqovFmnwTVdUXjxuLh3Fpump');
         // const holdMint = new PublicKey('2556xFm2EJNiyQCUw984vaD5Duic7VZtpmPWY2Babonk');
-        const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
+        // const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
         console.log(`Fetching AmmConfig accounts owned by Raydium's CLMM program, size 1544 bytes`);
 
-        const accounts = await connection.getProgramAccounts(programId, {
-            filters: [
-                {dataSize},
-                {
-                    memcmp: {
-                        offset: 73,
-                        bytes: solMint.toBase58()
-                    },
-                },
-                {
-                    memcmp: {
-                        offset: 105,
-                        bytes: usdcMint.toBase58()
-                    },
-                },
-            ],
-            dataSlice: {offset: 0, length: 0},
-            commitment: 'confirmed',
-        });
+        // const accounts = await connection.getProgramAccounts(programId, {
+        //     filters: [
+        //         {dataSize},
+        //         {
+        //             memcmp: {
+        //                 offset: 73,
+        //                 bytes: solMint.toBase58()
+        //             },
+        //         },
+        //         {
+        //             memcmp: {
+        //                 offset: 105,
+        //                 bytes: usdcMint.toBase58()
+        //             },
+        //         },
+        //     ],
+        //     dataSlice: {offset: 0, length: 0},
+        //     commitment: 'confirmed',
+        // });
 
-        if (accounts.length === 0) {
-            console.log(`No pool accounts found with for pair SOL/USDC`);
-        }
+        // if (accounts.length === 0) {
+        //     console.log(`No pool accounts found with for pair SOL/USDC`);
+        // }
 
-        let max_liquidity: bigint = BigInt(0);
-        let pool = accounts[0];
+        // let max_liquidity: bigint = BigInt(0);
+        // let pool = accounts[0];
 
-        for (const acc of accounts) {
-            // console.log("CPMM Pool Account Pubkey for SOL/HOLD:      ", acc.pubkey.toBase58(), "------------>");
-            const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-            if (!accountInfo) return;
-            const buffer = Buffer.from(accountInfo.data);
-            const offset = 122;
-            const liquidityy = readU128LE(buffer, offset);
+        // for (const acc of accounts) {
+        //     // console.log("CPMM Pool Account Pubkey for SOL/HOLD:      ", acc.pubkey.toBase58(), "------------>");
+        //     const accountInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+        //     if (!accountInfo) return;
+        //     const buffer = Buffer.from(accountInfo.data);
+        //     const offset = 122;
+        //     const liquidityy = readU128LE(buffer, offset);
 
-            if (liquidityy > max_liquidity ) {
-                max_liquidity=liquidityy;
-                pool=acc;
-            }
-        }
-        console.log("pool: ", pool.pubkey.toBase58());
+        //     if (liquidityy > max_liquidity ) {
+        //         max_liquidity=liquidityy;
+        //         pool=acc;
+        //     }
+        // }
+        // console.log("pool: ", pool.pubkey.toBase58());
+
+        const pumpkingPool = new PublicKey('GBNzmD4w2TJeDnPJhwBoLWAy3xjxHR9XRBMo2MKuTUcK');
+        const bondPool = new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw')
+        const pools: PublicKey[] = [pumpkingPool, bondPool];
 
         const accounts_arr = [];
         // const pool_info = await connection.getAccountInfo(pool.pubkey, 'confirmed');
-        const pool_info = await connection.getAccountInfo(new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw'), 'confirmed');
+        const pool_info = await connection.getAccountInfo(pools[i], 'confirmed');
         if (!pool_info) return;
         const buffer = Buffer.from(pool_info.data);
         const ammInfo = new PublicKey(buffer.slice(9, 41));
         accounts_arr.push(ammInfo);
         // accounts_arr.push(pool.pubkey);
-        accounts_arr.push(new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw'));
+        accounts_arr.push(pools[i]);
         const token0Vault = new PublicKey(buffer.slice(137, 169));
         accounts_arr.push(token0Vault);
         const token1Vault = new PublicKey(buffer.slice(169, 201));
@@ -79,7 +83,7 @@ export async function findAmmConfig() {
         accounts_arr.push(obsKey);
 
         const [tickArrayBitmapAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from('pool_tick_array_bitmap_extension'), (new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw')).toBuffer()],
+            [Buffer.from('pool_tick_array_bitmap_extension'), (pools[i]).toBuffer()],
             programId
         );
 
@@ -113,10 +117,10 @@ export async function findAmmConfig() {
     }
 }
 
-function readU128LE(buffer: Buffer<ArrayBuffer>, offset: number) {
-    const low = buffer.readBigUInt64LE(offset);         // Lower 64 bits
-    const high = buffer.readBigUInt64LE(offset + 8);     // Higher 64 bits
-    return (high << 64n) + low;
-}
+// function readU128LE(buffer: Buffer<ArrayBuffer>, offset: number) {
+//     const low = buffer.readBigUInt64LE(offset);         // Lower 64 bits
+//     const high = buffer.readBigUInt64LE(offset + 8);     // Higher 64 bits
+//     return (high << 64n) + low;
+// }
 
 // findAmmConfig();

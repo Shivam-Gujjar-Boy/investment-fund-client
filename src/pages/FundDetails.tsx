@@ -479,16 +479,17 @@ export default function FundDetails() {
 
     try {
       const instructionTag = 1;
-      const numOfSwaps = 1;
-      const amount = BigInt(1000000000);
+      const numOfSwaps = 2;
+      const amountA = BigInt(1000000000);
+      const amountB = BigInt(1000000000);
       const slippage = 900;
-      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(120);
+      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(300);
       const fund_name = fund?.name;
 
       const nameBytes = Buffer.from(fund_name, 'utf8');
       const nameLength = nameBytes.length;
 
-      const buffer = Buffer.alloc(1 + 1 + 8 + 2 + 8 + nameLength);
+      const buffer = Buffer.alloc(1 + 1 + 8 + 8 + 2 + 2 + 8 + nameLength);
       let offset = 0;
 
       buffer.writeUInt8(instructionTag, offset);
@@ -497,11 +498,15 @@ export default function FundDetails() {
       buffer.writeUInt8(numOfSwaps, offset);
       // console.log(buffer);
       offset += 1;
-      buffer.writeBigInt64LE(amount, offset);
+      buffer.writeBigInt64LE(amountA, offset);
       // console.log(buffer);
+      offset += 8;
+      buffer.writeBigInt64LE(amountB, offset);
       offset += 8;
       buffer.writeUInt16LE(slippage, offset);
       // console.log(buffer);
+      offset += 2;
+      buffer.writeUInt16LE(slippage, offset);
       offset += 2;
       buffer.writeBigInt64LE(deadline, offset);
       // console.log(buffer);
@@ -545,7 +550,7 @@ export default function FundDetails() {
 
       const solMint = new PublicKey('So11111111111111111111111111111111111111112');
       // const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
-      // const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
+      const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
       const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
 
       const instruction = new TransactionInstruction({
@@ -559,6 +564,8 @@ export default function FundDetails() {
           {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
           {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
           {pubkey: solMint, isSigner: false, isWritable: false},
+          {pubkey: solMint, isSigner: false, isWritable: false},
+          {pubkey: pumpkingMint, isSigner: false, isWritable: false},
           {pubkey: bondMint, isSigner: false, isWritable: false},
         ],
         programId,
@@ -738,6 +745,10 @@ export default function FundDetails() {
 
       const transaction = new Transaction();
 
+      const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
+      const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
+      const outputMints: PublicKey[] = [pumpkingMint, bondMint];
+
       for (let i=0; i<numOfSwaps; i++) {
         const instructionTag = 4;
         const fundName = fund.name;
@@ -773,7 +784,7 @@ export default function FundDetails() {
         const solMint = new PublicKey('So11111111111111111111111111111111111111112');
         // const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr');
         // const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
-        const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
+        // const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
 
         const raydiumClmmProgram = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
         const input_token_account = await getAssociatedTokenAddress(
@@ -784,7 +795,7 @@ export default function FundDetails() {
           ASSOCIATED_TOKEN_PROGRAM_ID
         );
         const output_token_account = await getAssociatedTokenAddress(
-          bondMint,
+          outputMints[i],
           fund.vault,
           true,
           TOKEN_PROGRAM_ID,
@@ -794,7 +805,7 @@ export default function FundDetails() {
         console.log('output token account = ', output_token_account.toBase58());
         const memo_program = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
-        const accs = await findAmmConfig();
+        const accs = await findAmmConfig(i);
         if (!accs) return;
         console.log("Input vault: ", accs[2].toBase58())
         console.log("Output vault: ", accs[3].toBase58())
@@ -814,12 +825,13 @@ export default function FundDetails() {
           {pubkey: accs[3], isSigner: false, isWritable: true},
           {pubkey: accs[4], isSigner: false, isWritable: true},
           {pubkey: solMint, isSigner: false, isWritable: true},
-          {pubkey: bondMint, isSigner: false, isWritable: true},
+          {pubkey: outputMints[i], isSigner: false, isWritable: true},
           {pubkey: memo_program, isSigner: false, isWritable: false},
           {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
           {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
           {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
         ];
+        
         const ticks = await findTickArrayAccounts(accs[1]);
         if (!ticks) return;
         for (const tick of ticks) {
