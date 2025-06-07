@@ -1,12 +1,21 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import {NodeGlobalsPolyfillPlugin} from '@esbuild-plugins/node-globals-polyfill'
-// import { fileURLToPath } from 'url';
-// import { dirname } from 'path';
+import {nodePolyfills} from 'vite-plugin-node-polyfills'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    NodeGlobalsPolyfillPlugin({
+      buffer: true,
+    }),
+    nodePolyfills({
+      buffer: true,
+      crypto: true,
+      stream: true
+    }),
+  ],
   optimizeDeps: {
     esbuildOptions: {
       define: {
@@ -24,6 +33,8 @@ export default defineConfig({
   resolve: {
     alias: {
       buffer: 'buffer',
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
     },
   },
   define: {
