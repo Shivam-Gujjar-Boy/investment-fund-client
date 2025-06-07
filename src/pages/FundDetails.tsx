@@ -23,6 +23,7 @@ export default function FundDetails() {
   const [fundPda, setFundPda] = useState<PublicKey | null>(null);
   const [fund, setFund] = useState<Fund | null>(null);
   const [amount, setAmount] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const wallet = useWallet();
   const {connection} = useConnection();
@@ -108,10 +109,6 @@ export default function FundDetails() {
       }
 
       const currentIndex = fund?.currentIndex;
-      // if (!currentIndex) {
-      //   console.log('current index not defined');
-      //   return;
-      // }
       const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex]), fundAccountPda.toBuffer()],
         programId
@@ -207,14 +204,13 @@ export default function FundDetails() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       await fetchFundData();
       await fetchProposalsData();
+      setLoading(false);
     }
 
     load();
-
-    // fetchFundData();
-    // fetchProposalsData();
   }, [fetchFundData, fetchProposalsData]);
 
   // To open the Deposit modal
@@ -414,19 +410,38 @@ export default function FundDetails() {
   };
 
   return (
-    <div className="p-6 text-white min-h-screen bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
-      <h1 className="text-3xl font-bold mb-6">Fund Details</h1>
+    <div className="p-4 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
+      {/* <h1 className="text-3xl font-bold mb-6">Fund Details</h1> */}
 
-      <div className="grid grid-cols-[2fr_1fr] gap-6">
+      <div className="grid grid-cols-[3fr_1fr] gap-4">
         {/* Left Section */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {/* Graph & Members */}
-          <div className="flex gap-6">
+          <div className="flex gap-4">
             {/* Fund Graph */}
             <FundGraph />
 
             {/* Members */}
-            <FundMembers members={fund?.members}/>
+            {loading ? (
+              <div className="bg-[#1f2937] p-6 rounded-2xl h-[28rem] w-[30%] animate-pulse space-y-4">
+                <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
+                <ul className="space-y-4">
+                  {[...Array(5)].map((_, idx) => (
+                    <li key={idx} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="h-4 w-24 bg-gray-700 rounded"></div>
+                        <div className="h-4 w-12 bg-gray-700 rounded"></div>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div className="h-2.5 w-1/2 bg-gray-600 rounded-full"></div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              fund && <FundMembers members={fund.members} governanceMint={fund.governanceMint} />
+            )}
           </div>
 
           {/* Activity */}
@@ -441,7 +456,25 @@ export default function FundDetails() {
         </div>
 
         {/* Proposals */}
-        <Proposals proposals={proposals} fund={fund} vecIndex={vecIndex} fundId={fundId}/>
+        {loading ? (
+          <div className="bg-[#1f2937] p-6 rounded-2xl h-[28rem] animate-pulse space-y-4">
+            <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
+            {[...Array(4)].map((_, idx) => (
+              <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
+                <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+                <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+                <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+                <div className="flex gap-2 mt-4">
+                  <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Proposals proposals={proposals} fund={fund} vecIndex={vecIndex} fundId={fundId} />
+        )}
       </div>
 
       {/* Proposal Modal */}

@@ -409,39 +409,65 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
   return (
     <>
-      <div className="bg-[#1f2937] p-6 rounded-2xl overflow-y-auto max-h-[calc(100vh-6rem)]">
-        <h2 className="text-xl font-semibold mb-4">Proposals</h2>
-        {(proposals ?? []).map(p => (
-          <div
-            key={p.creationTime}
-            className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition"
-            onClick={(e) => {
-              if (!(e.target as HTMLElement).closest('button')) {
-                setSelectedProposal(p);
-              }
-            }}
+      <div className="bg-[#1f2937] rounded-2xl relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
+        <div className="p-6 overflow-y-auto flex-1">
+          <h2 className="text-xl font-semibold mb-4 text-white">Proposals</h2>
+
+          {(proposals ?? []).map(p => (
+            <div
+              key={p.creationTime}
+              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm"
+              onClick={(e) => {
+                if (!(e.target as HTMLElement).closest('button')) {
+                  setSelectedProposal(p);
+                }
+              }}
+            >
+              <div className="space-y-2 mb-4">
+                <div className="text-sm text-gray-400">
+                  <span className="font-medium text-gray-300">Proposal Index:</span> {p.proposalIndex.toString()}
+                </div>
+                <div className="text-sm text-gray-400">
+                  <span className="font-medium text-gray-300">Vec Index:</span> {p.vecIndex.toString()}
+                </div>
+                <div className="text-sm text-gray-400">
+                  <span className="font-medium text-gray-300">Created:</span> {formatTimeStamp(p.creationTime)}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm"
+                  onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
+                >
+                  Execute
+                </button>
+                <button
+                  className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm"
+                  onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
+                >
+                  YES
+                </button>
+                <button
+                  className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm"
+                  onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
+                >
+                  NO
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Fixed Footer Button */}
+        <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
+          <button
+            onClick={handleProposalCreation}
+            className="w-full bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl transition disabled:opacity-50 text-white font-medium"
           >
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center text-sm text-gray-400">
-                Proposal Index: {p.proposalIndex.toString()}
-              </div>
-
-              <div className="flex items-center text-sm text-gray-400">
-                Vec Index: {p.vecIndex.toString()}
-              </div>
-
-              <div className="flex items-center text-sm text-gray-400">
-                Created: {formatTimeStamp(p.creationTime)}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="bg-blue-600 px-3 py-1 rounded" onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}>Execute</button>
-              <button className="bg-green-600 px-3 py-1 rounded" onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}>YES</button>
-              <button className="bg-red-600 px-3 py-1 rounded" onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}>NO</button>
-            </div>
-          </div>
-        ))}
-        <button onClick={handleProposalCreation} className='bg-green-600 px-4 py-2 rounded disabled:opacity-50'>Create Proposal</button>
+            Create Proposal
+          </button>
+        </div>
       </div>
 
       {/* Proposal Modal */}
