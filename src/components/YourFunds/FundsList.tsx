@@ -4,6 +4,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import toast from 'react-hot-toast';
 import { Fund, programId } from '../../types';
+import { Buffer } from 'buffer';
 
 export default function FundsList() {
   const [funds, setFunds] = useState<Fund[] | null>(null);

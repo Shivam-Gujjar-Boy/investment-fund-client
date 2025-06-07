@@ -1,6 +1,5 @@
 import {Connection, PublicKey} from '@solana/web3.js';
-
-// config();
+import { Buffer } from 'buffer';
 
 export async function findAmmConfig(i: number) {
     try {

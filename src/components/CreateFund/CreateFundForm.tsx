@@ -13,6 +13,7 @@ import { SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { Fund, programId, TOKEN_METADATA_PROGRAM_ID } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { printFundDetails } from '../../functions/printFundDetails';
+import { Buffer } from 'buffer';
 
 let debounceTimer: NodeJS.Timeout;
 

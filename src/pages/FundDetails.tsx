@@ -6,8 +6,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
-// import {findAmmConfig} from '../functions/pool_accounts'
-// import { findTickArrayAccounts } from '../functions/tick_array';
+import { Buffer } from 'buffer';
 import { Proposal, Fund, Token, programId } from '../types';
 import Proposals from '../components/Proposals/Proposals';
 import FundActivity from '../components/FundActivity/FundActivity';

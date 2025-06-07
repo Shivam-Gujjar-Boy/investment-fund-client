@@ -1,5 +1,6 @@
 import { AccountInfo, PublicKey } from "@solana/web3.js";
 import { Fund } from "../types";
+import { Buffer } from "buffer";
 
 export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBufferLike>> | null) {
     if (!fundAccountInfo) return null;

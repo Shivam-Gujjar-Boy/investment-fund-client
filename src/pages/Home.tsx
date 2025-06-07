@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import {toast} from 'react-hot-toast';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
 import { programId } from '../types';
+import { Buffer } from 'buffer';
 
 export default function Home() {
   const navigate = useNavigate();

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Fund, programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { printFundDetails } from '../../functions/printFundDetails';
+import { Buffer } from 'buffer';
 
 export default function JoinFundForm() {
   const [fundName, setFundName] = useState('');

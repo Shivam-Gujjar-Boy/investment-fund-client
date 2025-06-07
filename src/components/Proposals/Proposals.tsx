@@ -8,6 +8,7 @@ import { Proposal, Fund, programId } from '../../types';
 import { formatTimeStamp } from '../../functions/formatTimeStamp';
 import { findAmmConfig } from '../../functions/pool_accounts';
 import { findTickArrayAccounts } from '../../functions/tick_array';
+import { Buffer } from 'buffer';
 
 interface ProposalsProps {
   proposals: Proposal[] | null;

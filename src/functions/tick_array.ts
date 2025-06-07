@@ -1,7 +1,5 @@
 import {Connection, PublicKey} from '@solana/web3.js';
 
-// config();
-
 export async function findTickArrayAccounts(pool_id: PublicKey) {
     try {
         // if (!process.env.SOLANA_RPC_URL_MAINNET) {

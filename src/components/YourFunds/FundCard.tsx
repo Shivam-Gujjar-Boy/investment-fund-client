@@ -11,6 +11,7 @@ import {
 } from '@solana/web3.js';
 import { useNavigate } from 'react-router-dom';
 import { Fund, programId } from '../../types';
+import { Buffer } from 'buffer';
 
 interface FundCardProps {
   fund: Fund;
