@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-// import { useToast } from '../../hooks/useToast';
 import {toast} from 'react-hot-toast';
 import { 
-  // Keypair, 
   PublicKey, 
   SystemProgram, 
   TransactionInstruction, 
@@ -12,6 +10,9 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
+import { Fund, programId, TOKEN_METADATA_PROGRAM_ID } from '../../types';
+import { extractFundData } from '../../functions/extractFundData';
+import { printFundDetails } from '../../functions/printFundDetails';
 
 let debounceTimer: NodeJS.Timeout;
 
@@ -25,7 +26,6 @@ export default function CreateFundForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [privacy, setPrivacy] = useState(false);
-  // const { toast } = useToast();
 
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -80,8 +80,6 @@ export default function CreateFundForm() {
       setIsSubmitting(true);
 
       try {
-        const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
-        const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
         const creator = wallet.publicKey;
 
         if (!creator) throw new Error('Wallet not connected');
@@ -93,7 +91,6 @@ export default function CreateFundForm() {
         );
 
         // Generate governance mint
-        // const governanceMint = Keypair.generate();
         const [governanceMint] = PublicKey.findProgramAddressSync(
           [Buffer.from('governance'), fundAccountPda.toBuffer()],
           programId,
@@ -132,8 +129,7 @@ export default function CreateFundForm() {
         // Instruction data
         const nameBytes = new TextEncoder().encode(fundName);
         console.log("Fund name in bytes : ", nameBytes);
-        // const priv = new Uint8Array(1);
-        // const instructionData = Buffer.from([0, ...nameBytes]);
+
         let instructionData;
         if (privacy) {
           instructionData = Buffer.from([0, 1, ...nameBytes]);
@@ -192,33 +188,10 @@ export default function CreateFundForm() {
 
         // Printing created accounts data for debugging
         const fundAccountInfo = await connection.getAccountInfo(fundAccountPda);
-        if (!fundAccountInfo) return;
-        const fund_buffer = Buffer.from(fundAccountInfo.data);
-        const name_dummy = fund_buffer.slice(0, 32).toString();
-        let name = '';
-        for (const c of name_dummy) {
-            if (c === '\x00') break;
-            name += c;
-        }
-        console.log(name);
-        const totalDeposit = fund_buffer.readBigInt64LE(32);
-        console.log(totalDeposit);
-        const governance_mint = new PublicKey(fund_buffer.slice(40, 72));
-        console.log(governance_mint);
-        const vault = new PublicKey(fund_buffer.slice(72, 104));
-        console.log(vault);
-        const isInitialized = fund_buffer.readUInt8(104) ? true : false;
-        console.log(isInitialized);
-        const created_at = fund_buffer.readBigInt64LE(105);
-        console.log(created_at);
-        const is_private = fund_buffer.readUInt8(113);
-        console.log(is_private);
-        const members: PublicKey[] = [];
-        console.log(members);
-        const numOfMembers = fund_buffer.readUInt32LE(114);
-        console.log(numOfMembers);
-        const fund_creator = new PublicKey(fund_buffer.slice(118, 150));
-        console.log(fund_creator.toBase58());
+        const fund: Fund | null = extractFundData(fundAccountInfo);
+        if (!fund) return;
+        fund.fund_address = fundAccountPda;
+        printFundDetails(fund);
 
         // Reset form
         setFundName('');

@@ -10,20 +10,7 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import { useNavigate } from 'react-router-dom';
-
-interface Fund {
-  fund_address: PublicKey,
-  name: string;
-  creator: PublicKey,
-  numOfMembers: number,
-  members: PublicKey[];
-  totalDeposit: bigint;
-  governanceMint: PublicKey;
-  vault: PublicKey;
-  currentIndex: number;
-  created_at: bigint;
-  is_private: number;
-}
+import { Fund, programId } from '../../types';
 
 interface FundCardProps {
   fund: Fund;
@@ -32,7 +19,6 @@ interface FundCardProps {
 
 export default function FundCard({ fund, status }: FundCardProps) {
   const navigate = useNavigate();
-  const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
   const wallet = useWallet();
   const {connection} = useConnection();
 
@@ -53,7 +39,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text);
-    console.log('Copied:', text); // Replace with toast if needed
+    console.log('Copied:', text);
     toast.success('Copied to clipboard!');
   }
 

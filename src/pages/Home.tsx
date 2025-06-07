@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {toast} from 'react-hot-toast';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
+import { programId } from '../types';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -24,7 +25,6 @@ export default function Home() {
       setLoading(true);
 
       console.log(user, connected);
-      const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
 
       const [userAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('user'), user.toBuffer()],

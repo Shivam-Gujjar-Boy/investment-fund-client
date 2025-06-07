@@ -6,11 +6,9 @@ import YourFunds from './YourFunds';
 import Portfolio from './Portfolio';
 import Discover from './Discover';
 import FundDetails from './FundDetails';
-import { ToastProvider } from '../components/ui/Toaster';
 
 export default function Dashboard() {
   return (
-    <ToastProvider>
       <Layout>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard/create" replace />} />
@@ -23,6 +21,5 @@ export default function Dashboard() {
           <Route path="*" element={<Navigate to="/dashboard/create" replace />} />
         </Routes>
       </Layout>
-    </ToastProvider>
   );
 }

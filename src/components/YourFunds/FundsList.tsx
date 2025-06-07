@@ -3,22 +3,7 @@ import FundCard from './FundCard';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import toast from 'react-hot-toast';
-
-interface Fund {
-  fund_address: PublicKey,
-  name: string;
-  creator: PublicKey,
-  numOfMembers: number,
-  members: PublicKey[];
-  totalDeposit: bigint;
-  governanceMint: PublicKey;
-  vault: PublicKey;
-  currentIndex: number;
-  created_at: bigint;
-  is_private: number;
-}
-
-const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
+import { Fund, programId } from '../../types';
 
 export default function FundsList() {
   const [funds, setFunds] = useState<Fund[] | null>(null);
