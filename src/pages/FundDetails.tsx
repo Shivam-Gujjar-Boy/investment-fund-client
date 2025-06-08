@@ -7,11 +7,12 @@ import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruc
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
 import { Buffer } from 'buffer';
-import { Proposal, Fund, Token, programId, TOKEN_METADATA_PROGRAM_ID } from '../types';
+import { Proposal, Fund, Token, programId } from '../types';
 import Proposals from '../components/Proposals/Proposals';
 import FundActivity from '../components/FundActivity/FundActivity';
 import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
+import { fetchUserTokens } from '../functions/fetchuserTokens';
 import {Metaplex} from '@metaplex-foundation/js';
 
 export default function FundDetails() {
@@ -218,7 +219,7 @@ export default function FundDetails() {
   // To open the Deposit modal
   const openDepositModal = async () => {
     setShowDepositModal(true);
-    const tokens = await fetchUserTokens();
+    const tokens = await fetchUserTokens(wallet, connection, metaplex);
     if (!wallet.publicKey) {
       return;
     }
@@ -228,94 +229,6 @@ export default function FundDetails() {
     setUserTokens(tokens);
     if (tokens.length > 0) setSelectedToken(tokens[0]);
   };
-
-  // To fetch user's token accounts
-  const fetchUserTokens = async () => {
-    try {
-      if (!wallet.publicKey || !wallet.signTransaction) {
-        toast.error('Wallet is not connected');
-        return;
-      }
-      const user =  wallet.publicKey;
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        user,
-        {programId: TOKEN_PROGRAM_ID}
-      );
-
-      console.log(tokenAccounts);
-
-      const tokens = tokenAccounts.value
-        .map((acc) => {
-          const info = acc.account.data?.parsed.info;
-          const mint = info.mint;
-          const balance = info.tokenAmount.uiAmount;
-          return {
-            pubkey: acc.pubkey,
-            mint,
-            symbol: 'Unknown',
-            image: '',
-            balance,
-          };
-        })
-        .filter((token) => token.balance > 0);
-
-      const balance = await connection.getBalance(wallet.publicKey);
-      tokens?.unshift({
-        pubkey: new PublicKey('So11111111111111111111111111111111111111112'),
-        mint: 'So11111111111111111111111111111111111111112',
-        symbol: 'SOL',
-        image: '',
-        balance: balance/Math.pow(10, 9),
-      });
-
-      const tokensWithMetadata = await Promise.all(
-        tokens.map(async (token) => {
-          const metadata = await fetchMintMetadata(new PublicKey(token.mint));
-          console.log(metadata?.symbol);
-          return {
-            ...token,
-            symbol: metadata?.symbol || token.symbol,
-            image: metadata?.image || token.image
-          };
-        })
-      )
-
-      return tokensWithMetadata;
-    } catch (err) {
-      console.error('Error feching tokens:', err);
-      return [];
-    }
-  };
-
-  const getMetadataPDA = (mintPubkey: PublicKey) => {
-    return (
-      PublicKey.findProgramAddressSync(
-        [Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintPubkey.toBuffer()],
-        TOKEN_METADATA_PROGRAM_ID
-      )
-    );
-  };
-
-  const fetchMintMetadata = async (mint: PublicKey) => {
-    try {
-      const [metadataPDA] = getMetadataPDA(mint);
-      const metadataAccountInfo = await metaplex
-        .nfts()
-        .findByMetadata({metadata: metadataPDA});
-
-      console.log('metadata: ', metadataAccountInfo.mint);
-      const symbol = metadataAccountInfo.symbol;
-      const imageUri = metadataAccountInfo.json?.image || '';
-
-      return {
-        symbol,
-        image: imageUri,
-      };
-    } catch (err) {
-      console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
-      return null;
-    }
-  }
 
   // To handle deposit (program invocation)
   const handleDeposit = async () => {
@@ -551,43 +464,104 @@ export default function FundDetails() {
 
       {/* Deposit Modal */}
       {showDepositModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#1f2937] p-6 rounded-2xl w-[90%] max-w-xl text-white">
-            <h2 className="text-xl font-semibold mb-4">Deposit Tokens</h2>
-            <div className="flex items-center gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-xl text-white transition-all duration-300 scale-100 relative">
+
+            {/* Title */}
+            <h2 className="text-2xl font-bold mb-6 tracking-wide">💰 Deposit Tokens</h2>
+
+            {/* Balance Row */}
+            {selectedToken && (
+              <div className="flex justify-between text-xs text-white mb-2 px-1">
+                <div className="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  {selectedToken.symbol} balance: {selectedToken.balance}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setAmount(selectedToken.balance.toString())}
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                  >
+                    Max
+                  </button>
+                  <button
+                    onClick={() => setAmount((selectedToken.balance * 0.5).toFixed(6))}
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                  >
+                    50%
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Input Box */}
+            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-hidden text-white">
+
+              {/* Token Selector */}
+              <div className="flex items-center gap-1 px-4 py-3 min-w-[140px] bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer">
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-600 border border-gray-600">
+                  {selectedToken?.image ? (
+                    <img src={selectedToken.image} alt="token" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-600 rounded-full" />
+                  )}
+                </div>
+
+                <select
+                  value={selectedToken?.mint || ''}
+                  onChange={(e) =>
+                    setSelectedToken(userTokens.find((t) => t.mint === e.target.value) || null)
+                  }
+                  className="bg-transparent text-white text-xl outline-none cursor-pointer py-0"
+                >
+                  {userTokens.map((token) => (
+                    <option key={token.mint} value={token.mint} className="text-black">
+                      {token.symbol}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Amount Input */}
               <input
                 type="number"
-                className="bg-gray-800 px-3 py-2 rounded w-full"
-                placeholder="Amount"
+                // placeholder="0.00"
                 value={amount}
-                onChange={e => setAmount(e.target.value)}
+                onChange={(e) => setAmount(e.target.value)}
+                className="flex-1 text-right px-4 py-3 text-2xl bg-transparent outline-none placeholder-white"
               />
-              <select
-                className="bg-gray-800 px-3 py-2 rounded"
-                value={selectedToken?.mint || ''}
-                onChange={e => {
-                  if (!userTokens) return;
-                  setSelectedToken(userTokens.find(t => t.mint === e.target.value) || null)
+            </div>
+
+            {/* Error */}
+            {amount && selectedToken && parseFloat(amount) > selectedToken.balance && (
+              <p className="text-red-500 text-sm mt-3">🚫 Insufficient balance</p>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end mt-8 gap-4">
+              <button
+                className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 transition-all"
+                onClick={() => {
+                  const modal = document.querySelector('.animate-fadeIn');
+                  if (modal) {
+                    modal.classList.remove('animate-fadeIn');
+                    modal.classList.add('animate-fadeOut');
+                    setTimeout(() => setShowDepositModal(false), 200);
+                  } else {
+                    setShowDepositModal(false);
+                  }
                 }}
               >
-                {userTokens.map(token => (
-                  <option key={token.mint} value={token.mint}>
-                    {token.symbol} ({token.balance})
-                  </option>
-                ))}
-              </select>
-            </div>
-            {amount && selectedToken && parseFloat(amount) > selectedToken.balance && (
-              <p className="text-red-500 text-sm mt-2">Insufficient balance</p>
-            )}
-            <div className="flex justify-end mt-6 gap-4">
-              <button className="bg-gray-600 px-4 py-2 rounded" onClick={() => setShowDepositModal(false)}>Cancel</button>
+                Cancel
+              </button>
               <button
                 onClick={handleDeposit}
-                className="bg-green-600 px-4 py-2 rounded disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 disabled={!selectedToken || !amount || parseFloat(amount) > selectedToken.balance}
               >
-                Deposit
+                ✅ Deposit
               </button>
             </div>
           </div>

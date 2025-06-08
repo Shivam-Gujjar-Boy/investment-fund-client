@@ -4,11 +4,14 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, TransactionInstruction, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
-import { Proposal, Fund, programId } from '../../types';
+import { Proposal, Fund, Token, programId } from '../../types';
 import { formatTimeStamp } from '../../functions/formatTimeStamp';
 import { findAmmConfig } from '../../functions/pool_accounts';
 import { findTickArrayAccounts } from '../../functions/tick_array';
 import { Buffer } from 'buffer';
+import { fetchUserTokens } from '../../functions/fetchuserTokens';
+import { Metaplex } from '@metaplex-foundation/js';
+import { TokenSelector } from './TokenSelector';
 
 interface ProposalsProps {
   proposals: Proposal[] | null;
@@ -17,13 +20,73 @@ interface ProposalsProps {
   fundId: string | undefined;
 }
 
+interface ProposalSwap {
+  fromMint: string,
+  toMint: string,
+  amount: string,
+  slippage: string
+}
+
 export default function Proposals({ proposals, fund, vecIndex, fundId }: ProposalsProps) {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [userTokens, setUserTokens] = useState<Token[]>([]);
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [selectedFromToken, setSelectedFromToken] = useState<Token | null>(null);
+  const [deadline, setDeadline] = useState<string>('');
+  const [swaps, setSwaps] = useState([
+    { fromMint: '', toMint: '', amount: '', slippage: '0.5' }
+  ]);
+
   const wallet = useWallet();
   const { connection } = useConnection();
+  const metaplex = Metaplex.make(connection);
+
+  const updateSwap = (index: number, field: string, value: string) => {
+    const updated = [...swaps];
+    updated[index] = {...updated[index], [field]: value};
+    setSwaps(updated);
+  };
+
+  const isSwapValid = (swap: ProposalSwap) => {
+    return (
+      swap.fromMint.trim() !== '' &&
+      swap.toMint.trim() !== '' &&
+      swap.amount.trim() !== '' &&
+      !isNaN(Number(swap.amount)) &&
+      swap.slippage.trim() !== '' &&
+      !isNaN(Number(swap.slippage))
+    );
+  };
+
+  const addSwap = () => {
+    const lastSwap = swaps[swaps.length - 1];
+    if (!isSwapValid(lastSwap)) return;
+    if (swaps.length < 4) {
+      setSwaps([...swaps, { fromMint: '', toMint: '', amount: '', slippage: '0.5' }]);
+    }
+  };
+
+  const removeSwap = (index: number) => {
+    const updated = swaps.filter((_, i) => i !== index);
+    setSwaps(updated);
+  };
+
+  // To open the Deposit modal
+  const openProposalModal = async () => {
+    setShowProposalModal(true);
+    const tokens = await fetchUserTokens(wallet, connection, metaplex);
+    if (!wallet.publicKey) {
+      return;
+    }
+
+    console.log(tokens);
+    if (!tokens) return;
+    setUserTokens(tokens);
+    if (tokens.length > 0) setSelectedFromToken(tokens[0]);
+  };
 
   // proposal creation
-  const handleProposalCreation = async () => {
+  const handleProposalCreation = async (swaps: ProposalSwap[], deadline: bigint) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       return;
     }
@@ -38,31 +101,35 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
     try {
       const instructionTag = 1;
-      const numOfSwaps = 2;
-      const amountA = BigInt(1000000000);
-      const amountB = BigInt(1000000000);
-      const slippage = 900;
-      const deadline = BigInt(Math.floor(Date.now()/1000)) + BigInt(300);
+      const numOfSwaps = swaps.length;
+      const amounts: bigint[] = [];
+      const slippages: number[] = [];
+      for (const swap of swaps) {
+        amounts.push(BigInt(swap.amount));
+        slippages.push(parseInt(swap.slippage));
+      }
+
+      console.log(amounts, slippages);
       const fund_name = fund?.name;
 
       const nameBytes = Buffer.from(fund_name, 'utf8');
       const nameLength = nameBytes.length;
 
-      const buffer = Buffer.alloc(1 + 1 + 8 + 8 + 2 + 2 + 8 + nameLength);
+      const buffer = Buffer.alloc(1 + 1 + 8*numOfSwaps + 2*numOfSwaps + 8 + nameLength);
       let offset = 0;
 
       buffer.writeUInt8(instructionTag, offset);
       offset += 1;
       buffer.writeUInt8(numOfSwaps, offset);
       offset += 1;
-      buffer.writeBigInt64LE(amountA, offset);
-      offset += 8;
-      buffer.writeBigInt64LE(amountB, offset);
-      offset += 8;
-      buffer.writeUInt16LE(slippage, offset);
-      offset += 2;
-      buffer.writeUInt16LE(slippage, offset);
-      offset += 2;
+      for (const amount of amounts) {
+        buffer.writeBigInt64LE(amount, offset);
+        offset += 8;
+      }
+      for (const slippage of slippages) {
+        buffer.writeUInt16LE(slippage, offset);
+        offset += 2;
+      }
       buffer.writeBigInt64LE(deadline, offset);
       offset += 8;
       nameBytes.copy(buffer, offset);
@@ -101,12 +168,11 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         programId
       );
 
-      const solMint = new PublicKey('So11111111111111111111111111111111111111112');
-      const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
-      const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
+      // const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+      // const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
+      // const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
 
-      const instruction = new TransactionInstruction({
-        keys: [
+      const keys = [
           {pubkey: user, isSigner: true, isWritable: true},
           {pubkey: userAccountPda, isSigner: false, isWritable: true},
           {pubkey: fundAccountPda, isSigner: false, isWritable: true},
@@ -115,11 +181,22 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
           {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
           {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
-          {pubkey: solMint, isSigner: false, isWritable: false},
-          {pubkey: solMint, isSigner: false, isWritable: false},
-          {pubkey: pumpkingMint, isSigner: false, isWritable: false},
-          {pubkey: bondMint, isSigner: false, isWritable: false},
-        ],
+      ];
+
+      for (const swap of swaps) {
+        keys.push(
+          {pubkey: new PublicKey(swap.fromMint), isSigner: false, isWritable: true}
+        );
+      }
+
+      for (const swap of swaps) {
+        keys.push(
+          {pubkey: new PublicKey(swap.toMint), isSigner: false, isWritable: true}
+        );
+      }
+
+      const instruction = new TransactionInstruction({
+        keys,
         programId,
         data: instructionData
       });
@@ -435,13 +512,17 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
     );
   }
 
+  const getSymbol = (mint: string) => {
+    return userTokens.find(t => t.mint === mint)?.symbol || '';
+  }
+
   return (
     <>
       <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
         <div className="p-6 overflow-y-auto scrollbar-none flex-1">
           <h2 className="text-xl font-semibold mb-4 text-white">Proposals</h2>
 
-          {(proposals ?? []).map(p => (
+          {[...(proposals ?? [])].reverse().map(p => (
             <div
               key={p.creationTime}
               className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm border"
@@ -491,7 +572,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         {/* Fixed Footer Button */}
         <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
           <button
-            onClick={handleProposalCreation}
+            onClick={openProposalModal}
             className="w-full bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl transition disabled:opacity-50 text-white font-medium"
           >
             Create Proposal
@@ -507,6 +588,129 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
               <button className="bg-green-600 px-4 py-2 rounded">YES</button>
               <button className="bg-red-600 px-4 py-2 rounded">NO</button>
               <button className="bg-gray-600 px-4 py-2 rounded" onClick={() => setSelectedProposal(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProposalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[95%] max-w-2xl text-white relative">
+            <h2 className="text-2xl font-bold mb-6">📝 Create Proposal</h2>
+
+            <div className="mb-4">
+              <label className="text-sm text-gray-400 block mb-1">⏳ Proposal Deadline</label>
+              <input
+                type="datetime-local"
+                className="bg-[#1f2937] text-white px-3 py-2 rounded-xl w-full outline-none"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+              />
+            </div>
+
+            {swaps.map((swap, index) => {
+              const fromSymbol = getSymbol(swap.fromMint);
+              const toSymbol = getSymbol(swap.toMint);
+              const isExpanded = index === swaps.length - 1;
+              return (
+                <div key={index} className="bg-[#0c1118] p-4 rounded-2xl mb-4 space-y-3 relative">
+                  {!isExpanded ? (
+                    <div className="text-sm text-gray-300">
+                      {swap.amount || '—'} {fromSymbol || '?'} → {toSymbol || '?'} (slip. {swap.slippage || '0'}%)
+                    </div>
+                  ) : (
+                    <>
+                      {swaps.length > 1 && (
+                        <button
+                          onClick={() => removeSwap(index)}
+                          className="absolute top-2 right-2 text-red-400 hover:text-red-300"
+                        >
+                          ✖
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 w-20">From:</span>
+                        <TokenSelector
+                          tokens={userTokens}
+                          selected={swap.fromMint}
+                          onChange={(mint) => updateSwap(index, 'fromMint', mint)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 w-20">To:</span>
+                        <TokenSelector
+                          tokens={userTokens}
+                          selected={swap.toMint}
+                          onChange={(mint) => updateSwap(index, 'toMint', mint)}
+                        />
+                      </div>
+
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="text-sm text-gray-400">Amount</label>
+                          <input
+                            type="number"
+                            placeholder="0.0"
+                            className="w-full px-3 py-2 mt-1 rounded-lg bg-[#1f2937] outline-none"
+                            value={swap.amount}
+                            onChange={(e) => updateSwap(index, 'amount', e.target.value)}
+                          />
+                        </div>
+                        <div className="w-1/3">
+                          <label className="text-sm text-gray-400">Slippage (%)</label>
+                          <input
+                            type="number"
+                            placeholder="0.5"
+                            className="w-full px-3 py-2 mt-1 rounded-lg bg-[#1f2937] outline-none"
+                            value={swap.slippage}
+                            onChange={(e) => updateSwap(index, 'slippage', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+
+            <button
+              onClick={addSwap}
+              disabled={swaps.length >= 4}
+              className="flex items-center gap-2 text-sm bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded-xl transition mb-6 disabled:opacity-40"
+            >
+              ➕ Add Swap
+            </button>
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setShowProposalModal(false)}
+                className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const validSwaps = swaps.filter(isSwapValid);
+                  if (validSwaps.length === swaps.length) {
+                    const formatted = swaps.map(swap => ({
+                      fromMint: swap.fromMint,
+                      toMint: swap.toMint,
+                      amount: swap.amount,
+                      slippage: (Number(parseFloat(swap.slippage)*100)).toString(),
+                    }));
+                    const deadlineTimestamp = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
+                    handleProposalCreation(formatted, deadlineTimestamp);
+                    setShowProposalModal(false);
+                  } else {
+                    alert('Please complete all fields in each swap block before submitting.');
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition"
+              >
+                ✅ Create Proposal
+              </button>
             </div>
           </div>
         </div>
