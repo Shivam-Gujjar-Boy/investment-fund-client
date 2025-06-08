@@ -13,6 +13,8 @@
     "@civic/auth": "^0.5.4",
     "@civic/auth-web3": "^0.5.8",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@metaplex-foundation/js": "^0.20.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@raydium-io/raydium-sdk-v2": "^0.1.138-alpha",
     "@solana/spl-token": "^0.4.13",
     "@solana/wallet-adapter-base": "^0.9.26",
@@ -32,6 +34,7 @@
     "react-router-dom": "^6.22.2",
     "sonner": "^2.0.3",
     "stream-browserify": "^3.0.0",
+    "tailwind-scrollbar": "^4.0.2",
     "vite-plugin-node-polyfills": "^0.23.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 export default function FundGraph() {
   return (
-    <div className="bg-[#1f2937] p-6 rounded-2xl h-[28rem] w-full flex flex-col">
+    <div className="bg-[#1f2937] p-6 h-[28rem] w-full flex flex-col">
       <h2 className="text-xl font-semibold mb-4">Fund Value</h2>
       <div className="grow bg-gray-700 rounded mb-2" />
       <div className="flex gap-3 mt-1">

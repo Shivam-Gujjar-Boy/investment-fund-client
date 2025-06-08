@@ -148,7 +148,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
       toast.success("Proposal created successfully");
     } catch (err) {
       console.log(err);
-      toast.error('shivam behen ka lund hai');
+      toast.error('Error Creating Proposal');
     }
   }
 
@@ -254,10 +254,10 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         lastValidBlockHeight
       });
 
-      toast.success('kar diya vote launde ne');
+      toast.success('Voted Successfully');
     } catch (err) {
       console.log('vote nahi kar paya tu: ', err);
-      toast.error('Sorry bhai tu vote nhi kar paaya');
+      toast.error('Error while voting');
     }
   }
 
@@ -400,23 +400,51 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         lastValidBlockHeight
       });
 
-      toast.success("Ho gya execute betche");
+      toast.success("Proposal Executed Successfully");
     } catch (err) {
       console.log(err);
       toast.error("Didn't execute!");
     }
   }
 
+  // 🔄 Show shimmer while loading
+  if (!proposals || proposals.length === 0) {
+    return (
+      <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)] animate-pulse">
+        <div className="p-6 overflow-y-auto scrollbar-none flex-1 space-y-4">
+          <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
+          {[...Array(4)].map((_, idx) => (
+            <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
+              <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+              <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+              <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+              <div className="flex gap-2 mt-4">
+                <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                <div className="h-6 w-14 bg-gray-700 rounded"></div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Fake Footer Button to maintain layout height */}
+        <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
+          <div className="w-full h-10 bg-gray-700 rounded-xl"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="bg-[#1f2937] rounded-2xl relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
-        <div className="p-6 overflow-y-auto flex-1">
+      <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
+        <div className="p-6 overflow-y-auto scrollbar-none flex-1">
           <h2 className="text-xl font-semibold mb-4 text-white">Proposals</h2>
 
           {(proposals ?? []).map(p => (
             <div
               key={p.creationTime}
-              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm"
+              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm border"
               onClick={(e) => {
                 if (!(e.target as HTMLElement).closest('button')) {
                   setSelectedProposal(p);
@@ -455,6 +483,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                   NO
                 </button>
               </div>
+              {/* <div className='mt-2'>-----------------------------------------</div> */}
             </div>
           ))}
         </div>

@@ -7,11 +7,12 @@ import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruc
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
 import { Buffer } from 'buffer';
-import { Proposal, Fund, Token, programId } from '../types';
+import { Proposal, Fund, Token, programId, TOKEN_METADATA_PROGRAM_ID } from '../types';
 import Proposals from '../components/Proposals/Proposals';
 import FundActivity from '../components/FundActivity/FundActivity';
 import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
+import {Metaplex} from '@metaplex-foundation/js';
 
 export default function FundDetails() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -28,6 +29,7 @@ export default function FundDetails() {
   const wallet = useWallet();
   const {connection} = useConnection();
   const {fundId} = useParams();
+  const metaplex = Metaplex.make(connection);
 
   // fetch current fund data
   const fetchFundData = useCallback(async () => {
@@ -220,14 +222,7 @@ export default function FundDetails() {
     if (!wallet.publicKey) {
       return;
     }
-    const balance = await connection.getBalance(wallet.publicKey);
-    tokens?.unshift({
-      pubkey: new PublicKey('So11111111111111111111111111111111111111112'),
-      mint: 'So11111111111111111111111111111111111111112',
-      symbol: 'Unknown',
-      image: '',
-      balance: balance/Math.pow(10, 9),
-    });
+
     console.log(tokens);
     if (!tokens) return;
     setUserTokens(tokens);
@@ -264,12 +259,63 @@ export default function FundDetails() {
         })
         .filter((token) => token.balance > 0);
 
-      return tokens;
+      const balance = await connection.getBalance(wallet.publicKey);
+      tokens?.unshift({
+        pubkey: new PublicKey('So11111111111111111111111111111111111111112'),
+        mint: 'So11111111111111111111111111111111111111112',
+        symbol: 'SOL',
+        image: '',
+        balance: balance/Math.pow(10, 9),
+      });
+
+      const tokensWithMetadata = await Promise.all(
+        tokens.map(async (token) => {
+          const metadata = await fetchMintMetadata(new PublicKey(token.mint));
+          console.log(metadata?.symbol);
+          return {
+            ...token,
+            symbol: metadata?.symbol || token.symbol,
+            image: metadata?.image || token.image
+          };
+        })
+      )
+
+      return tokensWithMetadata;
     } catch (err) {
       console.error('Error feching tokens:', err);
       return [];
     }
   };
+
+  const getMetadataPDA = (mintPubkey: PublicKey) => {
+    return (
+      PublicKey.findProgramAddressSync(
+        [Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintPubkey.toBuffer()],
+        TOKEN_METADATA_PROGRAM_ID
+      )
+    );
+  };
+
+  const fetchMintMetadata = async (mint: PublicKey) => {
+    try {
+      const [metadataPDA] = getMetadataPDA(mint);
+      const metadataAccountInfo = await metaplex
+        .nfts()
+        .findByMetadata({metadata: metadataPDA});
+
+      console.log('metadata: ', metadataAccountInfo.mint);
+      const symbol = metadataAccountInfo.symbol;
+      const imageUri = metadataAccountInfo.json?.image || '';
+
+      return {
+        symbol,
+        image: imageUri,
+      };
+    } catch (err) {
+      console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
+      return null;
+    }
+  }
 
   // To handle deposit (program invocation)
   const handleDeposit = async () => {
@@ -402,6 +448,8 @@ export default function FundDetails() {
         lastValidBlockHeight
       });
 
+      setShowDepositModal(false);
+
       toast.success('Successfully deposited assets to fund');
     } catch (err) {
       toast.error('Error despositing assets');
@@ -410,20 +458,20 @@ export default function FundDetails() {
   };
 
   return (
-    <div className="p-4 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
+    <div className="p-2 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
       {/* <h1 className="text-3xl font-bold mb-6">Fund Details</h1> */}
 
-      <div className="grid grid-cols-[3fr_1fr] gap-4">
+      <div className="grid grid-cols-[3fr_1fr] gap-2">
         {/* Left Section */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           {/* Graph & Members */}
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             {/* Fund Graph */}
             <FundGraph />
 
             {/* Members */}
             {loading ? (
-              <div className="bg-[#1f2937] p-6 rounded-2xl h-[28rem] w-[30%] animate-pulse space-y-4">
+              <div className="bg-[#1f2937] p-6 h-[28rem] w-[30%] animate-pulse space-y-4">
                 <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                 <ul className="space-y-4">
                   {[...Array(5)].map((_, idx) => (
@@ -457,23 +505,32 @@ export default function FundDetails() {
 
         {/* Proposals */}
         {loading ? (
-          <div className="bg-[#1f2937] p-6 rounded-2xl h-[28rem] animate-pulse space-y-4">
-            <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
-            {[...Array(4)].map((_, idx) => (
-              <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
-                <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
-                <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
-                <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
-                <div className="flex gap-2 mt-4">
-                  <div className="h-6 w-20 bg-gray-700 rounded"></div>
-                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
-                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
+          <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)] animate-pulse">
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
+              {[...Array(4)].map((_, idx) => (
+                <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
+                  <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+                  <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+                  <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+                  <div className="flex gap-2 mt-4">
+                    <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                    <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                    <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Fake Footer Button to maintain layout height */}
+            <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
+              <div className="w-full h-10 bg-gray-700 rounded-xl"></div>
+            </div>
           </div>
         ) : (
-          <Proposals proposals={proposals} fund={fund} vecIndex={vecIndex} fundId={fundId} />
+          <div className="bg-[#1f2937] rounded-2xl relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
+            <Proposals proposals={proposals} fund={fund} vecIndex={vecIndex} fundId={fundId} />
+          </div>
         )}
       </div>
 
