@@ -14,6 +14,7 @@ import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
 import { fetchUserTokens } from '../functions/fetchuserTokens';
 import {Metaplex} from '@metaplex-foundation/js';
+import FundHoldings from '../components/FundHoldings/FundHoldings';
 
 export default function FundDetails() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
@@ -379,12 +380,10 @@ export default function FundDetails() {
         <div className="flex flex-col gap-2">
           {/* Graph & Members */}
           <div className="flex gap-2">
-            {/* Fund Graph */}
-            <FundGraph />
 
             {/* Members */}
             {loading ? (
-              <div className="bg-[#1f2937] p-6 h-[28rem] w-[30%] animate-pulse space-y-4">
+              <div className="bg-[#1f2937] p-6 h-[28rem] w-[25%] animate-pulse space-y-4">
                 <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                 <ul className="space-y-4">
                   {[...Array(5)].map((_, idx) => (
@@ -403,6 +402,13 @@ export default function FundDetails() {
             ) : (
               fund && <FundMembers members={fund.members} governanceMint={fund.governanceMint} />
             )}
+
+            <div className='flex gap-2 w-[75%]'>
+              {/* FundHoldings */}
+              <FundHoldings vault={fund?.vault} connection={connection} metaplex={metaplex}/>
+              {/* Fund Graph */}
+              <FundGraph />
+            </div>
           </div>
 
           {/* Activity */}

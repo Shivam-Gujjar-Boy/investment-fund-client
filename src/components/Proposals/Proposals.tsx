@@ -235,6 +235,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         blockhash,
         lastValidBlockHeight
       });
+
       setShowProposalModal(false);
 
       toast.success("Proposal created successfully");
@@ -625,7 +626,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           {filteredAndSortedProposals.map((p) => (
             <div
               key={p.creationTime.toString()}
-              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm border"
+              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer transition-all duration-300 shadow-sm border hover:bg-gray-700 hover:shadow-lg hover:scale-[1.02]"
               onClick={(e) => {
                 if (!(e.target as HTMLElement).closest("button")) {
                   setSelectedProposal(p);

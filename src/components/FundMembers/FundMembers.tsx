@@ -66,7 +66,7 @@ export default function FundMembers({ members, governanceMint }: FundMembersProp
   }
 
   return loading ? (
-    <div className="bg-[#1f2937] p-6  h-[28rem] w-[30%] animate-pulse space-y-4">
+    <div className="bg-[#1f2937] p-6  h-[28rem] w-[25%] animate-pulse space-y-4">
       <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
       <ul className="space-y-4">
         {[...Array(5)].map((_, idx) => (
@@ -83,7 +83,7 @@ export default function FundMembers({ members, governanceMint }: FundMembersProp
       </ul>
     </div>
   ) : (
-    <div className="bg-[#1f2937] p-6  h-[28rem] w-[30%] overflow-y-auto">
+    <div className="bg-[#1f2937] p-6  h-[28rem] w-[25%] overflow-y-auto">
       <h2 className="text-xl font-semibold mb-4">Members</h2>
       <ul className="space-y-4 text-sm">
         {memberInfos.map(({ pubkey, balance }) => {

@@ -14,8 +14,8 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
         }
         const user =  wallet.publicKey;
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        user,
-        {programId: TOKEN_PROGRAM_ID}
+            user,
+            {programId: TOKEN_PROGRAM_ID}
         );
 
         console.log(tokenAccounts);
@@ -45,15 +45,15 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
         });
 
         const tokensWithMetadata = await Promise.all(
-        tokens.map(async (token) => {
-            const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
-            console.log(metadata?.symbol);
-            return {
-            ...token,
-            symbol: metadata?.symbol || token.symbol,
-            image: metadata?.image || token.image
-            };
-        })
+            tokens.map(async (token) => {
+                const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
+                console.log(metadata?.symbol);
+                return {
+                    ...token,
+                    symbol: metadata?.symbol || token.symbol,
+                    image: metadata?.image || token.image
+                };
+            })
         )
 
         return tokensWithMetadata;
@@ -63,7 +63,7 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
     }
 };
 
-const getMetadataPDA = (mintPubkey: PublicKey) => {
+export const getMetadataPDA = (mintPubkey: PublicKey) => {
     return (
         PublicKey.findProgramAddressSync(
         [Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mintPubkey.toBuffer()],
@@ -72,7 +72,7 @@ const getMetadataPDA = (mintPubkey: PublicKey) => {
     );
 };
 
-const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => {
+export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => {
     try {
         const [metadataPDA] = getMetadataPDA(mint);
         const metadataAccountInfo = await metaplex
