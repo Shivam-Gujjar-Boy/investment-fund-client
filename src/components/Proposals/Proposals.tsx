@@ -12,6 +12,7 @@ import { Buffer } from 'buffer';
 import { fetchUserTokens } from '../../functions/fetchuserTokens';
 import { Metaplex } from '@metaplex-foundation/js';
 import { TokenSelector } from './TokenSelector';
+import { Filter } from "lucide-react";
 
 interface ProposalsProps {
   proposals: Proposal[] | null;
@@ -28,6 +29,19 @@ interface ProposalSwap {
 }
 
 export default function Proposals({ proposals, fund, vecIndex, fundId }: ProposalsProps) {
+  const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
+  const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted'>('all');
+  const filteredAndSortedProposals = [...(proposals ?? [])]
+    .filter((p) => {
+      if (filterOption === 'executed') return p.executed;
+      if (filterOption === 'nonExecuted') return !p.executed;
+      return true;
+    })
+    .sort((a, b) => {
+      const field = sortOption === 'creationTime' ? 'creationTime' : 'deadline';
+      return a[field] > b[field] ? -1 : a[field] < b[field] ? 1 : 0;
+    });
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [showProposalModal, setShowProposalModal] = useState(false);
@@ -221,6 +235,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         blockhash,
         lastValidBlockHeight
       });
+      setShowProposalModal(false);
 
       toast.success("Proposal created successfully");
     } catch (err) {
@@ -520,51 +535,161 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
     <>
       <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
         <div className="p-6 overflow-y-auto scrollbar-none flex-1">
-          <h2 className="text-xl font-semibold mb-4 text-white">Proposals</h2>
+          {/* Heading with Filter */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-white">Proposals</h2>
 
-          {[...(proposals ?? [])].reverse().map(p => (
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen((prev) => !prev)}
+                className="flex items-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg transition"
+              >
+                <Filter size={16} />
+                Filter & Sort
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-600 rounded-xl shadow-lg z-10">
+                  <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide">
+                    Sort by
+                  </div>
+                  <ul className="text-sm text-gray-200">
+                    <li
+                      onClick={() => {
+                        setSortOption('creationTime');
+                        setDropdownOpen(false);
+                      }}
+                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
+                        sortOption === 'creationTime' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      Creation Time
+                    </li>
+                    <li
+                      onClick={() => {
+                        setSortOption('deadline');
+                        setDropdownOpen(false);
+                      }}
+                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
+                        sortOption === 'deadline' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      Deadline
+                    </li>
+                  </ul>
+                  <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide">
+                    Filter by
+                  </div>
+                  <ul className="text-sm text-gray-200">
+                    <li
+                      onClick={() => {
+                        setFilterOption('all');
+                        setDropdownOpen(false);
+                      }}
+                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
+                        filterOption === 'all' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      All
+                    </li>
+                    <li
+                      onClick={() => {
+                        setFilterOption('executed');
+                        setDropdownOpen(false);
+                      }}
+                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
+                        filterOption === 'executed' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      Executed
+                    </li>
+                    <li
+                      onClick={() => {
+                        setFilterOption('nonExecuted');
+                        setDropdownOpen(false);
+                      }}
+                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
+                        filterOption === 'nonExecuted' ? 'bg-gray-700' : ''
+                      }`}
+                    >
+                      Non-executed
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
+
+          {/* Proposal Cards */}
+          {filteredAndSortedProposals.map((p) => (
             <div
-              key={p.creationTime}
+              key={p.creationTime.toString()}
               className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer hover:bg-gray-700 transition-all shadow-sm border"
               onClick={(e) => {
-                if (!(e.target as HTMLElement).closest('button')) {
+                if (!(e.target as HTMLElement).closest("button")) {
                   setSelectedProposal(p);
                 }
               }}
             >
               <div className="space-y-2 mb-4">
-                <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Proposal Index:</span> {p.proposalIndex.toString()}
+                <div className="text-sm text-gray-400 flex justify-between">
+                  <div className='flex gap-2'>
+                    <span className="font-medium text-gray-300">Proposal Index:</span>{" "}
+                    {p.proposalIndex.toString()}
+                  </div>
+                  {p.executed ? (
+                    <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full">Executed</span>
+                  ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
+                    <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full">Under Voting</span>
+                  ) : (
+                    <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full">Executable</span>
+                  )}
                 </div>
                 <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Vec Index:</span> {p.vecIndex.toString()}
+                  <span className="font-medium text-gray-300">Vec Index:</span>{" "}
+                  {p.vecIndex.toString()}
                 </div>
                 <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Created:</span> {formatTimeStamp(p.creationTime)}
+                  <span className="font-medium text-gray-300">Created:</span>{" "}
+                  {formatTimeStamp(p.creationTime)}
+                </div>
+                <div className="text-sm text-gray-400">
+                  <span className="font-medium text-gray-300">Deadline:</span>{" "}
+                  {formatTimeStamp(p.deadline)}
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 mt-2">
-                <button
-                  className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm"
-                  onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
-                >
-                  Execute
-                </button>
-                <button
-                  className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm"
-                  onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
-                >
-                  YES
-                </button>
-                <button
-                  className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm"
-                  onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
-                >
-                  NO
-                </button>
+                {!p.executed && (
+                  <div className="flex justify-end gap-2 mt-2">
+                    {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
+                      <button
+                        className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm"
+                        onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
+                      >
+                        Execute
+                      </button>
+                    )}
+                    {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
+                      <button
+                        className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm"
+                        onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
+                      >
+                        YES
+                      </button>
+                    )}
+                    {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
+                      <button
+                        className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm"
+                        onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
+                      >
+                        NO
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-              {/* <div className='mt-2'>-----------------------------------------</div> */}
             </div>
           ))}
         </div>
@@ -579,6 +704,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           </button>
         </div>
       </div>
+
 
       {/* Proposal Modal */}
       {selectedProposal && (
@@ -700,11 +826,15 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                       amount: swap.amount,
                       slippage: (Number(parseFloat(swap.slippage)*100)).toString(),
                     }));
+                    if (!deadline) {
+                      toast.error('Please set deadline');
+                      return;
+                    }
                     const deadlineTimestamp = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
                     handleProposalCreation(formatted, deadlineTimestamp);
-                    setShowProposalModal(false);
                   } else {
-                    alert('Please complete all fields in each swap block before submitting.');
+                    toast.error('Please complete all fields');
+                    return;
                   }
                 }}
                 className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition"
