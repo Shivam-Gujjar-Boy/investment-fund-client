@@ -154,7 +154,7 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
     };
 
     return (
-        <div className="bg-[#1f2937] shadow-md p-6 text-white h-[28rem] w-[50%]">
+        <div className="bg-[#1f2937] shadow-md p-6 text-white h-[28rem] w-[45%]">
         <h2 className="text-xl font-semibold text-center mb-4">Vault Holdings</h2>
 
         {loading ? (
@@ -164,76 +164,76 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
         ) : tokens && tokens.length > 0 ? (
             <div style={{ 
                 transition: 'transform 0.3s ease-in-out',
-                transform: hoveredIndex !== null ? 'scale(1.05)' : 'scale(1)',
+                transform: hoveredIndex !== null ? 'scale(1.02)' : 'scale(1)',
                 transformOrigin: 'center'
             }}>
             <ResponsiveContainer width="100%" height={350}>
-            <PieChart>
-                <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={130}
-                innerRadius={60}
-                paddingAngle={2}
-                activeIndex={activeIndex ?? -1}
-                activeShape={renderActiveShape}
-                labelLine={false}
-                label={renderCustomizedLabel}
-                onMouseEnter={(_, index) => {
-                    setActiveIndex(index);
-                    setHoveredIndex(index);
-                }}
-                onMouseLeave={() => {
-                    setActiveIndex(null);
-                    setHoveredIndex(null);
-                }}
-                isAnimationActive={true}
-                animationBegin={0}
-                animationDuration={800}
-                >
-                {chartData.map((_, index) => (
-                    <Cell 
-                        key={`cell-${index}`} 
-                        fill={COLORS[index % COLORS.length]}
-                        style={{
-                            transition: 'all 0.3s ease-in-out',
-                            filter: hoveredIndex === index ? 'brightness(1.2)' : 'brightness(1)',
+                <PieChart>
+                    <Pie
+                        data={chartData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={130}
+                        innerRadius={60}
+                        paddingAngle={2}
+                        activeIndex={activeIndex ?? -1}
+                        activeShape={renderActiveShape}
+                        labelLine={false}
+                        label={renderCustomizedLabel}
+                        onMouseEnter={(_, index) => {
+                            setActiveIndex(index);
+                            setHoveredIndex(index);
+                        }}
+                        onMouseLeave={() => {
+                            setActiveIndex(null);
+                            setHoveredIndex(null);
+                        }}
+                        isAnimationActive={true}
+                        animationBegin={0}
+                        animationDuration={800}
+                    >
+                        {chartData.map((_, index) => (
+                            <Cell 
+                                key={`cell-${index}`} 
+                                fill={COLORS[index % COLORS.length]}
+                                style={{
+                                    transition: 'all 0.3s ease-in-out',
+                                    filter: hoveredIndex === index ? 'brightness(1.2)' : 'brightness(1)',
+                                }}
+                            />
+                        ))}
+                    </Pie>
+                    <Tooltip
+                        cursor={{ fill: 'transparent' }}
+                        position={{ x: undefined, y: undefined }}
+                        allowEscapeViewBox={{ x: false, y: false }}
+                        contentStyle={{
+                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                            border: '1px solid #374151',
+                            borderRadius: '8px',
+                            color: '#f9fafb',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            backdropFilter: 'blur(10px)',
+                            padding: '12px 16px'
+                        }}
+                        labelStyle={{ color: '#f9fafb', fontWeight: '600', marginBottom: '4px' }}
+                        formatter={(value: number, name: string, props: any) => [
+                            <span style={{ color: '#10b981' }}>{`${value.toFixed(4)} tokens`}</span>,
+                            <span style={{ color: '#e5e7eb' }}>{name}</span>
+                        ]}
+                    />
+                    <Legend
+                        verticalAlign="bottom"
+                        iconType="circle"
+                        wrapperStyle={{ 
+                            color: '#e5e7eb',
+                            paddingTop: '20px',
+                            fontSize: '14px'
                         }}
                     />
-                ))}
-                </Pie>
-                <Tooltip
-                cursor={{ fill: 'transparent' }}
-                position={{ x: undefined, y: undefined }}
-                allowEscapeViewBox={{ x: false, y: false }}
-                contentStyle={{
-                    backgroundColor: 'rgba(31, 41, 55, 0.95)',
-                    border: '1px solid #374151',
-                    borderRadius: '8px',
-                    color: '#f9fafb',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                    backdropFilter: 'blur(10px)',
-                    padding: '12px 16px'
-                }}
-                labelStyle={{ color: '#f9fafb', fontWeight: '600', marginBottom: '4px' }}
-                formatter={(value: number, name: string, props: any) => [
-                    <span style={{ color: '#10b981' }}>{`${value.toFixed(4)} tokens`}</span>,
-                    <span style={{ color: '#e5e7eb' }}>{name}</span>
-                ]}
-                />
-                <Legend
-                verticalAlign="bottom"
-                iconType="circle"
-                wrapperStyle={{ 
-                    color: '#e5e7eb',
-                    paddingTop: '20px',
-                    fontSize: '14px'
-                }}
-                />
-            </PieChart>
+                </PieChart>
             </ResponsiveContainer>
             </div>
         ) : (

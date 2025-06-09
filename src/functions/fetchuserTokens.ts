@@ -79,7 +79,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
         .nfts()
         .findByMetadata({metadata: metadataPDA});
 
-        console.log('metadata: ', metadataAccountInfo.mint);
+        console.log('metadata: ', metadataAccountInfo);
         const symbol = metadataAccountInfo.symbol;
         const imageUri = metadataAccountInfo.json?.image || '';
 

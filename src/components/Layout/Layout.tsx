@@ -15,7 +15,7 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen">
       <Navbar />
       <main className="pt-16 pb-10 px-4 sm:px-6 lg:px-8 min-w-full mx-auto">
         {children}
