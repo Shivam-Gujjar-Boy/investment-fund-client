@@ -626,7 +626,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           {filteredAndSortedProposals.map((p) => (
             <div
               key={p.creationTime.toString()}
-              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer transition-all duration-300 shadow-sm border hover:bg-gray-700 hover:shadow-lg hover:scale-[1.02]"
+              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer transition-all duration-300 shadow-sm border hover:bg-gray-950 hover:shadow-lg hover:scale-[1.02]"
               onClick={(e) => {
                 if (!(e.target as HTMLElement).closest("button")) {
                   setSelectedProposal(p);
@@ -661,9 +661,34 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-2">
+              <div className="flex items-center gap-4 mt-2 px-2 py-1">
+                {/* Vote Progress Bar */}
+                <div className="relative flex-1">
+                  {/* Progress Bar */}
+                  <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden">
+                    {p.votesYes + p.votesNo === 0n ? (
+                      <div className="absolute top-0 left-0 w-full h-full bg-gray-500 transition-all duration-500" />
+                    ) : (
+                      <>
+                        <div
+                          className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                          style={{
+                            width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%`,
+                          }}
+                        />
+                        <div
+                          className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                          style={{
+                            width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%`,
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
                 {!p.executed && (
-                  <div className="flex justify-end gap-2 mt-2">
+                  <div className="flex gap-2">
                     {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
                       <button
                         className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm"
@@ -710,11 +735,120 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
       {/* Proposal Modal */}
       {selectedProposal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#1f2937] p-6 rounded-2xl w-[90%] max-w-2xl text-white">
-            <div className="flex gap-4 justify-end">
-              <button className="bg-green-600 px-4 py-2 rounded">YES</button>
-              <button className="bg-red-600 px-4 py-2 rounded">NO</button>
-              <button className="bg-gray-600 px-4 py-2 rounded" onClick={() => setSelectedProposal(null)}>Close</button>
+          <div className="bg-[#111827]/90 backdrop-blur-2xl p-6 rounded-2xl w-[95%] max-w-3xl text-white shadow-2xl border border-gray-700 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-white">
+                Proposal #{selectedProposal.proposalIndex}
+              </h2>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  selectedProposal.executed ? 'bg-green-700' : 'bg-yellow-600'
+                }`}
+              >
+                {selectedProposal.executed ? 'Executed' : 'Pending'}
+              </span>
+            </div>
+
+            {/* Proposer Info */}
+            <div className="text-sm text-gray-400 mb-6">
+              Proposed by: <span className="text-white font-medium">{selectedProposal.proposer.toBase58()}</span>
+            </div>
+
+            {/* Swaps Breakdown */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">🌀 Swaps ({selectedProposal.numOfSwaps})</h3>
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-600">
+                {selectedProposal.fromAssets.map((from, i) => (
+                  <div key={i} className="p-3 bg-gray-800 rounded-lg flex flex-col gap-1 shadow">
+                    <div className="text-sm text-gray-300">
+                      <span className="text-white font-medium">From:</span> {from.toBase58()}
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      <span className="text-white font-medium">To:</span> {selectedProposal.toAssets[i].toBase58()}
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      <span className="text-white font-medium">Amount:</span> {Number(selectedProposal.amounts[i])}
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      <span className="text-white font-medium">Slippage:</span> {selectedProposal.slippages[i]/100}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Vote Progress */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-2">📊 Vote Summary</h3>
+              <div className="relative h-4 rounded-full bg-gray-700 overflow-hidden">
+                {selectedProposal.votesYes + selectedProposal.votesNo === 0n ? (
+                  <div className="absolute top-0 left-0 w-full h-full bg-gray-500" />
+                ) : (
+                  <>
+                    <div
+                      className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                      style={{
+                        width: `${Number(selectedProposal.votesYes * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`,
+                      }}
+                    />
+                    <div
+                      className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                      style={{
+                        width: `${Number(selectedProposal.votesNo * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`,
+                      }}
+                    />
+                  </>
+                )}
+              </div>
+              <div className="flex justify-between text-xs mt-1 text-gray-400">
+                <span>
+                  {selectedProposal.votesYes + selectedProposal.votesNo === 0n
+                    ? '0%'
+                    : `${Number(selectedProposal.votesYes * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`
+                  } YES
+                </span>
+                <span>
+                  {selectedProposal.votesYes + selectedProposal.votesNo === 0n
+                    ? '0%'
+                    : `${Number(selectedProposal.votesNo * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`
+                  } NO
+                </span>
+              </div>
+            </div>
+
+            {/* Time Info */}
+            <div className="mb-6 flex justify-between text-sm text-gray-400">
+              <div>
+                ⏱️ <span className="text-white">Created:</span>{' '}
+                {new Date(Number(selectedProposal.creationTime) * 1000).toLocaleString()}
+              </div>
+              <div>
+                ⏳ <span className="text-white">Deadline:</span>{' '}
+                {new Date(Number(selectedProposal.deadline) * 1000).toLocaleString()}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-4">
+              <button 
+                className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition"
+                onClick={() => handleVote(1, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
+              >
+                YES
+              </button>
+              <button 
+                className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition"
+                onClick={() => handleVote(0, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
+              >
+                NO
+              </button>
+              <button
+                className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg font-semibold transition"
+                onClick={() => setSelectedProposal(null)}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
