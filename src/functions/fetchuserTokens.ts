@@ -79,7 +79,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
         .nfts()
         .findByMetadata({metadata: metadataPDA});
 
-        console.log('metadata: ', metadataAccountInfo);
+        // console.log('metadata: ', metadataAccountInfo);
         const symbol = metadataAccountInfo.symbol;
         const imageUri = metadataAccountInfo.json?.image || '';
 
@@ -88,7 +88,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
         image: imageUri,
         };
     } catch (err) {
-        console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
+        // console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
         return null;
     }
 }

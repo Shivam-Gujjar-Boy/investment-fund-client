@@ -43,10 +43,10 @@ export default function FundDetails() {
       toast.error('Fund Id not found');
       return;
     }
-    console.log(fundId);
+    // console.log(fundId);
     const fundAccountPda = new PublicKey(fundId);
     setFundPda(fundAccountPda);
-    console.log(fundAccountPda.toBase58());
+    // console.log(fundAccountPda.toBase58());
 
     try {
       const accountInfo = await connection.getAccountInfo(fundAccountPda);
@@ -55,14 +55,14 @@ export default function FundDetails() {
         return;
       }
       const buffer = Buffer.from(accountInfo?.data);
-      console.log(buffer);
+      // console.log(buffer);
       const name_dummy = buffer.slice(0, 32).toString();
       let name = '';
       for (const c of name_dummy) {
         if (c === '\x00') break;
         name += c;
       }
-      console.log(name);
+      // console.log(name);
       const members: PublicKey[] = [];
       const numOfMembers = buffer.readUInt32LE(114);
       for (let i=0; i<numOfMembers; i++) {
@@ -88,7 +88,7 @@ export default function FundDetails() {
         created_at,
         is_private,
       });
-      console.log(fund);
+      // console.log(fund);
     } catch (err) {
       toast.error('Error fetching fund data');
       console.log(err);
@@ -108,7 +108,7 @@ export default function FundDetails() {
 
     try {
       if (!fund) {
-        console.log('fund nahi hai gandu');
+        // console.log('fund nahi hai gandu');
         return;
       }
 
@@ -125,7 +125,7 @@ export default function FundDetails() {
       }
       const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
       const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
-      console.log(fundAddress.toBase58());
+      // console.log(fundAddress.toBase58());
       if (fundAddress.toBase58() != fundAccountPda.toBase58()) {
         console.log('Wrong Aggregator');
         return;
@@ -412,7 +412,9 @@ export default function FundDetails() {
           </div>
 
           {/* Activity */}
-          <FundActivity />
+          {fund && (
+            <FundActivity fundAddress={fund?.fund_address}/>
+          )}
 
           {/* Actions */}
           <div className="flex gap-4">

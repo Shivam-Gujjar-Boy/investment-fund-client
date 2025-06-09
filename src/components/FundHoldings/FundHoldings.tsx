@@ -59,7 +59,7 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
 
             const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=50`);
             const price = response.data.outAmount;
-            console.log(price);
+            // console.log(price);
 
             const tokensWithMetadata = await Promise.all(
                 tokens.map(async (token) => {
