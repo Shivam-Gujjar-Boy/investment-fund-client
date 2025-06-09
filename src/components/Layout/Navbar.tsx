@@ -1,177 +1,94 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, PlusCircle, Users, Layers, DollarSign, Compass } from 'lucide-react';
+import {
+  Menu, X, PlusCircle, Users, Layers, DollarSign, Compass
+} from 'lucide-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-
-  const handleDisconnect = () => {
-    navigate('/');
-  };
+  const navItemStyle = ({ isActive }: { isActive: boolean }) =>
+    `flex items-center px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 backdrop-blur-md ${
+      isActive
+        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+        : 'text-gray-300 hover:bg-purple-700 hover:text-white'
+    }`;
 
   return (
-    <nav className="bg-gradient-to-r from-purple-900 to-indigo-800 fixed w-full z-10">
+    <nav className="bg-[#151a2d]/70 backdrop-blur-xl border-b border-indigo-800 shadow-md fixed w-full z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <h1 className="text-white text-xl font-bold">PeerFunds</h1>
-            </div>
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <NavLink 
-                  to="/dashboard/discover"
-                  className={({isActive}) => 
-                    `px-3 py-2 rounded-md text-sm font-medium ${
-                      isActive 
-                        ? 'bg-indigo-700 text-white' 
-                        : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                    } transition-colors duration-200 flex items-center`
-                  }
-                >
-                  <Compass className="w-4 h-4 mr-2" />
-                  Discover
-                </NavLink>
-                <NavLink 
-                  to="/dashboard/create"
-                  className={({isActive}) => 
-                    `px-3 py-2 rounded-md text-sm font-medium ${
-                      isActive 
-                        ? 'bg-indigo-700 text-white' 
-                        : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                    } transition-colors duration-200 flex items-center`
-                  }
-                >
-                  <PlusCircle className="w-4 h-4 mr-2" />
-                  Create
-                </NavLink>
-                <NavLink 
-                  to="/dashboard/join"
-                  className={({isActive}) => 
-                    `px-3 py-2 rounded-md text-sm font-medium ${
-                      isActive 
-                        ? 'bg-indigo-700 text-white' 
-                        : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                    } transition-colors duration-200 flex items-center`
-                  }
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Join
-                </NavLink>
-                <NavLink 
-                  to="/dashboard/funds"
-                  className={({isActive}) => 
-                    `px-3 py-2 rounded-md text-sm font-medium ${
-                      isActive 
-                        ? 'bg-indigo-700 text-white' 
-                        : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                    } transition-colors duration-200 flex items-center`
-                  }
-                >
-                  <Layers className="w-4 h-4 mr-2" />
-                  Your Funds
-                </NavLink>
-                <NavLink 
-                  to="/dashboard/portfolio"
-                  className={({isActive}) => 
-                    `px-3 py-2 rounded-md text-sm font-medium ${
-                      isActive 
-                        ? 'bg-indigo-700 text-white' 
-                        : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                    } transition-colors duration-200 flex items-center`
-                  }
-                >
-                  <DollarSign className="w-4 h-4 mr-2" />
-                  Portfolio
-                </NavLink>
-              </div>
+          {/* Left: Brand & Desktop Nav */}
+          <div className="flex items-center space-x-10">
+            <h1 className="text-white text-2xl font-bold tracking-tight">🚀 PeerFunds</h1>
+
+            <div className="hidden md:flex space-x-2">
+              <NavLink to="/dashboard/discover" className={navItemStyle}>
+                <Compass className="w-4 h-4 mr-2" /> Discover
+              </NavLink>
+              <NavLink to="/dashboard/create" className={navItemStyle}>
+                <PlusCircle className="w-4 h-4 mr-2" /> Create
+              </NavLink>
+              <NavLink to="/dashboard/join" className={navItemStyle}>
+                <Users className="w-4 h-4 mr-2" /> Join
+              </NavLink>
+              <NavLink to="/dashboard/funds" className={navItemStyle}>
+                <Layers className="w-4 h-4 mr-2" /> Your Funds
+              </NavLink>
+              <NavLink to="/dashboard/portfolio" className={navItemStyle}>
+                <DollarSign className="w-4 h-4 mr-2" /> Portfolio
+              </NavLink>
             </div>
           </div>
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6">
-                <WalletMultiButton />
-            </div>
+
+          {/* Right: Wallet */}
+          <div className="hidden md:flex items-center">
+            <WalletMultiButton className="!bg-indigo-600 hover:!bg-purple-700 transition-all !rounded-xl !text-white font-medium shadow-lg" />
           </div>
-          <div className="-mr-2 flex md:hidden">
+
+          {/* Mobile Hamburger */}
+          <div className="md:hidden">
             <button
               onClick={toggleMenu}
-              type="button"
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-200 hover:text-white hover:bg-indigo-600 focus:outline-none"
-              aria-controls="mobile-menu"
-              aria-expanded="false"
+              className="p-2 rounded-md text-gray-200 hover:text-white hover:bg-purple-800"
             >
-              <span className="sr-only">Open main menu</span>
-              {isMenuOpen ? (
-                <X className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Menu className="block h-6 w-6" aria-hidden="true" />
-              )}
+              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
       </div>
 
+      {/* Mobile Dropdown */}
       {isMenuOpen && (
-        <div className="md:hidden" id="mobile-menu">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-indigo-800">
-            <NavLink
-              to="/dashboard/create"
-              className={({isActive}) => 
-                `block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive 
-                    ? 'bg-indigo-700 text-white' 
-                    : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                } transition-colors duration-200 flex items-center`
-              }
-              onClick={toggleMenu}
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create
-            </NavLink>
-            <NavLink
-              to="/dashboard/join"
-              className={({isActive}) => 
-                `block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive 
-                    ? 'bg-indigo-700 text-white' 
-                    : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                } transition-colors duration-200 flex items-center`
-              }
-              onClick={toggleMenu}
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Join
-            </NavLink>
-            <NavLink
-              to="/dashboard/funds"
-              className={({isActive}) => 
-                `block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive 
-                    ? 'bg-indigo-700 text-white' 
-                    : 'text-gray-200 hover:bg-indigo-600 hover:text-white'
-                } transition-colors duration-200 flex items-center`
-              }
-              onClick={toggleMenu}
-            >
-              <Layers className="w-4 h-4 mr-2" />
-              Your Funds
-            </NavLink>
-            <button
-              className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-200 hover:bg-indigo-600 hover:text-white"
-              onClick={() => {
-                handleDisconnect();
-                toggleMenu();
-              }}
-            >
-              Disconnect Wallet
-            </button>
-          </div>
+        <div className="md:hidden bg-[#1e2440]/90 backdrop-blur-md px-4 pb-4 pt-2 space-y-2 shadow-inner border-t border-indigo-700">
+          <NavLink to="/dashboard/discover" className={navItemStyle} onClick={toggleMenu}>
+            <Compass className="w-4 h-4 mr-2" /> Discover
+          </NavLink>
+          <NavLink to="/dashboard/create" className={navItemStyle} onClick={toggleMenu}>
+            <PlusCircle className="w-4 h-4 mr-2" /> Create
+          </NavLink>
+          <NavLink to="/dashboard/join" className={navItemStyle} onClick={toggleMenu}>
+            <Users className="w-4 h-4 mr-2" /> Join
+          </NavLink>
+          <NavLink to="/dashboard/funds" className={navItemStyle} onClick={toggleMenu}>
+            <Layers className="w-4 h-4 mr-2" /> Your Funds
+          </NavLink>
+          <NavLink to="/dashboard/portfolio" className={navItemStyle} onClick={toggleMenu}>
+            <DollarSign className="w-4 h-4 mr-2" /> Portfolio
+          </NavLink>
+          <button
+            onClick={() => {
+              navigate('/');
+              toggleMenu();
+            }}
+            className="w-full flex items-center px-4 py-2 rounded-lg text-sm font-semibold text-red-400 hover:text-white hover:bg-red-700 transition-all"
+          >
+            ❌ Disconnect
+          </button>
         </div>
       )}
     </nav>

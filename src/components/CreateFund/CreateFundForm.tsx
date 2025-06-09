@@ -213,16 +213,16 @@ export default function CreateFundForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-gray-800 rounded-xl shadow-xl overflow-hidden transform transition-all">
+    <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl rounded-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] transition-all overflow-hidden">
       <div className="p-8">
-        <h2 className="text-2xl font-bold text-white mb-6">
-          {step === 1 ? 'Create a New Investment Fund' : 'Share Your Fund'}
+        <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
+          {step === 1 ? 'Create a New Investment Fund' : '🚀 Share Your Fund'}
         </h2>
 
         {step === 1 ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="fundName" className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="fundName" className="block text-sm font-semibold text-indigo-200 mb-2">
                 Fund Name
               </label>
               <input
@@ -231,39 +231,38 @@ export default function CreateFundForm() {
                 value={fundName}
                 onChange={(e) => setFundName(e.target.value)}
                 maxLength={32}
-                className={`w-full px-4 py-3 rounded-lg bg-gray-700 text-white border ${
+                className={`w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border ${
                   nameTaken
                     ? 'border-red-500 focus:ring-red-500'
-                    : 'border-gray-600 focus:border-indigo-500 focus:ring-indigo-500'
-                } focus:ring-2 focus:ring-opacity-50 transition-colors duration-200`}
-                placeholder="Enter a name for your investment fund"
+                    : 'border-indigo-700 focus:border-indigo-500 focus:ring-indigo-600'
+                } focus:ring-2 focus:ring-opacity-50 outline-none transition-all`}
+                placeholder="e.g. QuantumEdge DAO"
               />
               {nameTaken && (
-                <p className="text-sm text-red-400 mt-2">Fund name already taken</p>
+                <p className="text-sm text-red-400 mt-2">⚠️ Fund name already taken</p>
               )}
             </div>
 
-            {/* ✅ Checkbox for Public/Private fund */}
             <div className="flex items-center">
               <input
                 type="checkbox"
                 id="isPublic"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="h-4 w-4 text-indigo-500 border-gray-400 focus:ring-indigo-500 rounded"
               />
-              <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-300">
-                Keep your fund public
+              <label htmlFor="isPublic" className="ml-2 text-sm text-indigo-200">
+                Make this fund public
               </label>
             </div>
 
             <button
               type="submit"
               disabled={!fundName.trim() || nameTaken || checking}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors duration-200 ${
+              className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
                 !fundName.trim() || nameTaken || checking
-                  ? 'bg-gray-500 cursor-not-allowed'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  ? 'bg-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 shadow-md'
               }`}
             >
               Continue
@@ -271,55 +270,55 @@ export default function CreateFundForm() {
           </form>
         ) : (
           <div className="space-y-6">
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-300">Fund Code</span>
+                <span className="text-sm font-medium text-indigo-300">🔐 Fund Code</span>
                 <button
                   onClick={() => copyToClipboard(fundCode)}
-                  className="text-indigo-400 hover:text-indigo-300 text-sm"
+                  className="text-indigo-400 hover:text-indigo-200 text-sm"
                 >
                   Copy
                 </button>
               </div>
-              <div className="bg-gray-800 p-3 rounded border border-gray-600 font-mono text-white">
+              <div className="bg-[#1a1d36] p-3 rounded-lg font-mono text-white text-sm border border-indigo-800">
                 {fundCode}
               </div>
             </div>
 
-            <div className="bg-gray-700 rounded-lg p-4">
+            <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-300">Invite Link</span>
+                <span className="text-sm font-medium text-indigo-300">🔗 Invite Link</span>
                 <button
                   onClick={() => copyToClipboard(inviteLink)}
-                  className="text-indigo-400 hover:text-indigo-300 text-sm"
+                  className="text-indigo-400 hover:text-indigo-200 text-sm"
                 >
                   Copy
                 </button>
               </div>
-              <div className="bg-gray-800 p-3 rounded border border-gray-600 font-mono text-white text-sm break-all">
+              <div className="bg-[#1a1d36] p-3 rounded-lg font-mono text-white text-sm break-all border border-indigo-800">
                 {inviteLink}
               </div>
             </div>
 
-            <p className="text-gray-400 text-sm">
-              Share this fund code or invite link with others you want to invite to your investment fund.
+            <p className="text-indigo-200 text-sm">
+              Share this fund code or invite link with anyone you want to collaborate with on this investment.
             </p>
 
-            <div className="flex justify-between gap-4">
+            <div className="flex justify-between gap-4 pt-2">
               <button
                 onClick={() => setStep(1)}
-                className="w-1/2 py-3 px-4 rounded-lg bg-gray-600 hover:bg-gray-500 text-white font-medium transition-colors duration-200"
+                className="w-1/2 py-3 px-4 rounded-xl bg-gray-600 hover:bg-gray-500 text-white font-semibold transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className={`w-1/2 py-3 px-4 rounded-lg ${
-                  isSubmitting 
-                    ? 'bg-gray-500 cursor-not-allowed' 
-                    : 'bg-indigo-600 hover:bg-indigo-500'
-                } text-white font-medium transition-colors duration-200`}
+                className={`w-1/2 py-3 px-4 rounded-xl font-semibold text-white transition-all ${
+                  isSubmitting
+                    ? 'bg-gray-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-indigo-700 to-purple-600 hover:from-indigo-600 hover:to-purple-500 shadow-md'
+                }`}
               >
                 {isSubmitting ? 'Creating...' : 'Confirm'}
               </button>

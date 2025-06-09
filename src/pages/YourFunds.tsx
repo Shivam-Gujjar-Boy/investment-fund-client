@@ -3,7 +3,7 @@ import FundsList from '../components/YourFunds/FundsList';
 export default function YourFunds() {
 
   return (
-    <div className="py-8">
+    <div className="py-8 bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900 min-h-screen">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Your Funds</h1>

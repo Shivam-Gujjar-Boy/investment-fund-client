@@ -534,111 +534,80 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
   return (
     <>
-      <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)]">
-        <div className="p-6 overflow-y-auto scrollbar-none flex-1">
-          {/* Heading with Filter */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-white">Proposals</h2>
+      <div className="relative flex flex-col h-full max-h-[calc(100vh-6rem)] bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
 
+        {/* Top Scrollable Content */}
+        <div className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          
+          {/* Heading & Filter */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-white tracking-tight">Proposals</h2>
+            
             <div className="relative">
               <button
-                onClick={() => setDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 text-sm bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg transition"
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl transition-all shadow-md"
               >
                 <Filter size={16} />
                 Filter & Sort
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-600 rounded-xl shadow-lg z-10">
-                  <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide">
+                <div className="absolute right-0 mt-2 w-60 bg-[#0f172a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+                  <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-[#1e293b]">
                     Sort by
                   </div>
-                  <ul className="text-sm text-gray-200">
-                    <li
-                      onClick={() => {
-                        setSortOption('creationTime');
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
-                        sortOption === 'creationTime' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      Creation Time
-                    </li>
-                    <li
-                      onClick={() => {
-                        setSortOption('deadline');
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
-                        sortOption === 'deadline' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      Deadline
-                    </li>
+                  <ul className="text-sm text-gray-200 divide-y divide-gray-700">
+                    {["creationTime", "deadline"].map((opt) => (
+                      <li
+                        key={opt}
+                        onClick={() => { setSortOption(opt); setDropdownOpen(false); }}
+                        className={`px-4 py-3 cursor-pointer hover:bg-gray-700 ${
+                          sortOption === opt ? 'bg-gray-700' : ''
+                        }`}
+                      >
+                        {opt === "creationTime" ? "Creation Time" : "Deadline"}
+                      </li>
+                    ))}
                   </ul>
-                  <div className="px-4 py-2 text-xs text-gray-400 uppercase tracking-wide">
+
+                  <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-[#1e293b]">
                     Filter by
                   </div>
-                  <ul className="text-sm text-gray-200">
-                    <li
-                      onClick={() => {
-                        setFilterOption('all');
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
-                        filterOption === 'all' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      All
-                    </li>
-                    <li
-                      onClick={() => {
-                        setFilterOption('executed');
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
-                        filterOption === 'executed' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      Executed
-                    </li>
-                    <li
-                      onClick={() => {
-                        setFilterOption('nonExecuted');
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-gray-700 cursor-pointer ${
-                        filterOption === 'nonExecuted' ? 'bg-gray-700' : ''
-                      }`}
-                    >
-                      Non-executed
-                    </li>
+                  <ul className="text-sm text-gray-200 divide-y divide-gray-700">
+                    {["all", "executed", "nonExecuted"].map((opt) => (
+                      <li
+                        key={opt}
+                        onClick={() => { setFilterOption(opt); setDropdownOpen(false); }}
+                        className={`px-4 py-3 cursor-pointer hover:bg-gray-700 ${
+                          filterOption === opt ? 'bg-gray-700' : ''
+                        }`}
+                      >
+                        {opt === "nonExecuted" ? "Non-Executed" : opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
             </div>
           </div>
 
-
           {/* Proposal Cards */}
           {filteredAndSortedProposals.map((p) => (
             <div
               key={p.creationTime.toString()}
-              className="bg-gray-800 p-4 mb-4 rounded-xl cursor-pointer transition-all duration-300 shadow-sm border hover:bg-gray-950 hover:shadow-lg hover:scale-[1.02]"
+              className="bg-[#111827] border border-gray-700 rounded-2xl p-5 mb-5 cursor-pointer hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl group"
               onClick={(e) => {
                 if (!(e.target as HTMLElement).closest("button")) {
                   setSelectedProposal(p);
                 }
               }}
             >
-              <div className="space-y-2 mb-4">
-                <div className="text-sm text-gray-400 flex justify-between">
-                  <div className='flex gap-2'>
-                    <span className="font-medium text-gray-300">Proposal Index:</span>{" "}
-                    {p.proposalIndex.toString()}
-                  </div>
+              <div className="space-y-3 mb-4 text-sm text-gray-400">
+                <div className="flex justify-between">
+                  <span>
+                    <span className="text-gray-300 font-medium">Proposal Index:</span> {p.proposalIndex.toString()}
+                  </span>
                   {p.executed ? (
                     <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full">Executed</span>
                   ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
@@ -647,71 +616,56 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                     <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full">Executable</span>
                   )}
                 </div>
-                <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Vec Index:</span>{" "}
-                  {p.vecIndex.toString()}
-                </div>
-                <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Created:</span>{" "}
-                  {formatTimeStamp(p.creationTime)}
-                </div>
-                <div className="text-sm text-gray-400">
-                  <span className="font-medium text-gray-300">Deadline:</span>{" "}
-                  {formatTimeStamp(p.deadline)}
-                </div>
+
+                <div><span className="text-gray-300 font-medium">Vec Index:</span> {p.vecIndex.toString()}</div>
+                <div><span className="text-gray-300 font-medium">Created:</span> {formatTimeStamp(p.creationTime)}</div>
+                <div><span className="text-gray-300 font-medium">Deadline:</span> {formatTimeStamp(p.deadline)}</div>
               </div>
 
-              <div className="flex items-center gap-4 mt-2 px-2 py-1">
-                {/* Vote Progress Bar */}
-                <div className="relative flex-1">
-                  {/* Progress Bar */}
-                  <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden">
-                    {p.votesYes + p.votesNo === 0n ? (
-                      <div className="absolute top-0 left-0 w-full h-full bg-gray-500 transition-all duration-500" />
-                    ) : (
-                      <>
-                        <div
-                          className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
-                          style={{
-                            width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%`,
-                          }}
-                        />
-                        <div
-                          className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
-                          style={{
-                            width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%`,
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
+              {/* Vote Progress Bar & Buttons */}
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1 h-3 rounded-full bg-gray-700 overflow-hidden">
+                  {p.votesYes + p.votesNo === 0n ? (
+                    <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
+                  ) : (
+                    <>
+                      <div
+                        className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                        style={{ width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%` }}
+                      />
+                      <div
+                        className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                        style={{ width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%` }}
+                      />
+                    </>
+                  )}
                 </div>
 
                 {!p.executed && (
                   <div className="flex gap-2">
                     {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
                       <button
-                        className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm"
+                        className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-md text-xs font-medium transition"
                         onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
                       >
                         Execute
                       </button>
                     )}
                     {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
-                      <button
-                        className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-sm"
-                        onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
-                      >
-                        YES
-                      </button>
-                    )}
-                    {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
-                      <button
-                        className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded text-sm"
-                        onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
-                      >
-                        NO
-                      </button>
+                      <>
+                        <button
+                          className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition"
+                          onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
+                        >
+                          YES
+                        </button>
+                        <button
+                          className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition"
+                          onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
+                        >
+                          NO
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -720,13 +674,13 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           ))}
         </div>
 
-        {/* Fixed Footer Button */}
-        <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
+        {/* Sticky Footer Button */}
+        <div className="p-4 bg-[#0f172a] border-t border-gray-700 shadow-inner">
           <button
             onClick={openProposalModal}
-            className="w-full bg-green-600 hover:bg-green-500 px-4 py-2 rounded-xl transition disabled:opacity-50 text-white font-medium"
+            className="w-full bg-gradient-to-r from-green-600 to-emerald-500 hover:brightness-110 px-4 py-3 rounded-xl transition text-white font-semibold shadow-lg"
           >
-            Create Proposal
+            + Create Proposal
           </button>
         </div>
       </div>

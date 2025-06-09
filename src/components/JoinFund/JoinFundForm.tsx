@@ -113,49 +113,50 @@ export default function JoinFundForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-gray-800 rounded-xl shadow-xl overflow-hidden">
+    <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] rounded-2xl overflow-hidden transition-all">
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-white text-lg">Preparing your dashboard...</p>
+        <div className="flex-1 flex items-center justify-center py-20">
+          <div className="flex flex-col items-center space-y-5">
+            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_#9333ea99]"></div>
+            <p className="text-indigo-200 text-lg font-medium animate-pulse">Preparing your dashboard...</p>
           </div>
         </div>
-        ) : (
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Join an Investment Fund</h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="fundCode" className="block text-sm font-medium text-gray-300 mb-2">
-                  Fund Name
-                </label>
-                <input
-                  type="text"
-                  id="fundCode"
-                  value={fundName}
-                  onChange={(e) => setFundName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition-colors duration-200"
-                  placeholder="Enter fund name to join"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full py-3 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors duration-200"
-              >
-                Join Fund
-              </button>
-            </form>
-            
-            <div className="mt-6 text-center">
-              <p className="text-gray-400 text-sm">
-                Don't have a fund code? Ask the fund creator to share their fund code or invite link with you.
-              </p>
+      ) : (
+        <div className="p-8">
+          <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
+            Join an Investment Fund
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="fundCode" className="block text-sm font-semibold text-indigo-300 mb-2">
+                Fund Name
+              </label>
+              <input
+                type="text"
+                id="fundCode"
+                value={fundName}
+                onChange={(e) => setFundName(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border border-indigo-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-600 focus:ring-opacity-50 outline-none transition-all"
+                placeholder="Enter fund name to join"
+              />
             </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-semibold transition-all shadow-md"
+            >
+              Join Fund
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-indigo-200 text-sm">
+              Don’t have a fund code? Ask the fund creator to share their code or invite link with you.
+            </p>
           </div>
-        )
-      }
+        </div>
+      )}
     </div>
   );
 }

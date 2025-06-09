@@ -201,73 +201,73 @@ export default function FundCard({ fund, status }: FundCardProps) {
       toast.error("Not removed from fund");
     }
   }
-
-// 
+ 
   return (
-    <div onClick={() => navigate(`${fund.fund_address.toBase58()}`)} className="bg-gray-800 rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-purple-900/30 hover:scale-[1.015] duration-300 cursor-pointer">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-white tracking-tight">{fund.name}</h3>
+    <div
+      onClick={() => navigate(`${fund.fund_address.toBase58()}`)}
+      className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] border border-indigo-900/40 backdrop-blur-md rounded-xl p-6 shadow-[0_0_10px_#7c3aed33] hover:shadow-[0_0_50px_#a78bfa55] hover:scale-[1.015] transition-all duration-300 cursor-pointer group"
+    >
+      {/* Title + Status */}
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-indigo-300 transition">
+          {fund.name}
+        </h3>
         {status === 'inactive' && (
-          <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-500/20 text-yellow-300">
+          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-300/30 shadow-sm">
             Inactive
           </span>
         )}
       </div>
 
-      <div className="space-y-3 mb-6">
-        <div className="flex items-center text-sm text-gray-400">
-          <Users className="w-4 h-4 mr-2" />
+      {/* Info Section */}
+      <div className="space-y-4 mb-6 text-sm text-indigo-100">
+        <div className="flex items-center">
+          <Users className="w-4 h-4 mr-2 text-indigo-400" />
           {fund.numOfMembers.toString()} Members
         </div>
-
-        <div className="flex items-center text-sm text-gray-400">
-          <Wallet className="w-4 h-4 mr-2" />
-          Total Value: {Number(fund.totalDeposit.toString()).toLocaleString()}
+        <div className="flex items-center">
+          <Wallet className="w-4 h-4 mr-2 text-indigo-400" />
+          Total Value: <span className="ml-1 font-semibold text-indigo-200">{Number(fund.totalDeposit.toString()).toLocaleString()}</span>
         </div>
-
-        <div className="flex items-center text-sm text-gray-400">
-          <Calendar className="w-4 h-4 mr-2" />
-          Created: {formatTimestamp(fund.created_at)}
+        <div className="flex items-center">
+          <Calendar className="w-4 h-4 mr-2 text-indigo-400" />
+          Created: <span className="ml-1 text-indigo-200">{formatTimestamp(fund.created_at)}</span>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-gray-700 space-y-2 text-sm">
-        <div className="text-gray-500">
-          Fund Address:{' '}
+      {/* Footer */}
+      <div className="pt-4 border-t border-indigo-800/40 space-y-2 text-sm text-indigo-300">
+        <div className="flex items-center gap-1">
+          <span className="text-indigo-500">Fund Address:</span>
           <span
-            onClick={() => handleCopy(fund.fund_address.toBase58())}
-            className="text-gray-300 hover:text-white cursor-pointer hover:underline transition"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopy(fund.fund_address.toBase58());
+            }}
+            className="hover:text-white hover:underline cursor-pointer transition"
           >
             {truncateAddress(fund.fund_address.toBase58())}
           </span>
         </div>
 
-        <div className="text-gray-500">
-          Creator:{' '}
+        <div className="flex items-center gap-1">
+          <span className="text-indigo-500">Creator:</span>
           <span
-            onClick={() => handleCopy(fund.creator.toBase58())}
-            className="text-gray-300 hover:text-white cursor-pointer hover:underline transition"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCopy(fund.creator.toBase58());
+            }}
+            className="hover:text-white hover:underline cursor-pointer transition"
           >
             {truncateAddress(fund.creator.toBase58())}
           </span>
         </div>
-        <div className='flex justify-between'>
-          <div className='flex justify-end' onClick={handleDeposit}>
-            <button className='flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors'>
-              Deposit
-              </button>
-          </div>
-          <div className='flex justify-end' onClick={handleLeave}>
-            <button className='flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors'>
-              Leave 
-              </button>
-          </div>
-          <div className="flex justify-end">
-            <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
-              View Details
-              <ArrowRight className="ml-1 w-4 h-4" />
-            </button>
-          </div>
+
+        <div className="flex justify-end mt-4">
+          <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
+            View Details
+            <ArrowRight className="ml-1 w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
