@@ -1,7 +1,7 @@
 import {Connection, PublicKey} from '@solana/web3.js';
 import { Buffer } from 'buffer';
 
-export async function findAmmConfig(i: number) {
+export async function findAmmConfig(mint: PublicKey) {
     try {
         // if (!process.env.SOLANA_RPC_URL_MAINNET) {
         //     throw Error(`Gaand ke pille DEVNET rpc url dede tameej me, nahi to gandiya ke chhidde cahude kar diye jayenge`);
@@ -62,18 +62,23 @@ export async function findAmmConfig(i: number) {
         // console.log("pool: ", pool.pubkey.toBase58());
 
         const pumpkingPool = new PublicKey('GBNzmD4w2TJeDnPJhwBoLWAy3xjxHR9XRBMo2MKuTUcK');
-        const bondPool = new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw')
-        const pools: PublicKey[] = [pumpkingPool, bondPool];
+        const bondPool = new PublicKey('7LN2poiGKJnJ5uRGCVFxo9ZuaGAJbHGbzVns24JP4csw');
+        const pools: PublicKey[] = [];
+        if (mint.toBase58() == '5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN') {
+            pools.push(pumpkingPool);
+        } else {
+            pools.push(bondPool);
+        }
 
         const accounts_arr = [];
         // const pool_info = await connection.getAccountInfo(pool.pubkey, 'confirmed');
-        const pool_info = await connection.getAccountInfo(pools[i], 'confirmed');
+        const pool_info = await connection.getAccountInfo(pools[0], 'confirmed');
         if (!pool_info) return;
         const buffer = Buffer.from(pool_info.data);
         const ammInfo = new PublicKey(buffer.slice(9, 41));
         accounts_arr.push(ammInfo);
         // accounts_arr.push(pool.pubkey);
-        accounts_arr.push(pools[i]);
+        accounts_arr.push(pools[0]);
         const token0Vault = new PublicKey(buffer.slice(137, 169));
         accounts_arr.push(token0Vault);
         const token1Vault = new PublicKey(buffer.slice(169, 201));
@@ -82,7 +87,7 @@ export async function findAmmConfig(i: number) {
         accounts_arr.push(obsKey);
 
         const [tickArrayBitmapAccount] = PublicKey.findProgramAddressSync(
-            [Buffer.from('pool_tick_array_bitmap_extension'), (pools[i]).toBuffer()],
+            [Buffer.from('pool_tick_array_bitmap_extension'), (pools[0]).toBuffer()],
             programId
         );
 

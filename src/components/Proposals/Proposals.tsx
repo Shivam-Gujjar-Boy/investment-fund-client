@@ -138,7 +138,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
       buffer.writeUInt8(numOfSwaps, offset);
       offset += 1;
       for (const amount of amounts) {
-        buffer.writeBigInt64LE(amount, offset);
+        buffer.writeBigInt64LE(amount*BigInt(1000000000), offset);
         offset += 8;
       }
       for (const slippage of slippages) {
@@ -377,12 +377,20 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
     try {
       const proposal = proposals[vecIndex];
       const numOfSwaps = proposal.numOfSwaps;
+      console.log('swaps:', numOfSwaps);
 
       const transaction = new Transaction();
 
       const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
       const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
-      const outputMints: PublicKey[] = [pumpkingMint, bondMint];
+
+      const outputMints: PublicKey[] = [];
+      if (proposal.toAssets[0].toBase58() == pumpkingMint.toBase58()) {
+        outputMints.push(pumpkingMint);
+      } else {
+        outputMints.push(bondMint);
+      }
+      console.log(outputMints[0].toBase58());
 
       for (let i=0; i<numOfSwaps; i++) {
         const instructionTag = 4;
@@ -437,7 +445,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         console.log('output token account = ', output_token_account.toBase58());
         const memo_program = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
-        const accs = await findAmmConfig(i);
+        const accs = await findAmmConfig(outputMints[i]);
         if (!accs) return;
         console.log("Input vault: ", accs[2].toBase58())
         console.log("Output vault: ", accs[3].toBase58())
@@ -835,6 +843,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                           selected={swap.fromMint}
                           onChange={(mint) => updateSwap(index, 'fromMint', mint)}
                         />
+                        <div className='text-sm'>Select SOL for now (since on devnet)</div>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -844,6 +853,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                           selected={swap.toMint}
                           onChange={(mint) => updateSwap(index, 'toMint', mint)}
                         />
+                        <div className='text-sm'>Select either BOND/PKING (since on devnet)</div>
                       </div>
 
                       <div className="flex gap-4">
