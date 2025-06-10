@@ -9,7 +9,7 @@ import { formatTimeStamp } from '../../functions/formatTimeStamp';
 import { findAmmConfig } from '../../functions/pool_accounts';
 import { findTickArrayAccounts } from '../../functions/tick_array';
 import { Buffer } from 'buffer';
-import { fetchUserTokens } from '../../functions/fetchuserTokens';
+import { fetchVaultTokens } from '../../functions/fetchuserTokens';
 import { Metaplex } from '@metaplex-foundation/js';
 import { TokenSelector } from './TokenSelector';
 import { Filter } from "lucide-react";
@@ -88,7 +88,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
   // To open the Deposit modal
   const openProposalModal = async () => {
     setShowProposalModal(true);
-    const tokens = await fetchUserTokens(wallet, connection, metaplex);
+    const tokens = await fetchVaultTokens(fund?.vault, connection, metaplex);
     if (!wallet.publicKey) {
       return;
     }
@@ -500,34 +500,6 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
     }
   }
 
-  // 🔄 Show shimmer while loading
-  if (!proposals || proposals.length === 0) {
-    return (
-      <div className="bg-[#1f2937] relative flex flex-col h-full max-h-[calc(100vh-6rem)] animate-pulse">
-        <div className="p-6 overflow-y-auto scrollbar-none flex-1 space-y-4">
-          <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
-          {[...Array(4)].map((_, idx) => (
-            <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
-              <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
-              <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
-              <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
-              <div className="flex gap-2 mt-4">
-                <div className="h-6 w-20 bg-gray-700 rounded"></div>
-                <div className="h-6 w-14 bg-gray-700 rounded"></div>
-                <div className="h-6 w-14 bg-gray-700 rounded"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Fake Footer Button to maintain layout height */}
-        <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
-          <div className="w-full h-10 bg-gray-700 rounded-xl"></div>
-        </div>
-      </div>
-    );
-  }
-
   const getSymbol = (mint: string) => {
     return userTokens.find(t => t.mint === mint)?.symbol || '';
   }
@@ -593,85 +565,95 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           </div>
 
           {/* Proposal Cards */}
-          {filteredAndSortedProposals.map((p) => (
-            <div
-              key={p.creationTime.toString()}
-              className="bg-[#111827] border border-gray-700 rounded-2xl p-5 mb-5 cursor-pointer hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl group"
-              onClick={(e) => {
-                if (!(e.target as HTMLElement).closest("button")) {
-                  setSelectedProposal(p);
-                }
-              }}
-            >
-              <div className="space-y-3 mb-4 text-sm text-gray-400">
-                <div className="flex justify-between">
-                  <span>
-                    <span className="text-gray-300 font-medium">Proposal Index:</span> {p.proposalIndex.toString()}
-                  </span>
-                  {p.executed ? (
-                    <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full">Executed</span>
-                  ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
-                    <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full">Under Voting</span>
-                  ) : (
-                    <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full">Executable</span>
-                  )}
-                </div>
-
-                <div><span className="text-gray-300 font-medium">Vec Index:</span> {p.vecIndex.toString()}</div>
-                <div><span className="text-gray-300 font-medium">Created:</span> {formatTimeStamp(p.creationTime)}</div>
-                <div><span className="text-gray-300 font-medium">Deadline:</span> {formatTimeStamp(p.deadline)}</div>
-              </div>
-
-              {/* Vote Progress Bar & Buttons */}
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1 h-3 rounded-full bg-gray-700 overflow-hidden">
-                  {p.votesYes + p.votesNo === 0n ? (
-                    <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
-                  ) : (
-                    <>
-                      <div
-                        className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
-                        style={{ width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%` }}
-                      />
-                      <div
-                        className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
-                        style={{ width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%` }}
-                      />
-                    </>
-                  )}
-                </div>
-
-                {!p.executed && (
-                  <div className="flex gap-2">
-                    {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
-                      <button
-                        className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                        onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
-                      >
-                        Execute
-                      </button>
+          {filteredAndSortedProposals.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center text-white space-y-4 mt-20">
+              <div className="text-5xl">📭</div>
+              <h2 className="text-xl font-semibold">No Proposals Yet</h2>
+              <p className="text-gray-400 max-w-sm">
+                Be the first to create a proposal and shape the future.
+              </p>
+            </div>
+          ) : (
+            filteredAndSortedProposals.map((p) => (
+              <div
+                key={p.creationTime.toString()}
+                className="bg-[#111827] border border-gray-700 rounded-2xl p-5 mb-5 cursor-pointer hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl group"
+                onClick={(e) => {
+                  if (!(e.target as HTMLElement).closest("button")) {
+                    setSelectedProposal(p);
+                  }
+                }}
+              >
+                <div className="space-y-3 mb-4 text-sm text-gray-400">
+                  <div className="flex justify-between">
+                    <span>
+                      <span className="text-gray-300 font-medium">Proposal Index:</span> {p.proposalIndex.toString()}
+                    </span>
+                    {p.executed ? (
+                      <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full">Executed</span>
+                    ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
+                      <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full">Under Voting</span>
+                    ) : (
+                      <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full">Executable</span>
                     )}
-                    {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
+                  </div>
+
+                  <div><span className="text-gray-300 font-medium">Vec Index:</span> {p.vecIndex.toString()}</div>
+                  <div><span className="text-gray-300 font-medium">Created:</span> {formatTimeStamp(p.creationTime)}</div>
+                  <div><span className="text-gray-300 font-medium">Deadline:</span> {formatTimeStamp(p.deadline)}</div>
+                </div>
+
+                {/* Vote Progress Bar & Buttons */}
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1 h-3 rounded-full bg-gray-700 overflow-hidden">
+                    {p.votesYes + p.votesNo === 0n ? (
+                      <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
+                    ) : (
                       <>
-                        <button
-                          className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                          onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
-                        >
-                          YES
-                        </button>
-                        <button
-                          className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                          onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
-                        >
-                          NO
-                        </button>
+                        <div
+                          className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%` }}
+                        />
+                        <div
+                          className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                          style={{ width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%` }}
+                        />
                       </>
                     )}
                   </div>
-                )}
+
+                  {!p.executed && (
+                    <div className="flex gap-2">
+                      {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
+                        <button
+                          className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-md text-xs font-medium transition"
+                          onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
+                        >
+                          Execute
+                        </button>
+                      )}
+                      {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
+                        <>
+                          <button
+                            className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition"
+                            onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
+                          >
+                            YES
+                          </button>
+                          <button
+                            className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition"
+                            onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
+                          >
+                            NO
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         {/* Sticky Footer Button */}

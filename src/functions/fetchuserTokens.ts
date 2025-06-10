@@ -63,6 +63,51 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
     }
 };
 
+export const fetchVaultTokens = async (vault: PublicKey | undefined, connection: Connection, metaplex: Metaplex) => {
+
+    try {
+        if (!vault) return;
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            vault,
+            {programId: TOKEN_PROGRAM_ID}
+        );
+
+        console.log(tokenAccounts);
+
+        const tokens = tokenAccounts.value
+        .map((acc) => {
+            const info = acc.account.data?.parsed.info;
+            const mint = info.mint;
+            const balance = info.tokenAmount.uiAmount;
+            return {
+            pubkey: acc.pubkey,
+            mint,
+            symbol: 'Unknown',
+            image: '',
+            balance,
+            };
+        })
+        .filter((token) => token.balance > 0);
+
+        const tokensWithMetadata = await Promise.all(
+            tokens.map(async (token) => {
+                const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
+                console.log(metadata?.symbol);
+                return {
+                    ...token,
+                    symbol: metadata?.symbol || token.symbol,
+                    image: metadata?.image || token.image
+                };
+            })
+        )
+
+        return tokensWithMetadata;
+    } catch (err) {
+        console.error('Error feching tokens:', err);
+        return [];
+    }
+};
+
 export const getMetadataPDA = (mintPubkey: PublicKey) => {
     return (
         PublicKey.findProgramAddressSync(
@@ -88,7 +133,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
         image: imageUri,
         };
     } catch (err) {
-        // console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
+        console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);
         return null;
     }
 }
