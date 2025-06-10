@@ -31,6 +31,7 @@ interface ProposalSwap {
 export default function Proposals({ proposals, fund, vecIndex, fundId }: ProposalsProps) {
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
   const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted'>('all');
+  const [isCreating, setIsCreating] = useState(false);
   const filteredAndSortedProposals = [...(proposals ?? [])]
     .filter((p) => {
       if (filterOption === 'executed') return p.executed;
@@ -237,6 +238,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
       });
 
       setShowProposalModal(false);
+      setIsCreating(false);
 
       toast.success("Proposal created successfully");
     } catch (err) {
@@ -895,23 +897,31 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
                       fromMint: swap.fromMint,
                       toMint: swap.toMint,
                       amount: swap.amount,
-                      slippage: (Number(parseFloat(swap.slippage)*100)).toString(),
+                      slippage: (Number(parseFloat(swap.slippage) * 100)).toString(),
                     }));
+
                     if (!deadline) {
                       toast.error('Please set deadline');
                       return;
                     }
+
                     const deadlineTimestamp = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
+                    setIsCreating(true);
                     handleProposalCreation(formatted, deadlineTimestamp);
+                    setIsCreating(false);
                   } else {
                     toast.error('Please complete all fields');
                     return;
                   }
                 }}
-                className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition"
+                disabled={isCreating}
+                className={`px-5 py-2 rounded-xl transition ${
+                  isCreating ? "bg-green-400 cursor-not-allowed opacity-50" : "bg-green-600 hover:bg-green-500"
+                }`}
               >
-                ✅ Create Proposal
+                {isCreating ? "Creating..." : "✅ Create Proposal"}
               </button>
+
             </div>
           </div>
         </div>

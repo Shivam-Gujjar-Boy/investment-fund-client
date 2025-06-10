@@ -42,7 +42,7 @@ export default function CreateFundForm() {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       try {
-        const res = await axios(`http://localhost:5000/api/funds/exists/${fundName}`);
+        const res = await axios(`https://peerfunds.onrender.com/api/funds/exists/${fundName}`);
         console.log(res.data.exists);
         setNameTaken(res.data.exists);
       } catch (err) {
@@ -193,6 +193,13 @@ export default function CreateFundForm() {
         if (!fund) return;
         fund.fund_address = fundAccountPda;
         printFundDetails(fund);
+
+        const res = await axios.post('https://peerfunds.onrender.com/api/funds', {
+          name: fund.name
+        });
+        if (res.status === 201) {
+          console.log('Fund name added in database');
+        }
 
         // Reset form
         setFundName('');

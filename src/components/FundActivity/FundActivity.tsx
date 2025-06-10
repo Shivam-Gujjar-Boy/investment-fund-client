@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 import axios from 'axios';
 import { Clock4 } from 'lucide-react';
 
-const socket = io(`http://localhost:5000`, {
+const socket = io(`https://peerfunds.onrender.com`, {
   transports: ['websocket']
 }); // Make sure this is in your .env
 

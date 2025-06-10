@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
 import toast from 'react-hot-toast';
+// import axios from 'axios';
 import { Fund, programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { printFundDetails } from '../../functions/printFundDetails';
@@ -31,6 +32,19 @@ export default function JoinFundForm() {
     if (!fundName.trim()) {
       return;
     }
+
+    // try {
+    //   const res = await axios(`http://locakhost:5000/api/funds/exists/${fundName}`);
+    //   console.log(res.data.exists);
+    //   if (!res.data.exists) {
+    //     toast.error('No such fund exists');
+    //     return;
+    //   }
+    // } catch (err) {
+    //   console.log('Error checking fund name:', err);
+    //   toast.error('Error checking fund name');
+    //   return;
+    // }
     
     // Here the blockchain interaction would occur (to be handled by the user later)
     if (!wallet || !connected || !wallet.publicKey || !wallet.signTransaction) {
@@ -118,7 +132,7 @@ export default function JoinFundForm() {
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="flex flex-col items-center space-y-5">
             <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_#9333ea99]"></div>
-            <p className="text-indigo-200 text-lg font-medium animate-pulse">Preparing your dashboard...</p>
+            <p className="text-indigo-200 text-lg font-medium animate-pulse">Preparing joining transaction...</p>
           </div>
         </div>
       ) : (
