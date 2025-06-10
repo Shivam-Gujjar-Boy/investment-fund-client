@@ -31,7 +31,7 @@ export default function FundActivity({fundAddress}: ActicityProps) {
   useEffect(() => {
     if (!fundAddress) return;
     const fundPubkey = fundAddress.toBase58();
-    axios.get(`http://localhost:5000/api/activity/${fundPubkey}`)
+    axios.get(`https://peerfunds.onrender.com/api/activity/${fundPubkey}`)
       .then(res => {
         setLogs(res.data.logs || []);
       })
