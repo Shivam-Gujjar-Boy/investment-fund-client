@@ -14,14 +14,13 @@ import { Fund, programId, TOKEN_METADATA_PROGRAM_ID } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { printFundDetails } from '../../functions/printFundDetails';
 import { Buffer } from 'buffer';
+import FundCreationInfo from './FundCreationInfo';
 
 let debounceTimer: NodeJS.Timeout;
 
 export default function CreateFundForm() {
   const [fundName, setFundName] = useState('');
   const [step, setStep] = useState(1);
-  const [fundCode, setFundCode] = useState('');
-  const [inviteLink, setInviteLink] = useState('');
   const [nameTaken, setNameTaken] = useState(false);
   const [checking, setChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,10 +67,10 @@ export default function CreateFundForm() {
 
       setPrivacy(!isPublic);
 
-      const generatedCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      setFundCode(generatedCode);
-      const baseUrl = window.location.origin;
-      setInviteLink(`${baseUrl}/dashboard/join?code=${generatedCode}`);
+      // const generatedCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      // setFundCode(generatedCode);
+      // const baseUrl = window.location.origin;
+      // setInviteLink(`${baseUrl}/dashboard/join?code=${generatedCode}`);
       setStep(2);
     } else {
       if (!wallet.publicKey || !wallet.signTransaction) {
@@ -203,8 +202,6 @@ export default function CreateFundForm() {
 
         // Reset form
         setFundName('');
-        setFundCode('');
-        setInviteLink('');
         setStep(1);
       } catch (error) {
         console.error('Error creating fund:', error);
@@ -215,19 +212,16 @@ export default function CreateFundForm() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   return (
     <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl rounded-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] transition-all overflow-hidden">
       <div className="p-8">
         <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
-          {step === 1 ? 'Create a New Investment Fund' : '🚀 Share Your Fund'}
+          {step === 1 ? 'Create a New Investment Fund' : '🔍 Before You Create a Fund '}
         </h2>
 
         {step === 1 ? (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Fund Name Input */}
             <div>
               <label htmlFor="fundName" className="block text-sm font-semibold text-indigo-200 mb-2">
                 Fund Name
@@ -250,6 +244,7 @@ export default function CreateFundForm() {
               )}
             </div>
 
+            {/* Public Checkbox */}
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -263,6 +258,28 @@ export default function CreateFundForm() {
               </label>
             </div>
 
+            {/* Info Box Based on Fund Privacy */}
+            <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4 text-sm text-indigo-100 space-y-2">
+              <h3 className="font-semibold text-indigo-300">👥 How Invitations Work in PeerFunds</h3>
+
+              {isPublic ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>This fund is <span className="text-green-400 font-medium">public</span>.</li>
+                  <li>Anyone can join by visiting the Join page and entering the fund name.</li>
+                  <li>Once the transaction is confirmed, they are instantly added to the fund.</li>
+                </ul>
+              ) : (
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>This fund is <span className="text-yellow-400 font-medium">private</span>.</li>
+                  <li>When someone tries to join using the Join page, a <strong>join proposal</strong> is created.</li>
+                  <li>Existing members must vote to approve or reject the proposal using their governance voting power.</li>
+                  <li>If majority approval is achieved, the new user is added to the fund automatically.</li>
+                  <li>This mechanism ensures fund <strong>privacy, security</strong>, and <strong>member control</strong>.</li>
+                </ul>
+              )}
+            </div>
+
+            {/* Continue Button */}
             <button
               type="submit"
               disabled={!fundName.trim() || nameTaken || checking}
@@ -276,61 +293,7 @@ export default function CreateFundForm() {
             </button>
           </form>
         ) : (
-          <div className="space-y-6">
-            <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-indigo-300">🔐 Fund Code</span>
-                <button
-                  onClick={() => copyToClipboard(fundCode)}
-                  className="text-indigo-400 hover:text-indigo-200 text-sm"
-                >
-                  Copy
-                </button>
-              </div>
-              <div className="bg-[#1a1d36] p-3 rounded-lg font-mono text-white text-sm border border-indigo-800">
-                {fundCode}
-              </div>
-            </div>
-
-            <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-indigo-300">🔗 Invite Link</span>
-                <button
-                  onClick={() => copyToClipboard(inviteLink)}
-                  className="text-indigo-400 hover:text-indigo-200 text-sm"
-                >
-                  Copy
-                </button>
-              </div>
-              <div className="bg-[#1a1d36] p-3 rounded-lg font-mono text-white text-sm break-all border border-indigo-800">
-                {inviteLink}
-              </div>
-            </div>
-
-            <p className="text-indigo-200 text-sm">
-              Share this fund code or invite link with anyone you want to collaborate with on this investment.
-            </p>
-
-            <div className="flex justify-between gap-4 pt-2">
-              <button
-                onClick={() => setStep(1)}
-                className="w-1/2 py-3 px-4 rounded-xl bg-gray-600 hover:bg-gray-500 text-white font-semibold transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className={`w-1/2 py-3 px-4 rounded-xl font-semibold text-white transition-all ${
-                  isSubmitting
-                    ? 'bg-gray-600 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-indigo-700 to-purple-600 hover:from-indigo-600 hover:to-purple-500 shadow-md'
-                }`}
-              >
-                {isSubmitting ? 'Creating...' : 'Confirm'}
-              </button>
-            </div>
-          </div>
+          <FundCreationInfo handleSubmit={() => handleSubmit} setStep={setStep} isSubmitting={isSubmitting}/>
         )}
       </div>
     </div>

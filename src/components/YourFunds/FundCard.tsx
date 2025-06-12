@@ -205,7 +205,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
   return (
     <div
       onClick={() => navigate(`${fund.fund_address.toBase58()}`)}
-      className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] border border-indigo-900/40 backdrop-blur-md rounded-xl p-6 shadow-[0_0_10px_#7c3aed33] hover:shadow-[0_0_50px_#a78bfa55] hover:scale-[1.015] transition-all duration-300 cursor-pointer group"
+      className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] border border-indigo-900/40 backdrop-blur-md rounded-xl p-6 shadow-[0_0_10px_#7c3aed33] hover:shadow-[0_0_20px_#a78bfa55] hover:scale-[1.015] transition-all duration-300 cursor-pointer group"
     >
       {/* Title + Status */}
       <div className="flex justify-between items-center mb-5">

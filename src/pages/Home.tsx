@@ -118,69 +118,112 @@ export default function Home() {
     handleUser();
   }, [connected, navigate, wallet, connection]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-white text-lg">Preparing your dashboard...</p>
-          </div>
+return (
+  <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
+    {loading ? (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white text-lg">Preparing your dashboard...</p>
         </div>
-      ) : (
-        <>
-          <header className="pt-6 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
-            </div>
-          </header>
+      </div>
+    ) : (
+      <>
+        <header className="pt-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
+          </div>
+        </header>
 
-          <main className="flex-1 flex items-center justify-center p-4">
-            <div className="max-w-3xl w-full">
-              <div className="text-center mb-12">
-                <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-                  Decentralized <span className="text-gradient">Investment Funds</span>
-                </h1>
-                <p className="text-xl text-gray-300 max-w-2xl mx-auto leading-relaxed">
-                  Create and manage investment funds on the Solana blockchain with friends, colleagues, or communities.
+        <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10">
+          <div className="max-w-6xl mx-auto">
+            <section className="text-center mb-20">
+              <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
+                Decentralized <span className="text-gradient">Investment Funds</span>
+              </h1>
+              <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+                Create and manage trustless investment funds on the Solana blockchain. Join forces with friends, colleagues or communities.
+              </p>
+              <div className="mt-8">
+                <WalletMultiButton />
+              </div>
+            </section>
+
+            <section className="mb-24">
+              <div className="grid sm:grid-cols-4 gap-8">
+                {['Create a Fund', 'Join Together', 'Invest Together', 'Grow Together'].map((title, i) => (
+                  <div key={i} className="glass rounded-2xl p-6 text-center border border-indigo-800 hover:shadow-[0_0_10px_#a78bfa55] hover:scale-[1.01] transition-all duration-300 group">
+                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">
+                      {i + 1}
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+                    <p className="text-gray-400 text-sm">
+                      {i === 0
+                        ? 'Start a DAO-style fund and set governance rules.'
+                        : i === 1
+                        ? 'Collaboratively pool resources for smarter investing.'
+                        : i === 2
+                        ? 'Invest through decentralized proposals on-chain!'
+                        : 'See returns, PnL, and distribute profits fairly.'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
+              <div className="space-y-4">
+                <h2 className="text-3xl font-bold text-white">Why PeerFunds?</h2>
+                <p className="text-gray-300">
+                  Whether you're a solo crypto trader or a team of enthusiastic friends, PeerFunds empowers you to invest with trustless collaboration.
+                  On-chain governance, proposal voting, and fund transparency ensure every decision is made fairly.
+                </p>
+                <p className="text-gray-400 text-sm">
+                  🔒 Trustless voting system<br />
+                  📈 Performance analytics and portfolio insights<br />
+                  🧠 Learn by joining funds, even with minimal risk
                 </p>
               </div>
-
-              <WalletMultiButton />
-
-              <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8">
-                <div className="glass rounded-xl p-6 text-center">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-xl font-bold">1</span>
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">Create a Fund</h3>
-                  <p className="text-gray-400 text-sm">Start an investment fund and invite others to join</p>
-                </div>
-
-                <div className="glass rounded-xl p-6 text-center">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-xl font-bold">2</span>
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">Join Together</h3>
-                  <p className="text-gray-400 text-sm">Pool resources with members for greater investment power</p>
-                </div>
-
-                <div className="glass rounded-xl p-6 text-center">
-                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-xl font-bold">3</span>
-                  </div>
-                  <h3 className="text-lg font-medium text-white mb-2">Grow Together</h3>
-                  <p className="text-gray-400 text-sm">Track performance and distribute returns transparently</p>
-                </div>
+              <div className="h-64 bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-300">
+                {/* Add illustration/image here */}
+                [ IMAGE PLACEHOLDER ]
               </div>
-            </div>
-          </main>
+            </section>
 
-          <footer className="py-6 text-center text-gray-500 text-sm">
-            <p>Powered by Solana Blockchain</p>
-          </footer>
-        </>
-      )}
-    </div>
-  );
+            <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
+              <div className="h-64 bg-purple-800/30 rounded-xl flex items-center justify-center text-purple-300">
+                {/* Add illustration/image here */}
+                [ IMAGE PLACEHOLDER ]
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-bold text-white">Not Just Investing – It's Learning</h2>
+                <p className="text-gray-300">
+                  Beginners can join public funds, learn how proposals work, and participate in governance without affecting real fund outcomes.
+                  Small voting powers ensure minimal risk, while real-time engagement drives crypto knowledge growth.
+                </p>
+                <p className="text-sm text-gray-400">
+                  🧩 Proposals with real-time outcomes<br />
+                  📊 PnL dashboards, voting analytics, and educational feedback<br />
+                  🧪 Learn by doing — not just reading
+                </p>
+              </div>
+            </section>
+
+            <section className="text-center mb-10">
+              <h2 className="text-2xl font-bold text-white mb-3">Ready to Join the Future of Community Investing?</h2>
+              <p className="text-gray-300 max-w-xl mx-auto mb-6">
+                Connect your wallet and dive into the world of decentralized fund management. It takes just a few seconds to get started.
+              </p>
+              <WalletMultiButton />
+            </section>
+          </div>
+        </main>
+
+        <footer className="py-6 text-center text-gray-500 text-sm">
+          <p>Powered by Solana Blockchain</p>
+        </footer>
+      </>
+    )}
+  </div>
+);
 }

@@ -127,50 +127,71 @@ export default function JoinFundForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] rounded-2xl overflow-hidden transition-all">
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center py-20">
-          <div className="flex flex-col items-center space-y-5">
-            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_#9333ea99]"></div>
-            <p className="text-indigo-200 text-lg font-medium animate-pulse">Preparing joining transaction...</p>
-          </div>
-        </div>
-      ) : (
-        <div className="p-8">
-          <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
-            Join an Investment Fund
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="fundCode" className="block text-sm font-semibold text-indigo-300 mb-2">
-                Fund Name
-              </label>
-              <input
-                type="text"
-                id="fundCode"
-                value={fundName}
-                onChange={(e) => setFundName(e.target.value)}
-                className="w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border border-indigo-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-600 focus:ring-opacity-50 outline-none transition-all"
-                placeholder="Enter fund name to join"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-semibold transition-all shadow-md"
-            >
-              Join Fund
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-indigo-200 text-sm">
-              Don’t have a fund code? Ask the fund creator to share their code or invite link with you.
-            </p>
-          </div>
-        </div>
-      )}
+<div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] rounded-2xl overflow-hidden transition-all">
+  {loading ? (
+    <div className="flex-1 flex items-center justify-center py-20">
+      <div className="flex flex-col items-center space-y-5">
+        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-[0_0_20px_#9333ea99]"></div>
+        <p className="text-indigo-200 text-lg font-medium animate-pulse">Preparing joining transaction...</p>
+      </div>
     </div>
+  ) : (
+    <div className="p-8">
+      <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
+        Join an Investment Fund
+      </h2>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label htmlFor="fundCode" className="block text-sm font-semibold text-indigo-300 mb-2">
+            Fund Name
+          </label>
+          <input
+            type="text"
+            id="fundCode"
+            value={fundName}
+            onChange={(e) => setFundName(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border border-indigo-700 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-600 focus:ring-opacity-50 outline-none transition-all"
+            placeholder="Enter fund name to join"
+          />
+        </div>
+
+        {/* Info Box */}
+        <div className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4 text-sm text-indigo-100 space-y-2">
+          <h3 className="font-semibold text-indigo-300">🔐 Joining Process</h3>
+
+          <p>If the fund is <span className="text-green-400 font-medium">public</span>:</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>You will be instantly added to the fund after confirming the transaction.</li>
+            <li>A small amount of <span className="text-purple-400 font-medium">0.00057 SOL</span> will be charged to reallocate your global user account and store fund-specific info.</li>
+          </ul>
+
+          <p>If the fund is <span className="text-yellow-400 font-medium">private</span>:</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>A <strong>join proposal</strong> will be created in the fund.</li>
+            <li>This costs around <span className="text-purple-400 font-medium">0.002 SOL</span> (includes both proposal and addition handling fees).</li>
+            <li>Existing members will vote to approve or reject your request using governance tokens.</li>
+            <li>There is <strong>no deadline</strong> for the proposal — once required votes are reached, you’ll be added and notified automatically.</li>
+            <li>The <strong>required votes</strong> threshold is set by the fund creator and can be modified later through governance voting.</li>
+          </ul>
+        </div>
+
+        <button
+          type="submit"
+          className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-semibold transition-all shadow-md"
+        >
+          Join Fund
+        </button>
+      </form>
+
+      <div className="mt-6 text-center">
+        <p className="text-indigo-200 text-sm">
+          Don’t have a fund code? Ask the fund creator to share their code or invite link with you.
+        </p>
+      </div>
+    </div>
+  )}
+</div>
+
   );
 }

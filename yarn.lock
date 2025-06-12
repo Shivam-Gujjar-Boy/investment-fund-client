@@ -1111,7 +1111,7 @@
     bs58 "^5.0.0"
     uuid "^8.3.2"
 
-"@ledgerhq/devices@8.4.6", "@ledgerhq/devices@^8.4.4":
+"@ledgerhq/devices@8.4.6", "@ledgerhq/devices@^8.4.5":
   version "8.4.6"
   resolved "https://registry.yarnpkg.com/@ledgerhq/devices/-/devices-8.4.6.tgz#a1d739919380d8d31e14f9333853d1d3399588c4"
   integrity sha512-EMWhCOC+Ww14i2Dl8Txc0AAw8oToCxt1hOKmE7+yE38SkzfRWS0Je3P+o9/EgkaopI8Y0N8lWOJzy1CiulP3Lg==
@@ -1126,7 +1126,7 @@
   resolved "https://registry.yarnpkg.com/@ledgerhq/errors/-/errors-6.21.0.tgz#93a745157b36e892ded6ba76781d8ca662666a95"
   integrity sha512-2k5veG9eu+1X5oBVhKSWzA6RE+TWOTSJnytjEhPBTZB6h2ixMrCUMWF5+OAWXiI1EiSNsvGGk19XO87qpZiVTw==
 
-"@ledgerhq/hw-transport-webhid@^6.30.0":
+"@ledgerhq/hw-transport-webhid@^6.30.1":
   version "6.30.2"
   resolved "https://registry.yarnpkg.com/@ledgerhq/hw-transport-webhid/-/hw-transport-webhid-6.30.2.tgz#7c41fc335a0a64e9100be4ce41f3dd7d37ce4de8"
   integrity sha512-HZqGyHSl9Dg1AhULyCElKNWFDlIjO5+YzQ+CDqOwhVKCVCVKCVev5N1Kh20BD8AyBdnUcfgfKhdQMMkgGmVmeA==
@@ -1136,7 +1136,7 @@
     "@ledgerhq/hw-transport" "^6.31.6"
     "@ledgerhq/logs" "^6.13.0"
 
-"@ledgerhq/hw-transport@^6.31.4", "@ledgerhq/hw-transport@^6.31.6":
+"@ledgerhq/hw-transport@^6.31.5", "@ledgerhq/hw-transport@^6.31.6":
   version "6.31.6"
   resolved "https://registry.yarnpkg.com/@ledgerhq/hw-transport/-/hw-transport-6.31.6.tgz#2c61811da87d222b0d3399e5e8e54c2d7e96bd3b"
   integrity sha512-wXycgy21wdwdr9s2fz7K96aDqnsPXPT15E6GlNrYJ0C36tAQcHOtI+XWZ1A8J4cMlRRh6siGWsEymziOdFBPCQ==
@@ -1549,7 +1549,7 @@
   dependencies:
     "@noble/hashes" "1.8.0"
 
-"@noble/curves@^1.0.0", "@noble/curves@^1.1.0", "@noble/curves@^1.4.2", "@noble/curves@^1.6.0", "@noble/curves@^1.8.0", "@noble/curves@~1.9.0":
+"@noble/curves@^1.0.0", "@noble/curves@^1.4.2", "@noble/curves@^1.6.0", "@noble/curves@^1.8.0", "@noble/curves@^1.9.1", "@noble/curves@~1.9.0":
   version "1.9.2"
   resolved "https://registry.yarnpkg.com/@noble/curves/-/curves-1.9.2.tgz#73388356ce733922396214a933ff7c95afcef911"
   integrity sha512-HxngEd2XUcg9xi20JkwlLCtYwfoFw4JGkuZpT+WlsPD4gB/cxkvTD8fSsoAnphGZhFdZYKeQIPCuFlWPm1uE0g==
@@ -2274,7 +2274,7 @@
     "@wallet-standard/core" "^1.0.3"
     js-base64 "^3.7.5"
 
-"@solana-mobile/wallet-adapter-mobile@^2.1.5":
+"@solana-mobile/wallet-adapter-mobile@^2.2.0":
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/@solana-mobile/wallet-adapter-mobile/-/wallet-adapter-mobile-2.2.0.tgz#1c48280a57a655f5f69e8b4582ad8833292685fd"
   integrity sha512-7xcx+i6D9HlXuVgKrlDVpBYrdhM8JVzrrhuges3ATfZvlZ5zwEnNenEuQCsG5Al8vgTvMBqX6KJ1dUFill0+Nw==
@@ -2842,28 +2842,28 @@
     "@solana/rpc-types" "2.1.1"
     "@solana/transaction-messages" "2.1.1"
 
-"@solana/wallet-adapter-alpha@^0.1.13":
-  version "0.1.13"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-alpha/-/wallet-adapter-alpha-0.1.13.tgz#6a5b4e68008d8fd582522af59d64f0fb99b198f7"
-  integrity sha512-LYekz41uF40FtL0C38yIN36GqEV2iJe4JlVtha2WE4osrEzmKUyXgo1mqTxcDnWZkcFWBvI3mzfn17zW+iskew==
+"@solana/wallet-adapter-alpha@^0.1.14":
+  version "0.1.14"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-alpha/-/wallet-adapter-alpha-0.1.14.tgz#52dcfdb048d77b1c0f04a133920fb762ee22f1b2"
+  integrity sha512-ZSEvQmTdkiXPeHWIHbvdU4yDC5PfyTqG/1ZKIf2Uo6c+HslMkYer7mf9HUqJJ80dU68XqBbzBlIv34LCDVWijw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-avana@^0.1.16":
-  version "0.1.16"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-avana/-/wallet-adapter-avana-0.1.16.tgz#9fe54c76c0c91b698b355b92ec2ef5e5e2f912fa"
-  integrity sha512-GMEbEygfgdcXHqwpfnkFiPBxfEIJ7F6/cYglPoCRFWNF0UWELE8eLhvu7Bd/i7z7lubPR0jEqTI/sk8mip+23A==
+"@solana/wallet-adapter-avana@^0.1.17":
+  version "0.1.17"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-avana/-/wallet-adapter-avana-0.1.17.tgz#e4ffaf5f6db440940decec81ed55201149375f68"
+  integrity sha512-I3h+dPWVTEylOWoY2qxyI7mhcn3QNL+tkYLrZLi3+PBaoz79CVIVFi3Yb4NTKYDP+hz7/Skm/ZsomSY5SJua5A==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-base-ui@^0.1.5":
-  version "0.1.5"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-base-ui/-/wallet-adapter-base-ui-0.1.5.tgz#c7783dc12533a53297de5d881e7731cc38ff54a4"
-  integrity sha512-ho9YrZyMypFMq7o0mceaJZHwH9drj1Gvh+xFeictzhaEU8IVKx8mp5LqlQklHDjzwh8GfbLiZsGh9Om/uJ/YBg==
+"@solana/wallet-adapter-base-ui@^0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-base-ui/-/wallet-adapter-base-ui-0.1.6.tgz#29036bede9e993a921727279b9262057e640fbbe"
+  integrity sha512-OuxLBOXA2z3dnmuGP0agEb7xhsT3+Nttd+gAkSLgJRX2vgNEAy3Fvw8IKPXv1EE2vRdw/U6Rq0Yjpp3McqVZhw==
   dependencies:
-    "@solana/wallet-adapter-react" "^0.15.38"
+    "@solana/wallet-adapter-react" "^0.15.39"
 
-"@solana/wallet-adapter-base@^0.9.17", "@solana/wallet-adapter-base@^0.9.23", "@solana/wallet-adapter-base@^0.9.26":
+"@solana/wallet-adapter-base@^0.9.17", "@solana/wallet-adapter-base@^0.9.23":
   version "0.9.26"
   resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-base/-/wallet-adapter-base-0.9.26.tgz#106903961099abbad0d7348a0dfcea8eef551798"
   integrity sha512-1RcmfesJ8bTT+zfg4w+Z+wisj11HR+vWwl/pS6v/zwQPe0LSzWDpkXRv9JuDSCuTcmlglEfjEqFAW+5EubK/Jg==
@@ -2873,329 +2873,339 @@
     "@wallet-standard/features" "^1.1.0"
     eventemitter3 "^5.0.1"
 
-"@solana/wallet-adapter-bitkeep@^0.3.23":
-  version "0.3.23"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-bitkeep/-/wallet-adapter-bitkeep-0.3.23.tgz#e3543636b7ea9e1350c4a3c31e750a480e76c658"
-  integrity sha512-rGH6XP288H3/uTU6ancgcZfuhtWlOnb/AcWCEcQiM1AjhO8sI9wHkgfPOMCJtiNK36DZrBA3gxBXvP1d7XOpZg==
+"@solana/wallet-adapter-base@^0.9.27":
+  version "0.9.27"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-base/-/wallet-adapter-base-0.9.27.tgz#f76463db172ac1d7d1f5aa064800363777731dfd"
+  integrity sha512-kXjeNfNFVs/NE9GPmysBRKQ/nf+foSaq3kfVSeMcO/iVgigyRmB551OjU3WyAolLG/1jeEfKLqF9fKwMCRkUqg==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-standard-features" "^1.3.0"
+    "@wallet-standard/base" "^1.1.0"
+    "@wallet-standard/features" "^1.1.0"
+    eventemitter3 "^5.0.1"
 
-"@solana/wallet-adapter-bitpie@^0.5.21":
-  version "0.5.21"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-bitpie/-/wallet-adapter-bitpie-0.5.21.tgz#080794791189b356512a3a184bb4f22e2183fe2f"
-  integrity sha512-lH+mxM1Tw1Yw1EG3JIoXvm/vGeaWa+uVtUz7W0zv39O6PnrnlZkFDoaxtVCE6Ch8xrjif29SAZJPNIg9I8zD2A==
+"@solana/wallet-adapter-bitkeep@^0.3.24":
+  version "0.3.24"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-bitkeep/-/wallet-adapter-bitkeep-0.3.24.tgz#83a502def815d00b0d84b640413020db339b8107"
+  integrity sha512-LQvS9pr/Qm95w8XFAvxqgYKVndgifwlQYV1+Exc0XMnbxpw40blMTMKxSfiiPq78e3Zi2XWRApQyqtFUafOK5g==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-clover@^0.4.22":
-  version "0.4.22"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-clover/-/wallet-adapter-clover-0.4.22.tgz#4ba87d3ce52641328d5a5ea36c00dfc10c4fe59c"
-  integrity sha512-9DJ742eWCfral0BtOHE1UPypaSs2wrq1b89iqD2OxHsnpMKvzEMB0KJAmARvO1azOHnoAHu2FV+tWfZN2buS8w==
+"@solana/wallet-adapter-bitpie@^0.5.22":
+  version "0.5.22"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-bitpie/-/wallet-adapter-bitpie-0.5.22.tgz#7b0d94531aa59405d323c1f6818c2fec126525df"
+  integrity sha512-S1dSg041f8CKqzy7HQy/BPhY56ZZiZeanmdx4S6fMDpf717sgkCa7jBjLFtx8ugZzO/VpYQJtRXtKEtHpx0X0A==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-coin98@^0.5.23":
-  version "0.5.23"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coin98/-/wallet-adapter-coin98-0.5.23.tgz#e528963ca40e86a7201111eed473d77bcc9473b5"
-  integrity sha512-PkUhE3+hLVMSfekm3dSGw1q5byPDKiBFCx16JQGk7hg1dhTItgQy8VpsLMyYiNnLVahFH1W2srqthm6KpT6/+A==
+"@solana/wallet-adapter-clover@^0.4.23":
+  version "0.4.23"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-clover/-/wallet-adapter-clover-0.4.23.tgz#5483a8e6197439013334eea7d10bea17cafd806d"
+  integrity sha512-0PIAP0g1CmSLyphwXLHjePpKiB1dg+veWIbkziIdLHwSsLq6aBr2FimC/ljrbtqrduL1bH7sphNZOGE0IF0JtQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
+
+"@solana/wallet-adapter-coin98@^0.5.24":
+  version "0.5.24"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coin98/-/wallet-adapter-coin98-0.5.24.tgz#77e5e9d9c9cd9734eadd836cbe25010fc2e71ca1"
+  integrity sha512-lEHk2L00PitymreyACv5ShGyyeG/NLhryohcke4r/8yDL3m2XTOeyzkhd1/6mDWavMhno1WNivHxByNHDSQhEw==
+  dependencies:
+    "@solana/wallet-adapter-base" "^0.9.27"
     bs58 "^6.0.0"
     buffer "^6.0.3"
 
-"@solana/wallet-adapter-coinbase@^0.1.22":
-  version "0.1.22"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coinbase/-/wallet-adapter-coinbase-0.1.22.tgz#5b2680688c56aec01fa4ac4e0623a393a71a9a6a"
-  integrity sha512-BHnD4KCAorihHw+ywe04V6C9ixLhMiIK34R8r3pEJBmFoAcSYqxWyZZGw2OXkp09PgjuHfMTx6X/uNPEZMY/lA==
+"@solana/wallet-adapter-coinbase@^0.1.23":
+  version "0.1.23"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coinbase/-/wallet-adapter-coinbase-0.1.23.tgz#8a395c519dd1d036ae7e4f90cc8a4d381f06e9cf"
+  integrity sha512-vCJi/clbq1VVgydPFnHGAc2jdEhDAClYmhEAR4RJp9UHBg+MEQUl1WW8PVIREY5uOzJHma0qEiyummIfyt0b4A==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-coinhub@^0.3.21":
-  version "0.3.21"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coinhub/-/wallet-adapter-coinhub-0.3.21.tgz#9944987d185ff441cfa11578884a61567e40bda3"
-  integrity sha512-F4mBSmm2nJnGxs1pdv+jnPCGCxXyHje+3vN4F6WllzxoHG42Ziyqv4frRa+N28rRYJT0z0aI3mUpp6CG0L9IMA==
+"@solana/wallet-adapter-coinhub@^0.3.22":
+  version "0.3.22"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-coinhub/-/wallet-adapter-coinhub-0.3.22.tgz#a37ce5a336f5db7044389a9a656fbde8eed0b4a0"
+  integrity sha512-an/0FyUIY5xWfPYcOxjaVV11IbCCeErURbw+nHyWV89kw/CuiaYwaWXxATGdj8XJjg/UPsPbiLAGyKkdOMjjfw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-fractal@^0.1.11":
-  version "0.1.11"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-fractal/-/wallet-adapter-fractal-0.1.11.tgz#cdfef1c28a8f4ab6e65b79fa79c80f0f7a9e03e1"
-  integrity sha512-BNWcqlsnqiMEiq9NXPXURBJBe9hFgSUquyAPa7SsliTm+g2/JVYefz3+uM8XZS2zg9tDPJ//Fg6m2pz/cFrKNw==
+"@solana/wallet-adapter-fractal@^0.1.12":
+  version "0.1.12"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-fractal/-/wallet-adapter-fractal-0.1.12.tgz#8ba6d6b52dab8f6f519f23e1533cb2a46d876c02"
+  integrity sha512-gu9deyHxwrRfBt6VqaCVIN7FmViZn47NwORuja4wc95OX2ZxsjGE6hEs1bJsfy7uf/CsUjwDe1V309r7PlKz8g==
   dependencies:
     "@fractalwagmi/solana-wallet-adapter" "^0.1.1"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-huobi@^0.1.18":
-  version "0.1.18"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-huobi/-/wallet-adapter-huobi-0.1.18.tgz#aa1cee35c0f3efe5527d78c0914f4916928a3a76"
-  integrity sha512-V5dB3udH+/yr5Ui7y+HcPU/H9f4GukLzhLtDDFLkWp4GQjz+dokutbfpUhhuesmsvPDe2oJES2/1kfFVriOyxg==
+"@solana/wallet-adapter-huobi@^0.1.19":
+  version "0.1.19"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-huobi/-/wallet-adapter-huobi-0.1.19.tgz#3747c2c2571b8450ebd57396db6190c12e4d57bd"
+  integrity sha512-wLv2E/VEYhgVot7qyRop2adalHyw0Y+Rb1BG9RkFUa3paZUZEsIozBK3dBScTwSCJpmLCjzTVWZEvtHOfVLLSw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-hyperpay@^0.1.17":
-  version "0.1.17"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-hyperpay/-/wallet-adapter-hyperpay-0.1.17.tgz#1f083ee02d11087bbf1ccba567538943f4741d73"
-  integrity sha512-JNZgJTkwJsWzJslnfHOqNnd3l0w7NybXFhg2FUgfu1i3ePduxobEHfa0JjO31bhri4YwuBCMWu6fJ4HZ5Io4eg==
-  dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
-
-"@solana/wallet-adapter-keystone@^0.1.18":
+"@solana/wallet-adapter-hyperpay@^0.1.18":
   version "0.1.18"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-keystone/-/wallet-adapter-keystone-0.1.18.tgz#be3b7652b92b5c4abc37cb623e66affbd2541db6"
-  integrity sha512-fB2t71dHMzU+6LD1OOPptolZjXAzLHm8U19h6KTRYVjWTX/K3jWz/YEMkajBAc8H5hFyQ5sl1/no+rfwvCuUcg==
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-hyperpay/-/wallet-adapter-hyperpay-0.1.18.tgz#6ce845514d662de6ccf4c8308dcfeb1bf977dfa1"
+  integrity sha512-On95zV7Dq5UTqYAtLFvttwDgPVz0a2iWl1XZ467YYXbvXPWSxkQmvPD0jHPUvHepGw60Hf5p0qkylyYANIAgoQ==
+  dependencies:
+    "@solana/wallet-adapter-base" "^0.9.27"
+
+"@solana/wallet-adapter-keystone@^0.1.19":
+  version "0.1.19"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-keystone/-/wallet-adapter-keystone-0.1.19.tgz#da58c8e1fa0a4f932c2ea3df662ba35299d3b417"
+  integrity sha512-u7YmrQCrdZHI2hwJpX3rAiYuUdK0UIFX6m8+LSDOlA2bijlPJuTeH416aqqjueJTpvuZHowOPmV/no46PBqG0Q==
   dependencies:
     "@keystonehq/sol-keyring" "^0.20.0"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
     buffer "^6.0.3"
 
-"@solana/wallet-adapter-krystal@^0.1.15":
-  version "0.1.15"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-krystal/-/wallet-adapter-krystal-0.1.15.tgz#b9431e55ff45aab9ada30c44b7b8dc7c0af2446d"
-  integrity sha512-2nFOl7VSPCYoSIGwc1mMKj4Geer7d7hqov4ZxpBpIGe7qWItRSkVFbM/jd+BtX3IeABUhn0cxKuxEUo0oF3JlA==
+"@solana/wallet-adapter-krystal@^0.1.16":
+  version "0.1.16"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-krystal/-/wallet-adapter-krystal-0.1.16.tgz#b054c325da8107b26efeccfcc148be99370a1f6a"
+  integrity sha512-crAVzzPzMo63zIH0GTHDqYjIrjGFhrAjCntOV2hMjebMGSAmaUPTJKRi+vgju2Ons2Ktva7tRwiVaJxD8370DA==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-ledger@^0.9.28":
-  version "0.9.28"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-ledger/-/wallet-adapter-ledger-0.9.28.tgz#91358f8195640ea0b7fe9da858856d3239e33823"
-  integrity sha512-0Etw52wL/hKb+3UvYHTdkJpGZpY+JTInZdlX8dt99AdTZhGAUSO5PBjiO08Havs616q9EQu5MoQieKRS//TspQ==
+"@solana/wallet-adapter-ledger@^0.9.29":
+  version "0.9.29"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-ledger/-/wallet-adapter-ledger-0.9.29.tgz#4b7a8ea14562ac87961cc4efce6f8449640449b6"
+  integrity sha512-1feOHQGdMOPtXtXBCuUuHlsoco2iqDNcUTbHW+Bj+3ItXGJctwMicSSWgfATEAFNUanvOB+kKZ4N3B1MQrP/9w==
   dependencies:
-    "@ledgerhq/devices" "^8.4.4"
-    "@ledgerhq/hw-transport" "^6.31.4"
-    "@ledgerhq/hw-transport-webhid" "^6.30.0"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@ledgerhq/devices" "^8.4.5"
+    "@ledgerhq/hw-transport" "^6.31.5"
+    "@ledgerhq/hw-transport-webhid" "^6.30.1"
+    "@solana/wallet-adapter-base" "^0.9.27"
     buffer "^6.0.3"
 
-"@solana/wallet-adapter-mathwallet@^0.9.21":
-  version "0.9.21"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-mathwallet/-/wallet-adapter-mathwallet-0.9.21.tgz#ee9b9fac64e3b3199fa24087deef9a978650e158"
-  integrity sha512-D0EOOaa2Eibl3VSAbGUHFdjhYO2hbKOCBvOo75g6180EB3znLzqVLH5ByqAQnU16QRZmAgpzyHywswypB6BlhQ==
+"@solana/wallet-adapter-mathwallet@^0.9.22":
+  version "0.9.22"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-mathwallet/-/wallet-adapter-mathwallet-0.9.22.tgz#6c6e5678f9115f1dd24823a834ef9ef327acc873"
+  integrity sha512-5ePUe4lyTbwHlXQJwNrXRXDfyouAeIbfBTkJxcAWVivlVQcxcnE7BOwsCjImVaGNh4MumMLblxd2ywoSVDNf/g==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-neko@^0.2.15":
-  version "0.2.15"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-neko/-/wallet-adapter-neko-0.2.15.tgz#e83645cdd1ae7304841a54aedcd7047ef84c9d70"
-  integrity sha512-4JycOsuKIV9RFOtIkZVmJDhjupOpNnd7DLPR21HLjAGYpM39FHQOLc55wT2gKeaLfupnuLlGZbE0cTzNsLEIbA==
+"@solana/wallet-adapter-neko@^0.2.16":
+  version "0.2.16"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-neko/-/wallet-adapter-neko-0.2.16.tgz#ee863c3a9654db80ac9503a21c1b941b041ef4d4"
+  integrity sha512-0l/s+NJUGkyVm24nHF0aPsTMo9lsdw21PO+obDszJziZZmiKrI1l1WmhCDwYwAllY0nQjaxQ0tJBYy066pmnVg==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-nightly@^0.1.19":
-  version "0.1.19"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-nightly/-/wallet-adapter-nightly-0.1.19.tgz#6bb16a7d5c1b1e1eb1ddda6cb35565f969ddb3cd"
-  integrity sha512-tL14hgJ5YG43sJX56E5pwLB6G8ajRhd2SV/LJUwBD+xqGHFOFJ5QNlvJ1K0xsudOclU0ahJ7/PONVSJwqLypdQ==
-  dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
-
-"@solana/wallet-adapter-nufi@^0.1.20":
+"@solana/wallet-adapter-nightly@^0.1.20":
   version "0.1.20"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-nufi/-/wallet-adapter-nufi-0.1.20.tgz#f1f4815b926f6a4ad326480d1c3dd9f009312ba6"
-  integrity sha512-rIdgSyrvOXLIpqJ9FOKp7LXwUZqQEoZN2ed5lD0hx4/cvFqdxHIh3uxGUG4rXOX82SVHdbOj2qHCgJTb7LvbDg==
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-nightly/-/wallet-adapter-nightly-0.1.20.tgz#ce85da36dd7734c69799c40e23db641440d6f41e"
+  integrity sha512-37kRXzZ+54JhT21Cp3lC0O+hg9ZBC4epqkwNbev8piNnZUghKdsvsG5RjbsngVY6572jPlFGiuniDmb0vUSs3A==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-onto@^0.1.10":
-  version "0.1.10"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-onto/-/wallet-adapter-onto-0.1.10.tgz#d8cd2792348c3c3cdbcd51ce078a6708873a415e"
-  integrity sha512-+aUi05TMlCHc80/k8+vB15OCWFqyh23H/W7HTngVDRL2lviuJGwMLoSD52q13Qzal85gRB+Rm7OMCpwwbsK9Ww==
+"@solana/wallet-adapter-nufi@^0.1.21":
+  version "0.1.21"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-nufi/-/wallet-adapter-nufi-0.1.21.tgz#2337f2e21f0561ade6625071baa318978327ae2e"
+  integrity sha512-up9V4BfWl/oR0rIDQio1JD2oic+isHPk5DI4sUUxBPmWF/BYlpDVxwEfL7Xjg+jBfeiYGn0sVjTvaHY4/qUZAw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-particle@^0.1.15":
-  version "0.1.15"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-particle/-/wallet-adapter-particle-0.1.15.tgz#9246ec87fc176c50ea9944b3a8a7fc215c814791"
-  integrity sha512-/pr32ZHqPJZq0G06a7q3+7JraqcYQl1tOcQl4a9B+D3VA+OseLKk7FlUHdXFejiw07CDR5xxkFeKzcreDIS3EA==
+"@solana/wallet-adapter-onto@^0.1.11":
+  version "0.1.11"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-onto/-/wallet-adapter-onto-0.1.11.tgz#b40cf941635d34ce881a91eca4ab1a10a379d00c"
+  integrity sha512-fyTJ5xFaYD8/Izu8q+oGD9iXZvg7ljLxi/JkVwN/HznVdac95ee1fvthkF3PPRmWGZeA7O/kYAxdQMXxlwy+xw==
+  dependencies:
+    "@solana/wallet-adapter-base" "^0.9.27"
+
+"@solana/wallet-adapter-particle@^0.1.16":
+  version "0.1.16"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-particle/-/wallet-adapter-particle-0.1.16.tgz#a025abbb1de7e53642720327cb70fddefa6d991f"
+  integrity sha512-uB2FFN2SqV0cJQTvQ+pyVL6OXwGMhbz5KuWU14pcZWqfrOxs+L4grksLwMCGw+yBw/+jydLGMTUWntuEm6r7ag==
   dependencies:
     "@particle-network/solana-wallet" "^1.3.2"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-phantom@^0.9.27":
-  version "0.9.27"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-phantom/-/wallet-adapter-phantom-0.9.27.tgz#c16ca5bbfc78db214c6449865c5b73793e914ef7"
-  integrity sha512-tJDVhzcBubIFHJpugZqVAwISTx52JxtTXE/vWhqUZVtwBQSsGkKoR5l7uoFHLgYa7shJTKk326Y9ZzlN5DKpWg==
+"@solana/wallet-adapter-phantom@^0.9.28":
+  version "0.9.28"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-phantom/-/wallet-adapter-phantom-0.9.28.tgz#306252eaafbfc6a1e9efe976e43f933eb87c8b80"
+  integrity sha512-g/hcuWwWjzo5l8I4vor9htniVhLxd/GhoVK52WSd0hy8IZ8/FBnV3u8ABVTheLqO13d0IVy+xTxoVBbDaMjLog==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-react-ui@^0.9.38":
-  version "0.9.38"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-react-ui/-/wallet-adapter-react-ui-0.9.38.tgz#c6ba8c8279093f991c6bcffd9d1c3a7fb1cc6304"
-  integrity sha512-TqdXhyD4SxN1vi/hEVILfyEvDWisrs0JP3fDFUTSH+4gVdqBxKAixhpa/ZFkZGtHhKQd4S13MnY7Exh745Mzgw==
+"@solana/wallet-adapter-react-ui@^0.9.39":
+  version "0.9.39"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-react-ui/-/wallet-adapter-react-ui-0.9.39.tgz#36e2afb265a6dd73b6bbc5fc77c15c9558e808cf"
+  integrity sha512-B6GdOobwVuIgEX1qjcbTQEeo+0UGs3WPuBeUlR0dDCzQh9J3IAWRRyL/47FYSHYRp26LAu4ImWy4+M2TFD5OJg==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
-    "@solana/wallet-adapter-base-ui" "^0.1.5"
-    "@solana/wallet-adapter-react" "^0.15.38"
+    "@solana/wallet-adapter-base" "^0.9.27"
+    "@solana/wallet-adapter-base-ui" "^0.1.6"
+    "@solana/wallet-adapter-react" "^0.15.39"
 
-"@solana/wallet-adapter-react@^0.15.38":
-  version "0.15.38"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-react/-/wallet-adapter-react-0.15.38.tgz#29bd1fa45d9d990223fb37f281212084e108241f"
-  integrity sha512-BFyYigdnEb45+HNoqNHh2GNIsUJyLBnD76SXW7KXt+lheCkh2wzRqWYnRtG1yTVrLbf09fs/z3eWOc0RYCO5aA==
+"@solana/wallet-adapter-react@^0.15.39":
+  version "0.15.39"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-react/-/wallet-adapter-react-0.15.39.tgz#6e7a3df7b09afa4beea6b12384451cfb2aeb5976"
+  integrity sha512-WXtlo88ith5m22qB+qiGw301/Zb9r5pYr4QdXWmlXnRNqwST5MGmJWhG+/RVrzc+OG7kSb3z1gkVNv+2X/Y0Gg==
   dependencies:
-    "@solana-mobile/wallet-adapter-mobile" "^2.1.5"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana-mobile/wallet-adapter-mobile" "^2.2.0"
+    "@solana/wallet-adapter-base" "^0.9.27"
     "@solana/wallet-standard-wallet-adapter-react" "^1.1.4"
 
-"@solana/wallet-adapter-safepal@^0.5.21":
-  version "0.5.21"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-safepal/-/wallet-adapter-safepal-0.5.21.tgz#5c494c6bffe5675c102ff26125e331fe4d794b22"
-  integrity sha512-H2fzsly2grNWb3rJHZJr5nm0tI4znbpAoycs3sU73uUAr5TR4Vauk1F+Sy4FYzfMTcPWHWCG+DRVKcDZi+vTgQ==
+"@solana/wallet-adapter-safepal@^0.5.22":
+  version "0.5.22"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-safepal/-/wallet-adapter-safepal-0.5.22.tgz#52fff825dcb28740758d1f41a783ade5ad5d89e3"
+  integrity sha512-K1LlQIPoKgg3rdDIVUtMV218+uUM1kCtmuVKq2N+e+ZC8zK05cW3w7++nakDtU97AOmg+y4nsSFRCFsWBWmhTw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-saifu@^0.1.18":
+"@solana/wallet-adapter-saifu@^0.1.19":
+  version "0.1.19"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-saifu/-/wallet-adapter-saifu-0.1.19.tgz#3b2eb3aaaa1499ddf988c22997c7254a71cdc21d"
+  integrity sha512-RWguxtKSXTZUNlc7XTUuMi78QBjy5rWcg7Fis3R8rfMtCBZIUZ/0nPb/wZbRfTk3OqpvnwRQl89TC9d2P7/SvA==
+  dependencies:
+    "@solana/wallet-adapter-base" "^0.9.27"
+
+"@solana/wallet-adapter-salmon@^0.1.18":
   version "0.1.18"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-saifu/-/wallet-adapter-saifu-0.1.18.tgz#4a788423b2ee788d2656bdede1331a8459b19574"
-  integrity sha512-fa+O6F0JcFGx//Vpq1hC/imViSNYp3Vd4dAlFf10lixRqoj+Z/LuOpjNIc2qPYtpjhrCamqi2mnUTkrBz1UCZA==
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-salmon/-/wallet-adapter-salmon-0.1.18.tgz#54cdd649af14f4402875783a74f2b9ed6f5a18db"
+  integrity sha512-YN2/j5MsaurrlVIijlYA7SfyJU6IClxfmbUjQKEuygq0eP6S7mIAB/LK7qK2Ut3ll5vyTq/5q9Gejy6zQEaTMg==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
-
-"@solana/wallet-adapter-salmon@^0.1.17":
-  version "0.1.17"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-salmon/-/wallet-adapter-salmon-0.1.17.tgz#68ee720983185c1f215d099b1717bf09a87a3351"
-  integrity sha512-PjrB+3dKA1SfAl7IdtR4xIT6zmzI/ZSHM6DwAqiGaY+4wNw+66gV/WmiYuTqlmC9hTaTgWdZSXdBboFkal7csA==
-  dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
     salmon-adapter-sdk "^1.1.1"
 
-"@solana/wallet-adapter-sky@^0.1.18":
-  version "0.1.18"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-sky/-/wallet-adapter-sky-0.1.18.tgz#a5ed55a9a6f1ecd5a3e7c2b7d48568d1733a8f40"
-  integrity sha512-QtE407XUu2yJsgF1/Rt8elckAIVkOjar1Zt9UKdJFdxFB19WpJubGW+oHP7BNcYUUrLdpHBMWwhBO0zd/dMzVg==
+"@solana/wallet-adapter-sky@^0.1.19":
+  version "0.1.19"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-sky/-/wallet-adapter-sky-0.1.19.tgz#3b964f2d398cac4af0753e713f5051a9f8fd10d1"
+  integrity sha512-jJBAg5TQLyPUSFtjne3AGxUgGV8cxMicJCdDFG6HalNK6N9jAB9eWfPxwsGRKv2RijXVtzo3/ejzcKrGp3oAuQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-solflare@^0.6.31":
-  version "0.6.31"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-solflare/-/wallet-adapter-solflare-0.6.31.tgz#c39f56eefc18bfc1f01099c52286960491628862"
-  integrity sha512-upP0GGLKPz2fmdisy/mAJfexe0VrO6EVK6XF41xP83wBD/kM0LuRWMG7oOxzuD4Wc6bQOMVysW+PseZHphK6RQ==
+"@solana/wallet-adapter-solflare@^0.6.32":
+  version "0.6.32"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-solflare/-/wallet-adapter-solflare-0.6.32.tgz#6fd92deddb85c21a2be3bafca69f94d2c6becbe1"
+  integrity sha512-FIqNyooif3yjPnw2gPNBZnsG6X9JYSrwCf1Oa0NN4/VxQcPjzGqvc+Tq1+js/nBOHju5roToeMFTbwNTdEOuZw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
     "@solana/wallet-standard-chains" "^1.1.1"
     "@solflare-wallet/metamask-sdk" "^1.0.3"
     "@solflare-wallet/sdk" "^1.4.2"
     "@wallet-standard/wallet" "^1.1.0"
 
-"@solana/wallet-adapter-solong@^0.9.21":
-  version "0.9.21"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-solong/-/wallet-adapter-solong-0.9.21.tgz#ccf42c467d6bd82bae8e4b7547632284531b19a9"
-  integrity sha512-J+sseVVil0oe0FFWEXit/6nzmHISKSfA0/72hIk2hDKNNjj7q0xExhBIejN8tpGwUYWcHdGYaqDVNkxdWxeXZg==
+"@solana/wallet-adapter-solong@^0.9.22":
+  version "0.9.22"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-solong/-/wallet-adapter-solong-0.9.22.tgz#73cdea21a4ec0555f1f2663a3149b1fc3f7a9d19"
+  integrity sha512-lGTwQmHQrSTQp3OkYUbfzeFCDGi60ScOpgfC0IOZNSfWl7jwG5tnRXAJ4A1RG9Val9XcVe5b2biur2hyEMJlSQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-spot@^0.1.18":
-  version "0.1.18"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-spot/-/wallet-adapter-spot-0.1.18.tgz#629af8be7cbc3c1900af6a2f863877416ea89e54"
-  integrity sha512-c882REN9b4PKL8B80MS8+3Fdd7HRJj8OOQiYg6X5NN5qqtmW5MbIEkYVO+Fc2OYe+IhKjnr4oY7LytmPu0eAbQ==
+"@solana/wallet-adapter-spot@^0.1.19":
+  version "0.1.19"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-spot/-/wallet-adapter-spot-0.1.19.tgz#8d262414280aaebc1bc12b777110f205d4c41ada"
+  integrity sha512-p7UgT+4+2r82YIJ+NsniNrXKSaYNgrM43FHkjdVVmEw69ZGvSSXJ3x108bCE9pshy6ldl+sb7VhJGg+uQ/OF9g==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-tokenary@^0.1.15":
-  version "0.1.15"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-tokenary/-/wallet-adapter-tokenary-0.1.15.tgz#58b53bced01313dbdd0bacecd8a6b7f4d9402d59"
-  integrity sha512-iq8+Le/n2G35N+wNLUWq13hYSjsulxswb1vC7lNT3gpIhl4JLR7BI6jCdeCKfNSDamzLXv6FMt8S0q/DYR0A5A==
+"@solana/wallet-adapter-tokenary@^0.1.16":
+  version "0.1.16"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-tokenary/-/wallet-adapter-tokenary-0.1.16.tgz#6c22de518929f9eac56e145b46ecbffb798bb429"
+  integrity sha512-7FrDcRrXogCn13Ni2vwA1K/74RMLq+n37+j5fW0KtU2AEA6QVPqPgl/o0rRRgwdaG1q6EM3BXfgscYkmMTlxQQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-tokenpocket@^0.4.22":
-  version "0.4.22"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-tokenpocket/-/wallet-adapter-tokenpocket-0.4.22.tgz#6711f51ba7ed071fe5354a4a65e8fae196e1473d"
-  integrity sha512-u61lhRb9E37y/KbvhSMJWJWH4TdwR8yQf0JC+N9lFy8lvPXvaC7dpguXcgTlGOHTl7vhkv0/rn0X6XLBVFq85A==
+"@solana/wallet-adapter-tokenpocket@^0.4.23":
+  version "0.4.23"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-tokenpocket/-/wallet-adapter-tokenpocket-0.4.23.tgz#fd88ddc656bf18b8180b50751da7932d9cdb5ded"
+  integrity sha512-5/sgNj+WK0I+0+pMB8CmTPhRbImXJ8ZcqfO8+i2uHbmKwU+zddPFDT4Fin/Gm9AX/n//M+5bxhhN4FpnA9oM8w==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-torus@^0.11.31":
-  version "0.11.31"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-torus/-/wallet-adapter-torus-0.11.31.tgz#ba82476fb01943d5794c2e0eddfb4593c3b7dcff"
-  integrity sha512-HgAgdTz6rUWVIg7kGJNwxV0HtN/O3V347D4VGOJPp++WIEbApz5kqrWU2PaygFTK8lG4FrpwguTIVcPh0jU9KQ==
+"@solana/wallet-adapter-torus@^0.11.32":
+  version "0.11.32"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-torus/-/wallet-adapter-torus-0.11.32.tgz#77ba2817d6bc60e8d9f0b99c2d592ebf723ed159"
+  integrity sha512-LHvCNIL3tvD3q3EVJ1VrcvqIz7JbLBJcvpi5+PwG6DQzrRLHJ7oxOHFwc1SUX41WwifQHKI+lXWlTrVpIOgDOA==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
     "@toruslabs/solana-embed" "^2.1.0"
     assert "^2.1.0"
     crypto-browserify "^3.12.1"
     process "^0.11.10"
     stream-browserify "^3.0.0"
 
-"@solana/wallet-adapter-trezor@^0.1.5":
-  version "0.1.5"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-trezor/-/wallet-adapter-trezor-0.1.5.tgz#51422952c39161e54f0957f25f2869b432f464d8"
-  integrity sha512-DV4IJX06zth1uQ+6dUh5di8pC+uhRDd87cZo//bYiE3vQ6+CRJEJgkeFS5hoiEdj/119BtOegtSBqtLc77rWcg==
+"@solana/wallet-adapter-trezor@^0.1.6":
+  version "0.1.6"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-trezor/-/wallet-adapter-trezor-0.1.6.tgz#d1124348097bb2f9eeaf71ccdcbfbb05a492fdcd"
+  integrity sha512-jItXhzaNq/UxSSPKVxgrUamx4mr2voMDjcEBHVUqOQhcujmzoPpBSahWKgpsDIegeX6zDCmuTAULnTpLs6YuzA==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
-    "@trezor/connect-web" "^9.5.4"
+    "@solana/wallet-adapter-base" "^0.9.27"
+    "@trezor/connect-web" "^9.5.5"
     buffer "^6.0.3"
 
-"@solana/wallet-adapter-trust@^0.1.16":
-  version "0.1.16"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-trust/-/wallet-adapter-trust-0.1.16.tgz#6989fca014649cad68da3446de10b887da4a99fc"
-  integrity sha512-pTdq6fycCSq94jsCjCatjyHMwIpUTOjwL/77/BiorLWT+1dTnxty/coCWMVqBi7IBE2rBDo5Zeaz67I3dMaOjg==
+"@solana/wallet-adapter-trust@^0.1.17":
+  version "0.1.17"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-trust/-/wallet-adapter-trust-0.1.17.tgz#cb223c8bee9f5f8ee40a21fe1d5c0f9d3325a240"
+  integrity sha512-raVtYoemFxrmsq8xtxhp3mD1Hke7CJuPqZsYr20zODjM1H2N+ty6zQa7z9ApJtosYNHAGek5S1/+n4/gnrC4nQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
-"@solana/wallet-adapter-unsafe-burner@^0.1.10":
-  version "0.1.10"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-unsafe-burner/-/wallet-adapter-unsafe-burner-0.1.10.tgz#5785680fd93f6624085544c61d9e4668444db157"
-  integrity sha512-I5ZTBManDZN1rrffTv6PaKEIOqqzuVlR09svKhnRbmGlOlp/532N/I/vEPnjVlhNKbjLqgkY2Cof6w7RNhjRLQ==
+"@solana/wallet-adapter-unsafe-burner@^0.1.11":
+  version "0.1.11"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-unsafe-burner/-/wallet-adapter-unsafe-burner-0.1.11.tgz#729971badb8121f7fc7a14af9e9fd6a0917db785"
+  integrity sha512-VyRQ2xRbVcpRSPTv+qyxOYFtWHxrVlLiH2nIuqIRCZcmGkFmxr+egwMjCCIURS6KCX7Ye3AbHK8IWJX6p9yuFQ==
   dependencies:
-    "@noble/curves" "^1.1.0"
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@noble/curves" "^1.9.1"
+    "@solana/wallet-adapter-base" "^0.9.27"
     "@solana/wallet-standard-features" "^1.3.0"
     "@solana/wallet-standard-util" "^1.1.2"
 
-"@solana/wallet-adapter-walletconnect@^0.1.20":
-  version "0.1.20"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-walletconnect/-/wallet-adapter-walletconnect-0.1.20.tgz#bb9db56f7749220f4464428efd01bd617a5ee338"
-  integrity sha512-qix8jOWkTCGpZIDb8iDqriUWcDWjgy3Nw7K1XUpO4lTGU9qv7DxNBsvSZ6HzZEvfa1fKbvyeICIZa+HO7MFERA==
+"@solana/wallet-adapter-walletconnect@^0.1.21":
+  version "0.1.21"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-walletconnect/-/wallet-adapter-walletconnect-0.1.21.tgz#947662ab4eef475d22e7d0f59de6e7006bb7c38a"
+  integrity sha512-OE2ZZ60RbeobRsCa2gTD7IgXqofSa5B+jBLUu0DO8TVeRWro40JKYJuUedthALjO5oLelWSpcds+i7PRL+RQcQ==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
     "@walletconnect/solana-adapter" "^0.0.8"
 
-"@solana/wallet-adapter-wallets@^0.19.36":
-  version "0.19.36"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-wallets/-/wallet-adapter-wallets-0.19.36.tgz#70e5b315735255f617b38ebe7a25ad16468d510a"
-  integrity sha512-c5MbrRvJF+N27GFfyba/AwWksXEa/N7FTwYBQrsVInRsnBsyuXLzEHd/OPSzmZFcsjafCfAY5wFi40ZNSBA0bA==
+"@solana/wallet-adapter-wallets@^0.19.37":
+  version "0.19.37"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-wallets/-/wallet-adapter-wallets-0.19.37.tgz#27b816f9dc716aedffa133f49b9eb19df42bb2ec"
+  integrity sha512-LUHK2Zh6gELt0+kt+viIMxqc/bree65xZgTPXXBzjhbJNKJaV4D4wanYG2LM9O35/avehZ5BTLMHltbkibE+GA==
   dependencies:
-    "@solana/wallet-adapter-alpha" "^0.1.13"
-    "@solana/wallet-adapter-avana" "^0.1.16"
-    "@solana/wallet-adapter-bitkeep" "^0.3.23"
-    "@solana/wallet-adapter-bitpie" "^0.5.21"
-    "@solana/wallet-adapter-clover" "^0.4.22"
-    "@solana/wallet-adapter-coin98" "^0.5.23"
-    "@solana/wallet-adapter-coinbase" "^0.1.22"
-    "@solana/wallet-adapter-coinhub" "^0.3.21"
-    "@solana/wallet-adapter-fractal" "^0.1.11"
-    "@solana/wallet-adapter-huobi" "^0.1.18"
-    "@solana/wallet-adapter-hyperpay" "^0.1.17"
-    "@solana/wallet-adapter-keystone" "^0.1.18"
-    "@solana/wallet-adapter-krystal" "^0.1.15"
-    "@solana/wallet-adapter-ledger" "^0.9.28"
-    "@solana/wallet-adapter-mathwallet" "^0.9.21"
-    "@solana/wallet-adapter-neko" "^0.2.15"
-    "@solana/wallet-adapter-nightly" "^0.1.19"
-    "@solana/wallet-adapter-nufi" "^0.1.20"
-    "@solana/wallet-adapter-onto" "^0.1.10"
-    "@solana/wallet-adapter-particle" "^0.1.15"
-    "@solana/wallet-adapter-phantom" "^0.9.27"
-    "@solana/wallet-adapter-safepal" "^0.5.21"
-    "@solana/wallet-adapter-saifu" "^0.1.18"
-    "@solana/wallet-adapter-salmon" "^0.1.17"
-    "@solana/wallet-adapter-sky" "^0.1.18"
-    "@solana/wallet-adapter-solflare" "^0.6.31"
-    "@solana/wallet-adapter-solong" "^0.9.21"
-    "@solana/wallet-adapter-spot" "^0.1.18"
-    "@solana/wallet-adapter-tokenary" "^0.1.15"
-    "@solana/wallet-adapter-tokenpocket" "^0.4.22"
-    "@solana/wallet-adapter-torus" "^0.11.31"
-    "@solana/wallet-adapter-trezor" "^0.1.5"
-    "@solana/wallet-adapter-trust" "^0.1.16"
-    "@solana/wallet-adapter-unsafe-burner" "^0.1.10"
-    "@solana/wallet-adapter-walletconnect" "^0.1.20"
-    "@solana/wallet-adapter-xdefi" "^0.1.10"
+    "@solana/wallet-adapter-alpha" "^0.1.14"
+    "@solana/wallet-adapter-avana" "^0.1.17"
+    "@solana/wallet-adapter-bitkeep" "^0.3.24"
+    "@solana/wallet-adapter-bitpie" "^0.5.22"
+    "@solana/wallet-adapter-clover" "^0.4.23"
+    "@solana/wallet-adapter-coin98" "^0.5.24"
+    "@solana/wallet-adapter-coinbase" "^0.1.23"
+    "@solana/wallet-adapter-coinhub" "^0.3.22"
+    "@solana/wallet-adapter-fractal" "^0.1.12"
+    "@solana/wallet-adapter-huobi" "^0.1.19"
+    "@solana/wallet-adapter-hyperpay" "^0.1.18"
+    "@solana/wallet-adapter-keystone" "^0.1.19"
+    "@solana/wallet-adapter-krystal" "^0.1.16"
+    "@solana/wallet-adapter-ledger" "^0.9.29"
+    "@solana/wallet-adapter-mathwallet" "^0.9.22"
+    "@solana/wallet-adapter-neko" "^0.2.16"
+    "@solana/wallet-adapter-nightly" "^0.1.20"
+    "@solana/wallet-adapter-nufi" "^0.1.21"
+    "@solana/wallet-adapter-onto" "^0.1.11"
+    "@solana/wallet-adapter-particle" "^0.1.16"
+    "@solana/wallet-adapter-phantom" "^0.9.28"
+    "@solana/wallet-adapter-safepal" "^0.5.22"
+    "@solana/wallet-adapter-saifu" "^0.1.19"
+    "@solana/wallet-adapter-salmon" "^0.1.18"
+    "@solana/wallet-adapter-sky" "^0.1.19"
+    "@solana/wallet-adapter-solflare" "^0.6.32"
+    "@solana/wallet-adapter-solong" "^0.9.22"
+    "@solana/wallet-adapter-spot" "^0.1.19"
+    "@solana/wallet-adapter-tokenary" "^0.1.16"
+    "@solana/wallet-adapter-tokenpocket" "^0.4.23"
+    "@solana/wallet-adapter-torus" "^0.11.32"
+    "@solana/wallet-adapter-trezor" "^0.1.6"
+    "@solana/wallet-adapter-trust" "^0.1.17"
+    "@solana/wallet-adapter-unsafe-burner" "^0.1.11"
+    "@solana/wallet-adapter-walletconnect" "^0.1.21"
+    "@solana/wallet-adapter-xdefi" "^0.1.11"
 
-"@solana/wallet-adapter-xdefi@^0.1.10":
-  version "0.1.10"
-  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-xdefi/-/wallet-adapter-xdefi-0.1.10.tgz#1ccf59d052c53f4cebbcc506e428130eb98c68b4"
-  integrity sha512-QpHY/fU7CKaXR9B1tHCuE1N+hgpAC76qM+3pTVtuiDe01vTjKR2A2eijCgyC6dOR94xaymF/MflfzdY3kAVxkQ==
+"@solana/wallet-adapter-xdefi@^0.1.11":
+  version "0.1.11"
+  resolved "https://registry.yarnpkg.com/@solana/wallet-adapter-xdefi/-/wallet-adapter-xdefi-0.1.11.tgz#a994511f81223e38e877e3783dc2b0bcd4772dfd"
+  integrity sha512-WzhzhNtA4ECX9ZMyAyZV8TciuwvbW8VoJWwF+hdts5xHfnitRJDR/17Br6CQH0CFKkqymVHCMWOBIWEjmp+3Rw==
   dependencies:
-    "@solana/wallet-adapter-base" "^0.9.26"
+    "@solana/wallet-adapter-base" "^0.9.27"
 
 "@solana/wallet-standard-chains@^1.1.0", "@solana/wallet-standard-chains@^1.1.1":
   version "1.1.1"
@@ -3514,7 +3524,7 @@
     "@trezor/env-utils" "1.4.0"
     "@trezor/utils" "9.4.0"
 
-"@trezor/connect-web@^9.5.4":
+"@trezor/connect-web@^9.5.5":
   version "9.6.0"
   resolved "https://registry.yarnpkg.com/@trezor/connect-web/-/connect-web-9.6.0.tgz#64b8f9f1a73449004b847f93e3b36fbfd2c98607"
   integrity sha512-9n1Pzuqgg0vKWJh5AGwYLdRaSHG4qWewrWEk1rGHeNcAslX9l/tU7rPgS7IAVvblaopgHl0gmrZhiE8CPlqA+Q==

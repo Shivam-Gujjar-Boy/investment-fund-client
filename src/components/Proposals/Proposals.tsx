@@ -685,7 +685,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-white">
-                Proposal #{selectedProposal.proposalIndex}
+                Proposal #{selectedProposal.vecIndex}
               </h2>
               <span
                 className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -777,18 +777,30 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4">
-              <button 
-                className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition"
-                onClick={() => handleVote(1, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
-              >
-                YES
-              </button>
-              <button 
-                className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition"
-                onClick={() => handleVote(0, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
-              >
-                NO
-              </button>
+              {selectedProposal.deadline > Date.now() && (
+                <button 
+                    className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition"
+                    onClick={() => handleVote(1, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
+                >
+                  YES
+                </button>
+              )}
+              {selectedProposal.deadline > Date.now() && (
+                <button 
+                  className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition"
+                  onClick={() => handleVote(0, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
+                >
+                  NO
+                </button>
+              )}
+              {selectedProposal.deadline < Date.now() && selectedProposal.votesYes > selectedProposal.votesNo && !selectedProposal.executed && (
+                <button
+                  className='bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-semibold transition'
+                  onClick={() => handleExecute(selectedProposal.proposalIndex, selectedProposal.vecIndex)}
+                >
+                  Execute
+                </button>
+              )}
               <button
                 className="bg-gray-600 hover:bg-gray-500 px-4 py-2 rounded-lg font-semibold transition"
                 onClick={() => setSelectedProposal(null)}
