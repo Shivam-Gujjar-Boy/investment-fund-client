@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {toast} from 'react-hot-toast';
 import { 
   PublicKey, 
@@ -25,8 +25,6 @@ export default function CreateFundForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [privacy, setPrivacy] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [expectedMembers, setExpectedMembers] = useState<number | ''>('');
   const [hasTouchedInput, setHasTouchedInput] = useState(false);
@@ -57,20 +55,6 @@ export default function CreateFundForm() {
     }, 500); // debounce delay
   }, [fundName]);
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    const handleScroll = () => {
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
-        setHasScrolledToEnd(true);
-      }
-    };
-
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
-
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await handleSubmit();
@@ -89,10 +73,6 @@ export default function CreateFundForm() {
 
       setPrivacy(!isPublic);
 
-      // const generatedCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      // setFundCode(generatedCode);
-      // const baseUrl = window.location.origin;
-      // setInviteLink(`${baseUrl}/dashboard/join?code=${generatedCode}`);
       setStep(2);
     } else {
       if (!wallet.publicKey || !wallet.signTransaction) {
@@ -319,7 +299,7 @@ export default function CreateFundForm() {
         ) : (
           <div className="space-y-6">
             <div
-              ref={scrollRef}
+              // ref={scrollRef}
               className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4 max-h-96 overflow-y-auto scroll-smooth"
             >
               <h2 className="text-indigo-300 text-lg font-semibold mb-4">Important Note Points (1 minute read)</h2>
@@ -331,6 +311,7 @@ export default function CreateFundForm() {
                 <li>Tokens are earned with deposits and burnt on withdrawals. All logic is transparent and on-chain.</li>
                 <li>View everything on the <a href="https://github.com/Shivam-Gujjar-Boy/investment-fund" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">official GitHub</a>.</li>
                 <li>Metadata and user PDAs are also updated accordingly during fund activity.</li>
+                <li>A <strong>Proposal Aggregator PDA Account</strong> is created which hold all the fund's proposals data.</li>
                 <li>Fund creation costs ~<strong>0.022 SOL</strong>.</li>
                 <li>
                   You must specify how many members you <strong>expect to join</strong> the fund in the future.
@@ -362,19 +343,17 @@ export default function CreateFundForm() {
                 )}
               </div>
 
-              {hasScrolledToEnd && (
-                <div className="mt-6">
-                  <label className="flex items-center space-x-2 text-sm text-indigo-200">
-                    <input
-                      type="checkbox"
-                      className="accent-indigo-500"
-                      checked={isChecked}
-                      onChange={(e) => setIsChecked(e.target.checked)}
-                    />
-                    <span>I acknowledge and accept all the information provided above.</span>
-                  </label>
-                </div>
-              )}
+              <div className="mt-6">
+                <label className="flex items-center space-x-2 text-sm text-indigo-200">
+                  <input
+                    type="checkbox"
+                    className="accent-indigo-500"
+                    checked={isChecked}
+                    onChange={(e) => setIsChecked(e.target.checked)}
+                  />
+                  <span>I acknowledge and accept all the information provided above.</span>
+                </label>
+              </div>
             </div>
 
             <div className="flex justify-between gap-4 pt-2">
