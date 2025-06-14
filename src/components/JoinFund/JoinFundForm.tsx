@@ -1,37 +1,35 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+// import { useLocation } from 'react-router-dom';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
 import toast from 'react-hot-toast';
 import { Fund, programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { Buffer } from 'buffer';
-// import { isSigner } from '@metaplex-foundation/js';
+import { useNotification } from '../../context/NotificationContext';
 
 export default function JoinFundForm() {
   const [fundName, setFundName] = useState('');
   const [fundStatus, setFundStatus] = useState<{ exists: boolean; isPrivate: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
-  const location = useLocation();
+  // const location = useLocation();
   const wallet = useWallet();
   const { connection } = useConnection();
   const { connected } = wallet;
+  const { triggerPulse } = useNotification();
 
-  // Extract fund name from URL query params
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const codeParam = params.get('code');
-    if (codeParam) {
-      setFundName(codeParam);
-    }
-  }, [location]);
+  // useEffect(() => {
+  //   const params = new URLSearchParams(location.search);
+  //   const codeParam = params.get('code');
+  //   if (codeParam) {
+  //     setFundName(codeParam);
+  //   }
+  // }, [location]);
 
-  // Reset fundStatus when fundName changes
   useEffect(() => {
     setFundStatus(null);
   }, [fundName]);
 
-  // Check fund status
   async function checkFundStatus() {
     if (!fundName.trim()) {
       toast.error('Please enter a fund name');
@@ -48,7 +46,7 @@ export default function JoinFundForm() {
         setFundStatus({ exists: false, isPrivate: false });
         toast.error(`No fund with name "${fundName}" exists`);
       } else {
-        const fund: Fund | null = extractFundData(fundAccountInfo);
+        const fund = extractFundData(fundAccountInfo);
         if (!fund) {
           throw new Error('Failed to extract fund data');
         }
@@ -62,7 +60,6 @@ export default function JoinFundForm() {
     }
   }
 
-  // Join public fund
   async function joinPublicFund() {
     const user = wallet.publicKey;
     if (!user) throw new Error('Wallet not connected');
@@ -76,31 +73,22 @@ export default function JoinFundForm() {
       [Buffer.from("user"), user.toBuffer()],
       programId,
     );
-    const [rentAccountPda] = PublicKey.findProgramAddressSync(
+
+    const [rentReservePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("rent")],
       programId,
-    );
+    )
 
     const accounts = [
       { pubkey: fundAccountPda, isSigner: false, isWritable: true },
       { pubkey: user, isSigner: true, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       { pubkey: userAccountPda, isSigner: false, isWritable: true },
-      { pubkey: rentAccountPda,isSigner: false, isWritable: true},
+      { pubkey: rentReservePda, isSigner: false, isWritable: true},
     ];
 
-    const [joinProposalAggregatorAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
-      programId,
-    )
-
-    const joinProposalInfo = await connection.getAccountInfo(joinProposalAggregatorAccount);
-    if (!joinProposalInfo) {return;}
-    const joinProposalBuffer = Buffer.from(joinProposalInfo.data); 
-    const vecIndex = joinProposalBuffer.readUint32LE(33);
-
     const nameBytes = new TextEncoder().encode(fundName);
-    const instructionData = Buffer.from([3,vecIndex, ...nameBytes]);
+    const instructionData = Buffer.from([3, 0, ...nameBytes]);
 
     const instruction = new TransactionInstruction({
       keys: accounts,
@@ -111,7 +99,7 @@ export default function JoinFundForm() {
     const transaction = new Transaction().add(instruction);
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = user;
+    transaction.feePayer = wallet.publicKey!;
 
     const signedTransaction = await wallet.signTransaction(transaction);
     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
@@ -124,10 +112,8 @@ export default function JoinFundForm() {
     toast.success('Successfully joined the Fund!');
   }
 
-  // Create join proposal for private fund (placeholder)
   async function createJoinProposal() {
     const user = wallet.publicKey;
-
     if (!user) throw new Error('Wallet not connected');
     if (!wallet.signTransaction) throw new Error('Wallet does not support transaction signing');
 
@@ -135,31 +121,20 @@ export default function JoinFundForm() {
       [Buffer.from("fund"), Buffer.from(fundName)],
       programId,
     );
-    const [joinProposalAggregatorAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
+    const [proposalAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("proposal"), fundAccountPda.toBuffer(), user.toBuffer()],
       programId,
-    )
-
-    const joinProposalInfo = await connection.getAccountInfo(joinProposalAggregatorAccount);
-    if (!joinProposalInfo) {return;}
-    const joinProposalBuffer = Buffer.from(joinProposalInfo.data); 
-    const vecIndex = joinProposalBuffer.readUint32LE(33);
-
-    const [joinVoteAccount] = PublicKey.findProgramAddressSync(
-      [Buffer.from("join-vote"), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
-      programId,
-    )
+    );
 
     const accounts = [
-      { pubkey: user, isSigner: true, isWritable: true },
-      { pubkey: joinProposalAggregatorAccount, isSigner: false, isWritable: true },
       { pubkey: fundAccountPda, isSigner: false, isWritable: true },
-      { pubkey: joinVoteAccount, isSigner: false, isWritable: true},
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: proposalAccountPda, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
     const nameBytes = new TextEncoder().encode(fundName);
-    const instructionData = Buffer.from([10,...nameBytes]); // Adjust based on your program
+    const instructionData = Buffer.from([4, ...nameBytes]);
 
     const instruction = new TransactionInstruction({
       keys: accounts,
@@ -170,7 +145,7 @@ export default function JoinFundForm() {
     const transaction = new Transaction().add(instruction);
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = user;
+    transaction.feePayer = wallet.publicKey!;
 
     const signedTransaction = await wallet.signTransaction(transaction);
     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
@@ -180,10 +155,26 @@ export default function JoinFundForm() {
       lastValidBlockHeight,
     });
 
-    toast.success('Proposal created successfully!');
+    return signature;
   }
 
-  // Handle join fund action
+  async function verifyProposalCreation(signature: string) {
+    try {
+      const result = await connection.getTransaction(signature, {
+        commitment: 'confirmed',
+      });
+      if (result && result.meta && result.meta.err === null) {
+        triggerPulse(new PublicKey(result.transaction.message.accountKeys[0]).toBase58());
+        toast.success('Proposal created successfully!');
+      } else {
+        throw new Error('Proposal creation failed');
+      }
+    } catch (err) {
+      console.error('Error verifying proposal creation:', err);
+      toast.error('Failed to verify proposal creation');
+    }
+  }
+
   async function handleJoinFund() {
     if (!fundStatus || !fundStatus.exists) {
       return;
@@ -197,7 +188,8 @@ export default function JoinFundForm() {
       if (!fundStatus.isPrivate) {
         await joinPublicFund();
       } else {
-        await createJoinProposal();
+        const signature = await createJoinProposal();
+        await verifyProposalCreation(signature);
       }
     } catch (err) {
       console.error('Error joining fund:', err);

@@ -3,6 +3,7 @@ import { PublicKey } from '@solana/web3.js';
 import io from 'socket.io-client';
 import axios from 'axios';
 import { Clock4 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const socket = io(`https://peerfunds.onrender.com`, {
   transports: ['websocket']
@@ -47,6 +48,7 @@ export default function FundActivity({fundAddress}: ActicityProps) {
 
       if (!fundRef.current || activity.fund !== fundRef.current) return;
       setLogs(prev => [activity, ...prev]);
+      toast.success(activity.logMessage);
     };
 
     socket.on('fund_activity', handleLog);

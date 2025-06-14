@@ -4,7 +4,7 @@ import { Fund, Token, programId } from '../../types';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Metaplex } from '@metaplex-foundation/js';
 import { fetchUserTokens } from '../../functions/fetchuserTokens';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_PROGRAM_ID, getAccount } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_PROGRAM_ID, getAccount, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
@@ -46,9 +46,17 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
 
         for (const member of members) {
           try {
-            const ata = await getAssociatedTokenAddress(governanceMint, member);
-            const accountInfo = await getAccount(connection, ata);
+            // const ata = await getAssociatedTokenAddress(governanceMint, member);
+            const ata = await getAssociatedTokenAddress(
+              governanceMint,
+              member,
+              false,
+              TOKEN_2022_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+            const accountInfo = await getAccount(connection, ata, 'confirmed', TOKEN_2022_PROGRAM_ID);
             const balance = Number(accountInfo.amount);
+            console.log(accountInfo);
             infos.push({ pubkey: member, balance });
           } catch (err) {
             console.warn(`Could not fetch account for ${member.toBase58()}:`, err);
@@ -124,7 +132,7 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
         fund?.governanceMint,
         user,
         false,
-        TOKEN_PROGRAM_ID,
+        TOKEN_2022_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
@@ -162,7 +170,23 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
         { pubkey: governanceATA, isSigner: false, isWritable: true },
         { pubkey: fund?.governanceMint, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false },
+
       ];
+      console.log("user wallet", user.toBase58());
+      console.log("member ata", keyp.publicKey.toBase58(), " ", selectedToken.pubkey.toBase58());
+      console.log("vault", fund.vault.toBase58());
+      console.log("vault ata", vaultATA.toBase58());
+      console.log("mint account", mint.toBase58());
+      console.log("token program", TOKEN_PROGRAM_ID.toBase58());
+      console.log("ata program", ASSOCIATED_TOKEN_PROGRAM_ID.toBase58());
+      console.log("fund account", fund.fund_address.toBase58());
+      console.log("user pda", userAccountPda.toBase58());
+      console.log("system program", SYSTEM_PROGRAM_ID.toBase58());
+      console.log("rentsysvar", SYSVAR_RENT_PUBKEY.toBase58());
+      console.log("governance token account", governanceATA.toBase58());
+      console.log("governance mint", fund?.governanceMint.toBase58());
+      console.log("token program 2022", TOKEN_2022_PROGRAM_ID.toBase58());
 
       const ui_amount = BigInt(amount);
       const instructionTag = Buffer.from([7]);

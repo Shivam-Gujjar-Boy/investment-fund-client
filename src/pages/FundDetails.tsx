@@ -6,7 +6,6 @@ import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { Proposal, Fund, programId } from '../types';
 import Proposals from '../components/Proposals/Proposals';
-import FundActivity from '../components/FundActivity/FundActivity';
 import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
 import { Metaplex } from '@metaplex-foundation/js';
@@ -41,7 +40,7 @@ export default function FundDetails() {
         return;
       }
       const buffer = Buffer.from(accountInfo?.data);
-      const name_dummy = buffer.slice(0, 32).toString();
+      const name_dummy = buffer.slice(0, 27).toString();
       let name = '';
       for (const c of name_dummy) {
         if (c === '\x00') break;
@@ -52,6 +51,8 @@ export default function FundDetails() {
       for (let i = 0; i < numOfMembers; i++) {
         members.push(new PublicKey(buffer.slice(118 + 32 * i, 150 + 32 * i)));
       }
+      const expectedMembers = buffer.readUint32LE(27);
+      const creatorExists = buffer.readUInt8(31) ? true : false;
       const creator = new PublicKey(buffer.slice(118, 150));
       const totalDeposit = buffer.readBigInt64LE(32);
       const governanceMint = new PublicKey(buffer.slice(40, 72));
@@ -62,6 +63,8 @@ export default function FundDetails() {
       setFund({
         fund_address: fundAccountPda,
         name,
+        expectedMembers,
+        creatorExists,
         creator,
         numOfMembers,
         members,

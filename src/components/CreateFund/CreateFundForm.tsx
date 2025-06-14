@@ -10,7 +10,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { Fund, programId, TOKEN_METADATA_PROGRAM_ID } from '../../types';
+import { Fund, programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { printFundDetails } from '../../functions/printFundDetails';
 import { Buffer } from 'buffer';
@@ -18,6 +18,8 @@ import { Buffer } from 'buffer';
 let debounceTimer: NodeJS.Timeout;
 
 export default function CreateFundForm() {
+  const [symbolTaken, setSymbolTaken] = useState(false);
+  const [fundSymbol, setFundSymbol] = useState('');
   const [fundName, setFundName] = useState('');
   const [step, setStep] = useState(1);
   const [nameTaken, setNameTaken] = useState(false);
@@ -54,11 +56,34 @@ export default function CreateFundForm() {
       }
     }, 500); // debounce delay
   }, [fundName]);
+  
+  useEffect(() => {
+    if (!fundSymbol.trim()) {
+      setSymbolTaken(false);
+      return;
+    }
+
+    setChecking(true);
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      try {
+        const res = await axios(`https://peerfunds.onrender.com/api/govSymbol/${fundSymbol}`);
+        console.log(res.data.exists);
+        setSymbolTaken(res.data.exists);
+      } catch (err) {
+        console.error('Error checking fund name:', err);
+        setSymbolTaken(false);
+      } finally {
+        setChecking(false);
+      }
+    }, 500); // debounce delay
+  }, [fundSymbol]);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await handleSubmit();
   };
+
 
   const handleSubmit = async () => {
 
@@ -68,6 +93,10 @@ export default function CreateFundForm() {
       }
 
       if (nameTaken) {
+        return;
+      }
+
+      if (symbolTaken) {
         return;
       }
 
@@ -104,14 +133,14 @@ export default function CreateFundForm() {
           programId,
         );
 
-        const [metadataPda] = PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("metadata"),
-            TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-            governanceMint.toBuffer()
-          ],
-          TOKEN_METADATA_PROGRAM_ID
-        );
+        // const [metadataPda] = PublicKey.findProgramAddressSync(
+        //   [
+        //     Buffer.from("metadata"),
+        //     TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        //     governanceMint.toBuffer()
+        //   ],
+        //   TOKEN_METADATA_PROGRAM_ID
+        // );
 
         const [rentPda] = PublicKey.findProgramAddressSync(
           [Buffer.from("rent")],
@@ -138,11 +167,18 @@ export default function CreateFundForm() {
         const instructionTag = 0;
         const nameBytes = Buffer.from(fundName, 'utf8');
         const nameLength = nameBytes.length;
-        const buffer = Buffer.alloc(1 + 1 + 4 + nameLength);
+        const buffer = Buffer.alloc(1 + 1 + 5 + 4 + nameLength);
         let offset = 0;
 
         buffer.writeUInt8(instructionTag, offset);
         offset += 1;
+        let symbol = fundSymbol;
+        if (fundSymbol.length != 5) {
+          const x = fundSymbol.length;
+          for (let i = x; i < 5; i++) {
+            symbol += '0';
+          }
+        }
         if (privacy) {
           buffer.writeUint8(1, offset);
         } else {
@@ -151,8 +187,10 @@ export default function CreateFundForm() {
         offset += 1;
         buffer.writeUInt32LE(expectedMembers, offset);
         offset += 4;
+        const symbolBytes = Buffer.from(symbol, 'utf8');
+        symbolBytes.copy(buffer, offset);
+        offset += 5;
         nameBytes.copy(buffer, offset);
-
         const instructionData = buffer;
         console.log(instructionData);
 
@@ -165,9 +203,9 @@ export default function CreateFundForm() {
             {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: fundAccountPda, isSigner: false, isWritable: true},
             {pubkey: creator, isSigner: true, isWritable: true},
-            {pubkey: metadataPda, isSigner: false, isWritable: true},
+            // {pubkey: metadataPda, isSigner: false, isWritable: true},
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-            {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
+            // {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
             {pubkey: proposalAggregatorAccount, isSigner: false, isWritable: true},
             {pubkey: joinProposalAggregatorAccount, isSigner: false, isWritable: true}
@@ -219,6 +257,13 @@ export default function CreateFundForm() {
         if (res.status === 201) {
           console.log('Fund name added in database');
         }
+        
+        const govRes = await axios.post('https://peerfunds.onrender.com/api/govSymbol/add', {
+          govSymbol: symbol
+        });
+        if (govRes.status === 201) {
+          console.log('Gov symbol added in database');
+        }
 
         // Reset form
         setFundName('');
@@ -235,7 +280,7 @@ export default function CreateFundForm() {
 
   const isFormValid = isChecked && Number(expectedMembers) > 0;
 
-  return (
+return (
     <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl rounded-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] transition-all overflow-hidden">
       <div className="p-8">
         <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
@@ -264,6 +309,33 @@ export default function CreateFundForm() {
               />
               {nameTaken && (
                 <p className="text-sm text-red-400 mt-2">⚠️ Fund name already taken</p>
+              )}
+            </div>
+
+            {/* Symbol Input */}
+            <div>
+              <label htmlFor="fundSymbol" className="block text-sm font-semibold text-indigo-200 mb-2">
+                Fund Symbol (5 capital letters)
+              </label>
+              <input
+                type="text"
+                id="fundSymbol"
+                value={fundSymbol}
+                onChange={(e) => setFundSymbol(e.target.value.toUpperCase())}
+                maxLength={5}
+                pattern="[A-Z]{0,5}"
+                className={`w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border ${
+                  fundSymbol && !/^[A-Z]{0,5}$/.test(fundSymbol)
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-indigo-700 focus:border-indigo-500 focus:ring-indigo-600'
+                } focus:ring-2 focus:ring-opacity-50 outline-none transition-all`}
+                placeholder="e.g. QEDGE"
+              />
+              {fundSymbol && !/^[A-Z]{0,5}$/.test(fundSymbol) && (
+                <p className="text-sm text-red-400 mt-2">⚠️ Symbol must be capital letters only (max 5)</p>
+              )}
+              {symbolTaken && (
+                <p className="text-sm text-red-400 mt-2">⚠️ Gov symbol already taken</p>
               )}
             </div>
 
@@ -305,9 +377,9 @@ export default function CreateFundForm() {
             {/* Continue Button */}
             <button
               type="submit"
-              disabled={!fundName.trim() || nameTaken || checking}
+              disabled={!fundName.trim() || nameTaken || checking || fundSymbol.length !== 5}
               className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
-                !fundName.trim() || nameTaken || checking
+                !fundName.trim() || nameTaken || checking || fundSymbol.length !== 5
                   ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 shadow-md'
               }`}
@@ -318,7 +390,6 @@ export default function CreateFundForm() {
         ) : (
           <div className="space-y-6">
             <div
-              // ref={scrollRef}
               className="bg-[#2b2e49] border border-indigo-700 rounded-xl p-4 max-h-96 overflow-y-auto scroll-smooth"
             >
               <h2 className="text-indigo-300 text-lg font-semibold mb-4">Important Note Points (1 minute read)</h2>
