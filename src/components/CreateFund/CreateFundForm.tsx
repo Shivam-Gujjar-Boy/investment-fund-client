@@ -7,7 +7,7 @@ import {
   Transaction,
 } from '@solana/web3.js';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
 import { Fund, programId, TOKEN_METADATA_PROGRAM_ID } from '../../types';
@@ -128,16 +128,33 @@ export default function CreateFundForm() {
           programId
         );
 
-        // Instruction data
-        const nameBytes = new TextEncoder().encode(fundName);
-        console.log("Fund name in bytes : ", nameBytes);
+        const [joinProposalAggregatorAccount] = PublicKey.findProgramAddressSync(
+          [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
+          programId,
+        );
+        if (expectedMembers === "") { return;}
 
-        let instructionData;
+        // Instruction data
+        const instructionTag = 0;
+        const nameBytes = Buffer.from(fundName, 'utf8');
+        const nameLength = nameBytes.length;
+        const buffer = Buffer.alloc(1 + 1 + 4 + nameLength);
+        let offset = 0;
+
+        buffer.writeUInt8(instructionTag, offset);
+        offset += 1;
         if (privacy) {
-          instructionData = Buffer.from([0, 1, ...nameBytes]);
+          buffer.writeUint8(1, offset);
         } else {
-          instructionData = Buffer.from([0, 0, ...nameBytes]);
+          buffer.writeUInt8(0, offset);
         }
+        offset += 1;
+        buffer.writeUInt32LE(expectedMembers, offset);
+        offset += 4;
+        nameBytes.copy(buffer, offset);
+
+        const instructionData = buffer;
+        console.log(instructionData);
 
         // Create instruction
         const instruction = new TransactionInstruction({
@@ -145,14 +162,15 @@ export default function CreateFundForm() {
             {pubkey: governanceMint, isSigner: false, isWritable: true},
             {pubkey: vaultPda, isSigner: false, isWritable: true},
             {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-            {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+            {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: fundAccountPda, isSigner: false, isWritable: true},
             {pubkey: creator, isSigner: true, isWritable: true},
             {pubkey: metadataPda, isSigner: false, isWritable: true},
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
             {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
-            {pubkey: proposalAggregatorAccount, isSigner: false, isWritable: true}
+            {pubkey: proposalAggregatorAccount, isSigner: false, isWritable: true},
+            {pubkey: joinProposalAggregatorAccount, isSigner: false, isWritable: true}
           ],
           programId,
           data: instructionData
@@ -205,6 +223,7 @@ export default function CreateFundForm() {
         // Reset form
         setFundName('');
         setStep(1);
+    
       } catch (error) {
         console.error('Error creating fund:', error);
         toast.error('Error creating fund');
@@ -235,7 +254,7 @@ export default function CreateFundForm() {
                 id="fundName"
                 value={fundName}
                 onChange={(e) => setFundName(e.target.value)}
-                maxLength={32}
+                maxLength={27}
                 className={`w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border ${
                   nameTaken
                     ? 'border-red-500 focus:ring-red-500'

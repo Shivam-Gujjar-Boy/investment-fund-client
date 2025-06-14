@@ -516,7 +516,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
   return (
     <>
-      <div className="relative flex flex-col h-full max-h-[calc(100vh-6rem)] bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+      <div className="relative flex flex-col h-[41rem] bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
 
         {/* Top Scrollable Content */}
         <div className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">

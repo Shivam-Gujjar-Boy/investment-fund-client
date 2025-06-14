@@ -2,24 +2,26 @@ import { PublicKey } from "@solana/web3.js";
 
 export interface Fund {
   fund_address: PublicKey,
-  name: string;
+  name: string,
+  expectedMembers: number,
+  creatorExists: boolean,
   creator: PublicKey,
   numOfMembers: number,
-  members: PublicKey[];
-  totalDeposit: bigint;
-  governanceMint: PublicKey;
-  vault: PublicKey;
-  currentIndex: number;
-  created_at: bigint;
-  is_private: number;
+  members: PublicKey[],
+  totalDeposit: bigint,
+  governanceMint: PublicKey,
+  vault: PublicKey,
+  currentIndex: number,
+  created_at: bigint,
+  is_private: number,
 }
 
 export interface Token {
   pubkey: PublicKey,
-  mint: string;
-  symbol: string;
-  image: string;
-  balance: number;
+  mint: string,
+  symbol: string,
+  image: string,
+  balance: number,
 };
 
 export interface Proposal {
@@ -36,6 +38,15 @@ export interface Proposal {
   creationTime: bigint,
   deadline: bigint,
   executed: boolean
+}
+
+export interface JoinProposal {
+  fund: PublicKey,
+  joiner: PublicKey,
+  votes_yes: number,
+  votes_no: number,
+  creation_time: number,
+  executed: boolean,
 }
 
 export const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');

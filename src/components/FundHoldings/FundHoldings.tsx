@@ -159,17 +159,17 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
         <div className="absolute inset-0 bg-gradient-to-br from-teal-900/20 via-purple-800/10 to-indigo-900/20 opacity-30 blur-2xl pointer-events-none group-hover:opacity-50 transition duration-1000 ease-in-out" />
 
         {/* Title with neon hover */}
-        <h2 className="text-xl font-bold text-center mb-4 text-white tracking-wide relative z-10 group-hover:text-teal-400 transition duration-300">
+        <h2 className="text-xl font-bold text-center mb-4 text-white tracking-wide relative z-9 group-hover:text-teal-400 transition duration-300">
           Vault Holdings
         </h2>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64 relative z-10">
+          <div className="flex justify-center items-center h-64 relative z-9">
             <Loader2 className="animate-spin w-8 h-8 text-gray-400" />
           </div>
         ) : tokens && tokens.length > 0 ? (
           <div
-            className="relative z-10 transition-transform duration-500"
+            className="relative z-9 transition-transform duration-500"
             style={{
               transform: hoveredIndex !== null ? 'scale(1.015)' : 'scale(1)',
               transformOrigin: 'center',

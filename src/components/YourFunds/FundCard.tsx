@@ -210,7 +210,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
       {/* Title + Status */}
       <div className="flex justify-between items-center mb-5">
         <h3 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-indigo-300 transition">
-          {fund.name}
+          {fund.name} 
         </h3>
         {status === 'inactive' && (
           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-300/30 shadow-sm">

@@ -5,12 +5,14 @@ import { Buffer } from "buffer";
 export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBufferLike>> | null) {
     if (!fundAccountInfo) return null;
     const fund_buffer = Buffer.from(fundAccountInfo.data);
-    const name_dummy = fund_buffer.slice(0, 32).toString();
+    const name_dummy = fund_buffer.slice(0, 27).toString();
     let name = '';
     for (const c of name_dummy) {
         if (c === '\x00') break;
         name += c;
     }
+    const expectedMembers = fund_buffer.readUInt32LE(27);
+    const creatorExists = fund_buffer.readUInt8(31) ? true : false;
     const totalDeposit = fund_buffer.readBigInt64LE(32);
     const governanceMint = new PublicKey(fund_buffer.slice(40, 72));
     const vault = new PublicKey(fund_buffer.slice(72, 104));
@@ -25,8 +27,10 @@ export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBuffer
     const creator = new PublicKey(fund_buffer.slice(118, 150));
 
     const fund: Fund = {
-        fund_address: new PublicKey(''),
+        fund_address: new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG'),
         name,
+        expectedMembers,
+        creatorExists,
         creator,
         numOfMembers,
         members,
