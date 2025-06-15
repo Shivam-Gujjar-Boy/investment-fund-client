@@ -175,124 +175,107 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
     return new Date(Number(timestamp) * 1000).toLocaleString();
   };
 
-  return (
-    <>
-      {loading ? (
-        // className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"
-        <div>
-          {/* <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto">
-            {[...Array(4)].map((_, idx) => (
-              <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2 min-w-[20rem]">
-                <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
-                <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
-                <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
-                <div className="flex gap-2 mt-4">
-                  <div className="h-6 w-20 bg-gray-700 rounded"></div>
-                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
+return (
+  <>
+    {loading ? (
+      <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"></div>
+    ) : joinProposals?.some(p => !p.executed) ? (
+      <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6">
+          <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
+        </div>
+
+        {/* Proposal Cards */}
+        <div className="flex-1 px-6 pb-6 overflow-x-auto flex flex-row gap-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          {joinProposals
+            ?.filter(p => !p.executed)
+            .map((proposal, index) => (
+              <div
+                key={proposal.creationTime.toString()}
+                className="bg-[#111827] border border-gray-700 rounded-2xl p-5 min-w-[20rem] max-w-[20rem] flex flex-col justify-between hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl"
+              >
+                <div className="space-y-3 text-sm text-gray-400">
+                  <div className="flex justify-between items-center">
+                    <span>
+                      <span className="text-gray-300 font-medium">Joiner:</span>{' '}
+                      {proposal.joiner.toBase58().slice(0, 4)}...
+                      {proposal.joiner.toBase58().slice(-4)}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        proposal.executed ? 'bg-green-700' : 'bg-yellow-700'
+                      } text-white`}
+                    >
+                      {proposal.executed ? 'Executed' : 'Pending'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-300 font-medium">Created:</span>{' '}
+                    {formatTimeStamp(proposal.creationTime)}
+                  </div>
+                  <div>
+                    <span className="text-gray-300 font-medium">Yes Votes:</span>{' '}
+                    {proposal.votesYes.toString()}
+                  </div>
+                  <div>
+                    <span className="text-gray-300 font-medium">No Votes:</span>{' '}
+                    {proposal.votesNo.toString()}
+                  </div>
+                </div>
+
+                {/* Vote Progress & Buttons */}
+                <div className="mt-4">
+                  <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden mb-3">
+                    {proposal.votesYes + proposal.votesNo === 0n ? (
+                      <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
+                    ) : (
+                      <>
+                        <div
+                          className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                          style={{
+                            width: `${Number(
+                              (proposal.votesYes * 100n) /
+                                (proposal.votesYes + proposal.votesNo)
+                            )}%`,
+                          }}
+                        />
+                        <div
+                          className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                          style={{
+                            width: `${Number(
+                              (proposal.votesNo * 100n) /
+                                (proposal.votesYes + proposal.votesNo)
+                            )}%`,
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                  {!proposal.executed && (
+                    <div className="flex gap-2">
+                      <button
+                        className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                        onClick={() => handleVote(1, index)}
+                      >
+                        YES
+                      </button>
+                      <button
+                        className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                        onClick={() => handleVote(0, index)}
+                      >
+                        NO
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
-          </div> */}
         </div>
-      ) : (
-        joinProposals?.length && (
-                  <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
-          {/* Header */}
-          <div className="flex justify-between items-center p-6">
-            <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
-          </div>
+      </div>
+    ) : null}
+  </>
+);
 
-          {/* Proposal Cards */}
-          <div className="flex-1 px-6 pb-6 overflow-x-auto flex flex-row gap-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-            {joinProposals?.length === 0 || !joinProposals ? (
-              <div className="flex items-center justify-center text-center text-white w-full">
-                <div className="space-y-4">
-                  <div className="text-5xl">📭</div>
-                  <h3 className="text-xl font-semibold">No Join Proposals Yet</h3>
-                  <p className="text-gray-400 max-w-sm">Be the first to propose a join request.</p>
-                </div>
-              </div>
-            ) : (
-              joinProposals
-                .map((proposal, index) => (
-                  <div
-                    key={proposal.creationTime.toString()}
-                    className="bg-[#111827] border border-gray-700 rounded-2xl p-5 min-w-[20rem] max-w-[20rem] flex flex-col justify-between hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl"
-                  >
-                    <div className="space-y-3 text-sm text-gray-400">
-                      <div className="flex justify-between items-center">
-                        <span>
-                          <span className="text-gray-300 font-medium">Joiner:</span>{' '}
-                          {proposal.joiner.toBase58().slice(0, 4)}...{proposal.joiner.toBase58().slice(-4)}
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            proposal.executed ? 'bg-green-700' : 'bg-yellow-700'
-                          } text-white`}
-                        >
-                          {proposal.executed ? 'Executed' : 'Pending'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-300 font-medium">Created:</span>{' '}
-                        {formatTimeStamp(proposal.creationTime)}
-                      </div>
-                      <div>
-                        <span className="text-gray-300 font-medium">Yes Votes:</span>{' '}
-                        {proposal.votesYes.toString()}
-                      </div>
-                      <div>
-                        <span className="text-gray-300 font-medium">No Votes:</span>{' '}
-                        {proposal.votesNo.toString()}
-                      </div>
-                    </div>
 
-                    {/* Vote Progress & Buttons */}
-                    <div className="mt-4">
-                      <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden mb-3">
-                        {proposal.votesYes + proposal.votesNo === 0n ? (
-                          <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
-                        ) : (
-                          <>
-                            <div
-                              className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
-                              style={{
-                                width: `${Number((proposal.votesYes * 100n) / (proposal.votesYes + proposal.votesNo))}%`,
-                              }}
-                            />
-                            <div
-                              className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
-                              style={{
-                                width: `${Number((proposal.votesNo * 100n) / (proposal.votesYes + proposal.votesNo))}%`,
-                              }}
-                            />
-                          </>
-                        )}
-                      </div>
-                      {!proposal.executed && (
-                        <div className="flex gap-2">
-                          <button
-                            className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                            onClick={() => handleVote(1, index)}
-                          >
-                            YES
-                          </button>
-                          <button
-                            className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                            onClick={() => handleVote(0, index)}
-                          >
-                            NO
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
-        </div>
-        )
-      )}
-    </>
-  );
 }
