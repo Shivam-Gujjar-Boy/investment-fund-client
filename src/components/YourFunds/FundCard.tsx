@@ -9,6 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { UserFund, programId } from '../../types';
 import { Buffer } from 'buffer';
+import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 
 interface FundCardProps {
   fund: UserFund;
@@ -104,6 +105,91 @@ export default function FundCard({ fund, status }: FundCardProps) {
       toast.error("Not removed from fund");
     }
   }
+
+  async function joinFund() {
+    const user = wallet.publicKey;
+    if (!user) throw new Error('Wallet not connected');
+    if (!wallet.signTransaction) throw new Error('Wallet does not support transaction signing');
+
+    const [fundAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("fund"), Buffer.from(fund.name)],
+      programId,
+    );
+    const [userAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("user"), user.toBuffer()],
+      programId,
+    );
+
+    const [rentReservePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("rent")],
+      programId,
+    )
+
+    const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
+      programId,
+    )
+
+    const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
+    if (!joinAggregatorPdaInfo) {
+      return;
+    }
+    const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
+    const numOfJoinProposals = joinBuffer.readUint32LE(33);
+    let i = 0;
+
+    for ( ; i < numOfJoinProposals; i++) {
+      const joiner = new PublicKey(joinBuffer.slice(37 + i*57 , 69 + i*57));
+      if (joiner.toBase58() === user.toBase58()) {
+        break;
+      }
+    }
+
+    const accounts = [
+      { pubkey: fundAccountPda, isSigner: false, isWritable: true },
+      { pubkey: user, isSigner: true, isWritable: true },
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: userAccountPda, isSigner: false, isWritable: true },
+      { pubkey: rentReservePda, isSigner: false, isWritable: true},
+      { pubkey: joinAggregatorPda, isSigner: false, isWritable: true},
+      { pubkey: fund.creator, isSigner: false, isWritable: true},
+    ];
+
+    const instructionTag = 3;
+    const nameBytes = Buffer.from(fund.name, 'utf8');
+    const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
+    let offset = 0;
+
+    buffer.writeUInt8(instructionTag, offset);
+    offset += 1;
+    buffer.writeUint8(i, offset);
+    offset += 1;
+    nameBytes.copy(buffer, offset);
+
+    const instructionData = buffer;
+
+    const instruction = new TransactionInstruction({
+      keys: accounts,
+      programId,
+      data: instructionData,
+    });
+
+    const transaction = new Transaction().add(instruction);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey!;
+
+    const signedTransaction = await wallet.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+    await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight,
+    });
+
+    toast.success('Successfully joined the Fund!');
+  }
+
  
   return (
     <div
@@ -183,7 +269,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
               </button>
             )}
             {status === 'pending' && fund.isEligible && (
-              <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
+              <button onClick={() => joinFund()} className="flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
                 Join
               </button>
             )}
