@@ -222,6 +222,7 @@ export default function CreateFundForm() {
         console.log("Fund account key : ", fundAccountPda.toBase58());
         console.log("User account key : ", userAccountPda.toBase58());
         console.log("Proposal Aggregator key : ", proposalAggregatorAccount.toBase58());
+        console.log("Join Proposal Aggregator : ", joinProposalAggregatorAccount.toBase58());
         
         // Get recent blockhash
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
@@ -281,7 +282,7 @@ export default function CreateFundForm() {
   const isFormValid = isChecked && Number(expectedMembers) > 0;
 
 return (
-    <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl rounded-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] transition-all overflow-hidden">
+    <div className="w-3xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl rounded-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] transition-all overflow-hidden">
       <div className="p-8">
         <h2 className="text-3xl font-bold text-white mb-6 tracking-tight">
           {step === 1 ? 'Create a New Investment Fund' : '🔍 Before You Create a Fund '}
@@ -402,7 +403,7 @@ return (
                 <li>View everything on the <a href="https://github.com/Shivam-Gujjar-Boy/investment-fund" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">official GitHub</a>.</li>
                 <li>Metadata and user PDAs are also updated accordingly during fund activity.</li>
                 <li>A <strong>Proposal Aggregator PDA Account</strong> is created which hold all the fund's proposals data.</li>
-                <li>Fund creation costs ~<strong>0.022 SOL</strong>.</li>
+                <li>Fund creation costs ~<strong>0.009 SOL</strong>.</li>
                 <li>
                   You must specify how many members you <strong>expect to join</strong> the fund in the future.
                   This number directly affects your refund eligibility.

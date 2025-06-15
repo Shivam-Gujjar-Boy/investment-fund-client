@@ -127,8 +127,8 @@ export default function FundsList() {
   }, [connected, wallet, connection]);
 
   const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n) ?? [];
-  const pendingFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];
-  const currentFunds = activeTab === 'active' ? activeFunds : pendingFunds;
+  const inactiveFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];
+  const currentFunds = activeTab === 'active' ? activeFunds : inactiveFunds;
 
   return (
     <div className="w-full animate-fade-in">
@@ -154,7 +154,7 @@ export default function FundsList() {
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500" />
         </div>
       ) : currentFunds.length > 0 ? (
-        <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-3">
           {currentFunds.map((fund) => (
             <FundCard key={fund.name} fund={fund} status={activeTab} />
           ))}

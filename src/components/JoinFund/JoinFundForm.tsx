@@ -121,10 +121,7 @@ export default function JoinFundForm() {
       [Buffer.from("fund"), Buffer.from(fundName)],
       programId,
     );
-    // const [proposalAccountPda] = PublicKey.findProgramAddressSync(
-    //   [Buffer.from("proposal"), fundAccountPda.toBuffer(), user.toBuffer()],
-    //   programId,
-    // );
+
     const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
       programId,
@@ -136,6 +133,7 @@ export default function JoinFundForm() {
     }
     const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
     const vecIndex = joinBuffer.readUInt32LE(33);
+    console.log('vec index:', vecIndex);
     const [voteAccountPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("join-vote"), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
       programId,
@@ -201,7 +199,7 @@ export default function JoinFundForm() {
   const buttonAction = fundStatus && fundStatus.exists ? handleJoinFund : checkFundStatus;
 
   return (
-    <div className="max-w-2xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] rounded-2xl overflow-hidden transition-all">
+    <div className="w-3xl mx-auto bg-[#1e2035]/80 backdrop-blur-2xl border border-indigo-900 shadow-[0_0_10px_#6d28d9aa] rounded-2xl overflow-hidden transition-all">
       {loading ? (
         <div className="flex-1 flex items-center justify-center py-20">
           <div className="flex flex-col items-center space-y-5">

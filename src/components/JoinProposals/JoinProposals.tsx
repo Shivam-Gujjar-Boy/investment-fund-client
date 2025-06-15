@@ -5,7 +5,6 @@ import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { SYSTEM_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 import toast from "react-hot-toast";
-import { Filter } from 'lucide-react';
 
 interface JoinProposalsProps {
   fund: Fund | null;
@@ -15,8 +14,6 @@ interface JoinProposalsProps {
 export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
   const [loading, setLoading] = useState(false);
   const [joinProposals, setJoinProposals] = useState<JoinProposal[] | null>(null);
-  const [sortOption, setSortOption] = useState<'CreationTime' | 'Deadline'>('CreationTime');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const wallet = useWallet();
   const { connection } = useConnection();
 
@@ -31,6 +28,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
         programId,
       );
+      console.log('join aggregator:', currentJoinAggregatorPda.toBase58());
 
       const currentAggregatorBuffer = await connection.getAccountInfo(currentJoinAggregatorPda);
       if (!currentAggregatorBuffer) {
@@ -135,6 +133,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       offset += 1;
       nameBytes.copy(buffer, offset);
       const instructionData = buffer;
+      console.log('Instruction Data:', instructionData);
 
       const instruction = new TransactionInstruction({ keys, data: instructionData, programId });
       const transaction = new Transaction().add(instruction);
@@ -143,6 +142,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       console.log('vote account: ', voteAccountPda.toBase58());
       console.log('governance ata: ', governanceATA.toBase58());
       console.log('proposal aggregator: ', joinAggregatorPda.toBase58());
+      console.log('vec index:', vecIndex);
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
@@ -166,8 +166,9 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
   return (
     <>
       {loading ? (
-        <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col">
-          <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto">
+        // className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"
+        <div>
+          {/* <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto">
             {[...Array(4)].map((_, idx) => (
               <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2 min-w-[20rem]">
                 <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
@@ -179,40 +180,14 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
       ) : (
-        <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+        joinProposals?.length && (
+                  <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
           {/* Header */}
           <div className="flex justify-between items-center p-6">
             <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
-            <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl transition-all shadow-md"
-              >
-                <Filter size={16} />
-                Sort
-              </button>
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#0f172a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
-                  <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-[#1e293b]">
-                    Sort by
-                  </div>
-                  <ul className="text-sm text-gray-200 divide-y divide-gray-700">
-                    {['CreationTime', 'Deadline'].map((opt) => (
-                      <li
-                        key={opt}
-                        onClick={() => { setSortOption(opt as 'CreationTime' | 'Deadline'); setDropdownOpen(false); }}
-                        className={`px-4 py-3 cursor-pointer hover:bg-gray-700 ${sortOption === opt ? 'bg-gray-700' : ''}`}
-                      >
-                        {opt === 'CreationTime' ? 'Creation Time' : 'Deadline'}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Proposal Cards */}
@@ -227,11 +202,6 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
               </div>
             ) : (
               joinProposals
-                .sort((a, b) =>
-                  sortOption === 'CreationTime'
-                    ? Number(b.creationTime - a.creationTime)
-                    : Number(b.creationTime - a.creationTime) // Placeholder: adjust if deadline exists
-                )
                 .map((proposal, index) => (
                   <div
                     key={proposal.creationTime.toString()}
@@ -309,6 +279,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
             )}
           </div>
         </div>
+        )
       )}
     </>
   );
