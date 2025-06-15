@@ -448,6 +448,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
           {pubkey: fundAccountPda, isSigner: false, isWritable: true},
           {pubkey: governanceMint, isSigner: false, isWritable: true},
           {pubkey: governanceATA, isSigner: false, isWritable: true},
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
         ],
         programId,
         data: instructionData,

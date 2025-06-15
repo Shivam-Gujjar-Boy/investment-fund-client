@@ -116,24 +116,41 @@ export default function JoinFundForm() {
     if (!user) throw new Error('Wallet not connected');
     if (!wallet.signTransaction) throw new Error('Wallet does not support transaction signing');
 
+
     const [fundAccountPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("fund"), Buffer.from(fundName)],
       programId,
     );
-    const [proposalAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("proposal"), fundAccountPda.toBuffer(), user.toBuffer()],
+    // const [proposalAccountPda] = PublicKey.findProgramAddressSync(
+    //   [Buffer.from("proposal"), fundAccountPda.toBuffer(), user.toBuffer()],
+    //   programId,
+    // );
+    const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
       programId,
-    );
+    )
+
+    const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
+    if (!joinAggregatorPdaInfo) {
+      return;
+    }
+    const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
+    const vecIndex = joinBuffer.readUInt32LE(33);
+    const [voteAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("join-vote"), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
+      programId,
+    )
 
     const accounts = [
-      { pubkey: fundAccountPda, isSigner: false, isWritable: true },
       { pubkey: user, isSigner: true, isWritable: true },
-      { pubkey: proposalAccountPda, isSigner: false, isWritable: true },
+      { pubkey: joinAggregatorPda, isSigner: false, isWritable: true },
+      { pubkey: fundAccountPda, isSigner: false, isWritable: true },
+      { pubkey: voteAccountPda, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
     ];
 
     const nameBytes = new TextEncoder().encode(fundName);
-    const instructionData = Buffer.from([4, ...nameBytes]);
+    const instructionData = Buffer.from([10, ...nameBytes]);
 
     const instruction = new TransactionInstruction({
       keys: accounts,
@@ -153,7 +170,7 @@ export default function JoinFundForm() {
       blockhash,
       lastValidBlockHeight,
     });
-
+    
     return signature;
   }
 

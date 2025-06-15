@@ -1,5 +1,315 @@
+import { Fund, JoinProposal, programId } from "../../types";
+import { useState, useCallback, useEffect } from 'react';
+import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { SYSTEM_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
+import toast from "react-hot-toast";
+import { Filter } from 'lucide-react';
 
+interface JoinProposalsProps {
+  fund: Fund | null;
+  fundId: string | undefined;
+}
 
-interface
+export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
+  const [loading, setLoading] = useState(false);
+  const [joinProposals, setJoinProposals] = useState<JoinProposal[] | null>(null);
+  const [sortOption, setSortOption] = useState<'CreationTime' | 'Deadline'>('CreationTime');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wallet = useWallet();
+  const { connection } = useConnection();
 
-export default function JoinProposals({})
+  const fetchJoinProposalsData = useCallback(async () => {
+    if (!wallet.publicKey) return;
+    if (!fundId) return;
+    const fundAccountPda = new PublicKey(fundId);
+
+    try {
+      if (!fund) return;
+      const [currentJoinAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
+        programId,
+      );
+
+      const currentAggregatorBuffer = await connection.getAccountInfo(currentJoinAggregatorPda);
+      if (!currentAggregatorBuffer) {
+        console.log("No Proposal aggregator found");
+        return;
+      }
+      const aggregatorBuffer = Buffer.from(currentAggregatorBuffer.data);
+      const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
+      if (fundAddress.toBase58() !== fundAccountPda.toBase58()) {
+        console.log("Wrong join proposal aggregator");
+        return;
+      }
+
+      const numOfJoinProposals = aggregatorBuffer.readUint32LE(33);
+      let nextByte = 37;
+      const joinProposals: JoinProposal[] = [];
+
+      for (let i = 0; i < numOfJoinProposals; i++) {
+        const joiner = new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32));
+        nextByte += 32;
+        const votesYes = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const votesNo = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
+        nextByte += 1;
+
+        joinProposals.push({ joiner, votesYes, votesNo, creationTime, executed });
+      }
+
+      setJoinProposals(joinProposals);
+      console.log(joinProposals);
+    } catch (err) {
+      console.log(err);
+      return;
+    }
+  }, [fundId, fund, wallet.publicKey, connection]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchJoinProposalsData();
+      setLoading(false);
+    };
+    load();
+  }, [fetchJoinProposalsData]);
+
+  const handleVote = async (vote: number, vecIndex: number) => {
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      console.log("Connect the wallet first");
+      return;
+    }
+    if (!fund) {
+      console.log("Fund don't exist");
+      return;
+    }
+
+    try {
+      const governanceATA = await getAssociatedTokenAddress(
+        fund.governanceMint,
+        wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fund.fund_address.toBuffer()],
+        programId,
+      );
+
+      const [voteAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("join-vote"), Buffer.from([vecIndex]), fund.fund_address.toBuffer()],
+        programId,
+      );
+
+      const keys = [
+        { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+        { pubkey: voteAccountPda, isSigner: false, isWritable: true },
+        { pubkey: joinAggregatorPda, isSigner: false, isWritable: true },
+        { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: fund.fund_address, isSigner: false, isWritable: true },
+        { pubkey: fund.governanceMint, isSigner: false, isWritable: true },
+        { pubkey: governanceATA, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+      ];
+
+      const instructionTag = 11;
+      const fundName = fund.name;
+      const nameBytes = Buffer.from(fundName, 'utf-8');
+      const nameLength = nameBytes.length;
+      const buffer = Buffer.alloc(1 + 1 + 1 + nameLength);
+      let offset = 0;
+
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(vote, offset);
+      offset += 1;
+      buffer.writeUInt8(vecIndex, offset);
+      offset += 1;
+      nameBytes.copy(buffer, offset);
+      const instructionData = buffer;
+
+      const instruction = new TransactionInstruction({ keys, data: instructionData, programId });
+      const transaction = new Transaction().add(instruction);
+
+      console.log('fund account: ', fund.fund_address.toBase58());
+      console.log('vote account: ', voteAccountPda.toBase58());
+      console.log('governance ata: ', governanceATA.toBase58());
+      console.log('proposal aggregator: ', joinAggregatorPda.toBase58());
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+
+      await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+      toast.success("Voted successfully");
+    } catch (err) {
+      console.log(err);
+      return;
+    }
+  };
+
+  const formatTimeStamp = (timestamp: bigint) => {
+    return new Date(Number(timestamp) * 1000).toLocaleString();
+  };
+
+  return (
+    <>
+      {loading ? (
+        <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col">
+          <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto">
+            {[...Array(4)].map((_, idx) => (
+              <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2 min-w-[20rem]">
+                <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+                <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+                <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+                <div className="flex gap-2 mt-4">
+                  <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                  <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+          {/* Header */}
+          <div className="flex justify-between items-center p-6">
+            <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
+            <div className="relative">
+              <button
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl transition-all shadow-md"
+              >
+                <Filter size={16} />
+                Sort
+              </button>
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-[#0f172a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+                  <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-[#1e293b]">
+                    Sort by
+                  </div>
+                  <ul className="text-sm text-gray-200 divide-y divide-gray-700">
+                    {['CreationTime', 'Deadline'].map((opt) => (
+                      <li
+                        key={opt}
+                        onClick={() => { setSortOption(opt as 'CreationTime' | 'Deadline'); setDropdownOpen(false); }}
+                        className={`px-4 py-3 cursor-pointer hover:bg-gray-700 ${sortOption === opt ? 'bg-gray-700' : ''}`}
+                      >
+                        {opt === 'CreationTime' ? 'Creation Time' : 'Deadline'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Proposal Cards */}
+          <div className="flex-1 px-6 pb-6 overflow-x-auto flex flex-row gap-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            {joinProposals?.length === 0 || !joinProposals ? (
+              <div className="flex items-center justify-center text-center text-white w-full">
+                <div className="space-y-4">
+                  <div className="text-5xl">📭</div>
+                  <h3 className="text-xl font-semibold">No Join Proposals Yet</h3>
+                  <p className="text-gray-400 max-w-sm">Be the first to propose a join request.</p>
+                </div>
+              </div>
+            ) : (
+              joinProposals
+                .sort((a, b) =>
+                  sortOption === 'CreationTime'
+                    ? Number(b.creationTime - a.creationTime)
+                    : Number(b.creationTime - a.creationTime) // Placeholder: adjust if deadline exists
+                )
+                .map((proposal, index) => (
+                  <div
+                    key={proposal.creationTime.toString()}
+                    className="bg-[#111827] border border-gray-700 rounded-2xl p-5 min-w-[20rem] max-w-[20rem] flex flex-col justify-between hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl"
+                  >
+                    <div className="space-y-3 text-sm text-gray-400">
+                      <div className="flex justify-between items-center">
+                        <span>
+                          <span className="text-gray-300 font-medium">Joiner:</span>{' '}
+                          {proposal.joiner.toBase58().slice(0, 4)}...{proposal.joiner.toBase58().slice(-4)}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            proposal.executed ? 'bg-green-700' : 'bg-yellow-700'
+                          } text-white`}
+                        >
+                          {proposal.executed ? 'Executed' : 'Pending'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-300 font-medium">Created:</span>{' '}
+                        {formatTimeStamp(proposal.creationTime)}
+                      </div>
+                      <div>
+                        <span className="text-gray-300 font-medium">Yes Votes:</span>{' '}
+                        {proposal.votesYes.toString()}
+                      </div>
+                      <div>
+                        <span className="text-gray-300 font-medium">No Votes:</span>{' '}
+                        {proposal.votesNo.toString()}
+                      </div>
+                    </div>
+
+                    {/* Vote Progress & Buttons */}
+                    <div className="mt-4">
+                      <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden mb-3">
+                        {proposal.votesYes + proposal.votesNo === 0n ? (
+                          <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
+                        ) : (
+                          <>
+                            <div
+                              className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                              style={{
+                                width: `${Number((proposal.votesYes * 100n) / (proposal.votesYes + proposal.votesNo))}%`,
+                              }}
+                            />
+                            <div
+                              className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
+                              style={{
+                                width: `${Number((proposal.votesNo * 100n) / (proposal.votesYes + proposal.votesNo))}%`,
+                              }}
+                            />
+                          </>
+                        )}
+                      </div>
+                      {!proposal.executed && (
+                        <div className="flex gap-2">
+                          <button
+                            className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                            onClick={() => handleVote(1, index)}
+                          >
+                            YES
+                          </button>
+                          <button
+                            className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                            onClick={() => handleVote(0, index)}
+                          >
+                            NO
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

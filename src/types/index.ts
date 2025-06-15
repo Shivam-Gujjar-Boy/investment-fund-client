@@ -41,11 +41,10 @@ export interface Proposal {
 }
 
 export interface JoinProposal {
-  fund: PublicKey,
   joiner: PublicKey,
-  votes_yes: number,
-  votes_no: number,
-  creation_time: number,
+  votesYes: bigint,
+  votesNo: bigint,
+  creationTime: bigint,
   executed: boolean,
 }
 

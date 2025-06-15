@@ -6,6 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
 import { Fund } from '../types';
 import Proposals from '../components/Proposals/Proposals';
+import JoinProposals from '../components/JoinProposals/JoinProposals';
 import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
 import { Metaplex } from '@metaplex-foundation/js';
@@ -205,12 +206,12 @@ export default function FundDetails() {
 
   return (
     <div className="p-2 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
-      <GlobalSocketListener currentFundPubkey={fund?.fund_address?.toBase58() || null}/>
+      <GlobalSocketListener currentFundPubkey={fund?.fund_address?.toBase58() || null} />
       <div className="flex relative">
         {/* Left Scrollable Section */}
-        <div className="w-3/4 pr-4 overflow-y-auto h-[calc(100vh-1rem)] fancy-scrollbar">
+        <div className="w-3/4 fixed left-2 pr-4 overflow-y-auto h-[calc(100vh-1rem)]">
           <div className="flex flex-col gap-2">
-            {/* Graph & Members */}
+            {/* Graph, Members, and Holdings */}
             <div className="flex gap-2">
               {/* Members */}
               {loading ? (
@@ -236,10 +237,30 @@ export default function FundDetails() {
               <div className="flex gap-2 w-[75%]">
                 {/* Fund Graph */}
                 <FundGraph />
-                {/* FundHoldings */}
+                {/* Fund Holdings */}
                 <FundHoldings vault={fund?.vault} connection={connection} metaplex={metaplex} />
               </div>
             </div>
+            {/* Join Proposals */}
+            {loading ? (
+              <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col">
+                <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto fancy-scrollbar">
+                  {[...Array(4)].map((_, idx) => (
+                    <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2 min-w-[20rem]">
+                      <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+                      <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+                      <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+                      <div className="flex gap-2 mt-4">
+                        <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                        <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <JoinProposals fund={fund} fundId={fundId} />
+            )}
           </div>
         </div>
 
@@ -288,6 +309,14 @@ export default function FundDetails() {
         }
         .fancy-scrollbar:hover::-webkit-scrollbar-thumb {
           background: #6366f1;
+        }
+        
+        .hide-scrollbar {
+          -ms-overflow-style: none;  /* Internet Explorer 10+ */
+          scrollbar-width: none;  /* Firefox */
+        }
+        .hide-scrollbar::-webkit-scrollbar { 
+          display: none;  /* Safari and Chrome */
         }
       `}</style>
     </div>
