@@ -125,19 +125,24 @@ export default function JoinFundForm() {
     const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
       programId,
-    )
+    );
+
+    const [userAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("user"), user.toBuffer()],
+      programId,
+    );
 
     const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
     if (!joinAggregatorPdaInfo) {
       return;
-    }
+    };
     const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
     const vecIndex = joinBuffer.readUInt32LE(33);
     console.log('vec index:', vecIndex);
     const [voteAccountPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("join-vote"), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
       programId,
-    )
+    );
 
     const accounts = [
       { pubkey: user, isSigner: true, isWritable: true },
@@ -145,6 +150,7 @@ export default function JoinFundForm() {
       { pubkey: fundAccountPda, isSigner: false, isWritable: true },
       { pubkey: voteAccountPda, isSigner: false, isWritable: true },
       { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: userAccountPda, isSigner: false, isWritable: true },
     ];
 
     const nameBytes = new TextEncoder().encode(fundName);
@@ -155,6 +161,11 @@ export default function JoinFundForm() {
       programId,
       data: instructionData,
     });
+
+    console.log("Join agggregator: ", joinAggregatorPda.toBase58());
+    console.log("Fund Account: ", fundAccountPda.toBase58());
+    console.log("Vote Account: ", voteAccountPda.toBase58());
+    console.log("User Account: ", userAccountPda.toBase58());
 
     const transaction = new Transaction().add(instruction);
     const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();

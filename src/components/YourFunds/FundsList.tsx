@@ -136,8 +136,8 @@ export default function FundsList() {
     getUserFunds();
   }, [connected, wallet, connection]);
 
-  const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n) ?? [];
-  const inactiveFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];
+  const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n && !fund.isPending) ?? [];
+  const inactiveFunds = funds?.filter(fund => fund.totalDeposit === 0n && !fund.isPending) ?? [];
   const pendingFunds = funds?.filter(fund => fund.isPending) ?? [];
   const currentFunds = activeTab === 'active' ? activeFunds : (activeTab === 'inactive' ? inactiveFunds : pendingFunds);
 

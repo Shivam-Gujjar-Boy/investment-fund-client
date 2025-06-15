@@ -107,6 +107,16 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         programId,
       );
 
+      const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
+      if (!joinAggregatorPdaInfo) {
+        return;
+      }
+      const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
+      const joinerWallet = new PublicKey(joinBuffer.slice(37 + vecIndex*57, 69 + vecIndex*57));
+      const [joinerAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("user"), joinerWallet.toBuffer()],
+        programId,
+      )
       const keys = [
         { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
         { pubkey: voteAccountPda, isSigner: false, isWritable: true },
@@ -116,6 +126,8 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         { pubkey: fund.governanceMint, isSigner: false, isWritable: true },
         { pubkey: governanceATA, isSigner: false, isWritable: true },
         { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+        { pubkey: joinerWallet, isSigner: false, isWritable: false},
+        { pubkey: joinerAccountPda, isSigner: false, isWritable: true},
       ];
 
       const instructionTag = 11;
