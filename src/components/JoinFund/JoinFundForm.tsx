@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import { Fund, programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { Buffer } from 'buffer';
-import { useNotification } from '../../context/NotificationContext';
 
 export default function JoinFundForm() {
   const [fundName, setFundName] = useState('');
@@ -16,7 +15,7 @@ export default function JoinFundForm() {
   const wallet = useWallet();
   const { connection } = useConnection();
   const { connected } = wallet;
-  const { triggerPulse } = useNotification();
+  // const { triggerPulse } = useNotification();
 
   // useEffect(() => {
   //   const params = new URLSearchParams(location.search);
@@ -158,23 +157,6 @@ export default function JoinFundForm() {
     return signature;
   }
 
-  async function verifyProposalCreation(signature: string) {
-    try {
-      const result = await connection.getTransaction(signature, {
-        commitment: 'confirmed',
-      });
-      if (result && result.meta && result.meta.err === null) {
-        triggerPulse(new PublicKey(result.transaction.message.accountKeys[0]).toBase58());
-        toast.success('Proposal created successfully!');
-      } else {
-        throw new Error('Proposal creation failed');
-      }
-    } catch (err) {
-      console.error('Error verifying proposal creation:', err);
-      toast.error('Failed to verify proposal creation');
-    }
-  }
-
   async function handleJoinFund() {
     if (!fundStatus || !fundStatus.exists) {
       return;
@@ -188,8 +170,7 @@ export default function JoinFundForm() {
       if (!fundStatus.isPrivate) {
         await joinPublicFund();
       } else {
-        const signature = await createJoinProposal();
-        await verifyProposalCreation(signature);
+        await createJoinProposal();
       }
     } catch (err) {
       console.error('Error joining fund:', err);
