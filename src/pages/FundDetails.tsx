@@ -136,19 +136,6 @@ export default function FundDetails() {
             {loading ? (
               //  className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"
               <div>
-                {/* <div className="p-6 flex-1 flex flex-row gap-4 overflow-x-auto fancy-scrollbar">
-                  {[...Array(4)].map((_, idx) => (
-                    <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2 min-w-[20rem]">
-                      <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
-                      <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
-                      <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
-                      <div className="flex gap-2 mt-4">
-                        <div className="h-6 w-20 bg-gray-700 rounded"></div>
-                        <div className="h-6 w-14 bg-gray-700 rounded"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div> */}
               </div>
             ) : (
               <JoinProposals fund={fund} fundId={fundId} />

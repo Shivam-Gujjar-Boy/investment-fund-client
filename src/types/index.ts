@@ -16,6 +16,24 @@ export interface Fund {
   is_private: number,
 }
 
+export interface UserFund {
+  fundPubkey: PublicKey,
+  isPending: boolean,
+  isEligible: boolean,
+  name: string,
+  expectedMembers: number,
+  creatorExists: boolean,
+  creator: PublicKey,
+  numOfMembers: number,
+  members: PublicKey[],
+  totalDeposit: bigint,
+  governanceMint: PublicKey,
+  vault: PublicKey,
+  currentIndex: number,
+  created_at: bigint,
+  is_private: number,
+}
+
 export interface Token {
   pubkey: PublicKey,
   mint: string,

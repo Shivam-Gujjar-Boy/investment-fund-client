@@ -3,12 +3,13 @@ import FundCard from './FundCard';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import toast from 'react-hot-toast';
-import { Fund, programId } from '../../types';
+import { UserFund, programId } from '../../types';
 import { Buffer } from 'buffer';
 
+
 export default function FundsList() {
-  const [funds, setFunds] = useState<Fund[] | null>(null);
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  const [funds, setFunds] = useState<UserFund[] | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'pending'>('active');
   const [loading, setLoading] = useState(false);
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -39,9 +40,16 @@ export default function FundsList() {
           
           if (num_of_funds === 0) return;
 
+          const isPendings: boolean[] = [];
+          const isEligibles: boolean[] = [];
+
           for (let i=0; i<num_of_funds; i++) {
             const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 68+i*50));
+            const isPending = buffer.readUint8(76 + i*50) ? true : false;
+            const isEligible = buffer.readUint8(77 + i*50) ? true : false;
             console.log(fund_pubkey.toBase58());
+            isPendings.push(isPending);
+            isEligibles.push(isEligible);
             funds_pubkey.push(fund_pubkey)
           }
 
@@ -55,7 +63,7 @@ export default function FundsList() {
             return;
           }
 
-          const fundDataArray: Fund[] = fundAccountInfos.map((acc, i) => {
+          const fundDataArray: UserFund[] = fundAccountInfos.map((acc, i) => {
             if (!acc || !acc.data) return null;
             console.log(i);
             const acc_buffer = Buffer.from(acc?.data);
@@ -93,7 +101,9 @@ export default function FundsList() {
             }
 
             return {
-              fund_address: funds_pubkey[i],
+              fundPubkey: funds_pubkey[i],
+              isPending: isPendings[i],
+              isEligible: isEligibles[i],
               name,
               creator,
               numOfMembers,
@@ -105,7 +115,7 @@ export default function FundsList() {
               created_at,
               is_private,
             };
-          }).filter((f): f is Fund => f !== null);
+          }).filter((f): f is UserFund => f !== null);
 
           console.log(fundDataArray);
 
@@ -128,22 +138,23 @@ export default function FundsList() {
 
   const activeFunds = funds?.filter(fund => fund.totalDeposit > 0n) ?? [];
   const inactiveFunds = funds?.filter(fund => fund.totalDeposit === 0n) ?? [];
-  const currentFunds = activeTab === 'active' ? activeFunds : inactiveFunds;
+  const pendingFunds = funds?.filter(fund => fund.isPending) ?? [];
+  const currentFunds = activeTab === 'active' ? activeFunds : (activeTab === 'inactive' ? inactiveFunds : pendingFunds);
 
   return (
     <div className="w-full animate-fade-in">
       <div className="border-b border-gray-700 mb-6">
         <nav className="flex" aria-label="Tabs">
-          {['active', 'inactive'].map(tab => (
+          {['active', 'inactive', 'pending'].map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab as 'active' | 'inactive')}
+              onClick={() => setActiveTab(tab as 'active' | 'inactive' | 'pending')}
               className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm sm:text-base transition-colors duration-200
                 ${activeTab === tab
                   ? 'border-indigo-500 text-indigo-400'
                   : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'}`}
             >
-              {tab === 'active' ? 'Active Funds' : 'Inactive Funds'}
+              {tab === 'active' ? 'Active Funds' : (tab === 'inactive' ? 'Inactive Funds' : 'Pending Funds')}
             </button>
           ))}
         </nav>
@@ -163,7 +174,11 @@ export default function FundsList() {
         <div className="text-center py-12 text-gray-400">
           {activeTab === 'active'
             ? "You don't have any active funds yet. Create one to get started or deposit assets in inactive funds!"
-            : "You don't have any pending fund invitations."}
+            : (
+              activeTab === 'inactive'
+              ? "You don't have any inactive funds right now."
+              : "You don't have any pending funds."
+            )}
         </div>
       )}
     </div>
