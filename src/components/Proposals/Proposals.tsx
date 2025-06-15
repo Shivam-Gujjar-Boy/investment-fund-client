@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey, Transaction, TransactionInstruction, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
@@ -15,9 +15,7 @@ import { TokenSelector } from './TokenSelector';
 import { Filter } from "lucide-react";
 
 interface ProposalsProps {
-  proposals: Proposal[] | null;
   fund: Fund | null;
-  vecIndex: number;
   fundId: string | undefined;
 }
 
@@ -28,7 +26,11 @@ interface ProposalSwap {
   slippage: string
 }
 
-export default function Proposals({ proposals, fund, vecIndex, fundId }: ProposalsProps) {
+export default function Proposals({ fund, fundId }: ProposalsProps) {
+  const [refresh, setRefresh] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [proposals, setProposals] = useState<Proposal[] | null>(null);
+  const [vecIndex, setVecIndex] = useState(0);
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
   const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted'>('all');
   const [isCreating, setIsCreating] = useState(false);
@@ -100,6 +102,125 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
     if (tokens.length > 0) setSelectedFromToken(tokens[0]);
   };
 
+  const fetchProposalsData = useCallback(async () => {
+    if (!wallet.publicKey) {
+      return;
+    }
+
+    if (!fundId) {
+      return;
+    }
+
+    const fundAccountPda = new PublicKey(fundId);
+
+    try {
+      if (!fund) {
+        return;
+      }
+
+      const currentIndex = fund?.currentIndex;
+      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+      if (!currentAggregatorInfo) {
+        console.log('No proposal aggregator found');
+        return;
+      }
+      const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+      const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
+      if (fundAddress.toBase58() != fundAccountPda.toBase58()) {
+        console.log('Wrong Aggregator');
+        return;
+      }
+
+      const proposalIndex = aggregatorBuffer.readUInt8(32);
+      console.log('Aggregator Index : ', proposalIndex);
+
+      const numOfProposals = aggregatorBuffer.readUInt32LE(33);
+      setVecIndex(numOfProposals);
+      let nextByte = 37;
+
+      const proposalss: Proposal[] = [];
+
+      for (let i = 0; i < numOfProposals; i++) {
+        const proposer = new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32));
+        nextByte += 32;
+        const numOfFromAssets = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const fromAssets: PublicKey[] = [];
+        for (let j = 0; j < numOfFromAssets; j++) {
+          fromAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
+          nextByte += 32;
+        }
+        const numOfToAssets = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const toAssets: PublicKey[] = [];
+        for (let j = 0; j < numOfToAssets; j++) {
+          toAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
+          nextByte += 32;
+        }
+        const numOfAmounts = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const amounts: bigint[] = [];
+        for (let j = 0; j < numOfAmounts; j++) {
+          amounts.push(aggregatorBuffer.readBigInt64LE(nextByte));
+          nextByte += 8;
+        }
+        const numOfSlippages = aggregatorBuffer.readUInt32LE(nextByte);
+        nextByte += 4;
+        const slippages: number[] = [];
+        for (let j = 0; j < numOfSlippages; j++) {
+          slippages.push(aggregatorBuffer.readUInt16LE(nextByte));
+          nextByte += 2;
+        }
+        const votesYes = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const votesNo = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const deadline = aggregatorBuffer.readBigInt64LE(nextByte);
+        nextByte += 8;
+        const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
+        nextByte += 1;
+
+        proposalss.push({
+          proposalIndex: currentIndex,
+          vecIndex: i,
+          proposer,
+          numOfSwaps: numOfAmounts,
+          fromAssets,
+          toAssets,
+          amounts,
+          slippages,
+          votesYes,
+          votesNo,
+          creationTime,
+          deadline,
+          executed
+        });
+      }
+
+      setProposals(proposalss);
+      console.log(proposals);
+    } catch (err) {
+      console.log('Error fetching fund proposals: ', err);
+    }
+  }, [fundId, fund, wallet.publicKey, connection, refresh]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchProposalsData();
+      setLoading(false);
+    };
+
+    load();
+  }, [fetchProposalsData]);
+  
   // proposal creation
   const handleProposalCreation = async (swaps: ProposalSwap[], deadline: bigint) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
@@ -174,7 +295,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
       console.log(fundAccountPda.toBase58());
       const [voteAccountPda1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('vote'), Buffer.from([fund.currentIndex]), Buffer.from([(vecIndex + 1)]), fundAccountPda.toBuffer()],
+        [Buffer.from('vote'), Buffer.from([fund.currentIndex]), Buffer.from([(vecIndex)]), fundAccountPda.toBuffer()],
         programId
       );
 
@@ -236,6 +357,9 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
         blockhash,
         lastValidBlockHeight
       });
+      // const p: Proposals[] = [];
+      // setProposals(proposals);
+      setRefresh(refresh + 1);
 
       setShowProposalModal(false);
       setIsCreating(false);
@@ -516,6 +640,28 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
 
   return (
     <>
+      { loading ? (
+            <div className="bg-[#1f2937] rounded-2xl h-[41rem] animate-pulse flex flex-col">
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
+                {[...Array(4)].map((_, idx) => (
+                  <div key={idx} className="bg-gray-800 p-4 rounded-xl space-y-2">
+                    <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+                    <div className="h-4 w-1/2 bg-gray-700 rounded"></div>
+                    <div className="h-4 w-1/4 bg-gray-700 rounded"></div>
+                    <div className="flex gap-2 mt-4">
+                      <div className="h-6 w-20 bg-gray-700 rounded"></div>
+                      <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                      <div className="h-6 w-14 bg-gray-700 rounded"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-gray-700 bg-[#1f2937]">
+                <div className="w-full h-10 bg-gray-700 rounded-xl"></div>
+              </div>
+            </div>
+      ) : (
       <div className="relative flex flex-col h-[41rem] bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
 
         {/* Top Scrollable Content */}
@@ -676,6 +822,7 @@ export default function Proposals({ proposals, fund, vecIndex, fundId }: Proposa
           </button>
         </div>
       </div>
+      )}
 
 
       {/* Proposal Modal */}

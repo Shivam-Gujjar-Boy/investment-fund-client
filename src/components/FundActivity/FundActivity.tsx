@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { PublicKey } from '@solana/web3.js';
-import io from 'socket.io-client';
+// import io from 'socket.io-client';
 import axios from 'axios';
 import { Clock4 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+// import { toast } from 'react-hot-toast';
 
-const socket = io(`https://peerfunds.onrender.com`, {
-  transports: ['websocket']
-}); // Make sure this is in your .env
+// const socket = io(`https://peerfunds.onrender.com`, {
+//   transports: ['websocket']
+// }); // Make sure this is in your .env
 
 interface ActivityLog {
   logMessage: string;
@@ -42,21 +42,21 @@ export default function FundActivity({fundAddress}: ActicityProps) {
   }, [fundAddress]);
 
   // Listen for real-time logs
-  useEffect(() => {
-    const handleLog = (activity: ActivityLog) => {
-      console.log('🔥 Incoming activity:', activity);
+  // useEffect(() => {
+  //   const handleLog = (activity: ActivityLog) => {
+  //     console.log('🔥 Incoming activity:', activity);
 
-      if (!fundRef.current || activity.fund !== fundRef.current) return;
-      setLogs(prev => [activity, ...prev]);
-      toast.success(activity.logMessage);
-    };
+  //     if (!fundRef.current || activity.fund !== fundRef.current) return;
+  //     setLogs(prev => [activity, ...prev]);
+  //     toast.success(activity.logMessage);
+  //   };
 
-    socket.on('fund_activity', handleLog);
+  //   socket.on('fund_activity', handleLog);
 
-    return () => {
-      socket.off('fund_activity', handleLog);
-    };
-  }, []);
+  //   return () => {
+  //     socket.off('fund_activity', handleLog);
+  //   };
+  // }, []);
 
   // Format timestamp
   const formatTime = (timestamp: string) => {

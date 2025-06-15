@@ -4,16 +4,18 @@ import { useParams } from 'react-router-dom';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import { Proposal, Fund, programId } from '../types';
+import { Fund } from '../types';
 import Proposals from '../components/Proposals/Proposals';
 import FundMembers from '../components/FundMembers/FundMembers';
 import FundGraph from '../components/FundGraph/FundGraph';
 import { Metaplex } from '@metaplex-foundation/js';
 import FundHoldings from '../components/FundHoldings/FundHoldings';
+import  GlobalSocketListener  from './GlobalSocketListener'; 
+
 
 export default function FundDetails() {
-  const [vecIndex, setVecIndex] = useState(0);
-  const [proposals, setProposals] = useState<Proposal[] | null>(null);
+  // const [vecIndex, setVecIndex] = useState(0);
+  // const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [fund, setFund] = useState<Fund | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -81,128 +83,129 @@ export default function FundDetails() {
     }
   }, [fundId, connection, wallet.publicKey]);
 
-  const fetchProposalsData = useCallback(async () => {
-    if (!wallet.publicKey) {
-      return;
-    }
+  // const fetchProposalsData = useCallback(async () => {
+  //   if (!wallet.publicKey) {
+  //     return;
+  //   }
 
-    if (!fundId) {
-      return;
-    }
+  //   if (!fundId) {
+  //     return;
+  //   }
 
-    const fundAccountPda = new PublicKey(fundId);
+  //   const fundAccountPda = new PublicKey(fundId);
 
-    try {
-      if (!fund) {
-        return;
-      }
+  //   try {
+  //     if (!fund) {
+  //       return;
+  //     }
 
-      const currentIndex = fund?.currentIndex;
-      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex]), fundAccountPda.toBuffer()],
-        programId
-      );
+  //     const currentIndex = fund?.currentIndex;
+  //     const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+  //       [Buffer.from('proposal-aggregator'), Buffer.from([currentIndex]), fundAccountPda.toBuffer()],
+  //       programId
+  //     );
 
-      const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
-      if (!currentAggregatorInfo) {
-        console.log('No proposal aggregator found');
-        return;
-      }
-      const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
-      const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
-      if (fundAddress.toBase58() != fundAccountPda.toBase58()) {
-        console.log('Wrong Aggregator');
-        return;
-      }
+  //     const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+  //     if (!currentAggregatorInfo) {
+  //       console.log('No proposal aggregator found');
+  //       return;
+  //     }
+  //     const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+  //     const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
+  //     if (fundAddress.toBase58() != fundAccountPda.toBase58()) {
+  //       console.log('Wrong Aggregator');
+  //       return;
+  //     }
 
-      const proposalIndex = aggregatorBuffer.readUInt8(32);
-      console.log('Aggregator Index : ', proposalIndex);
+  //     const proposalIndex = aggregatorBuffer.readUInt8(32);
+  //     console.log('Aggregator Index : ', proposalIndex);
 
-      const numOfProposals = aggregatorBuffer.readUInt32LE(33);
-      setVecIndex(numOfProposals);
-      let nextByte = 37;
+  //     const numOfProposals = aggregatorBuffer.readUInt32LE(33);
+  //     setVecIndex(numOfProposals);
+  //     let nextByte = 37;
 
-      const proposalss: Proposal[] = [];
+  //     const proposalss: Proposal[] = [];
 
-      for (let i = 0; i < numOfProposals; i++) {
-        const proposer = new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32));
-        nextByte += 32;
-        const numOfFromAssets = aggregatorBuffer.readUInt32LE(nextByte);
-        nextByte += 4;
-        const fromAssets: PublicKey[] = [];
-        for (let j = 0; j < numOfFromAssets; j++) {
-          fromAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
-          nextByte += 32;
-        }
-        const numOfToAssets = aggregatorBuffer.readUInt32LE(nextByte);
-        nextByte += 4;
-        const toAssets: PublicKey[] = [];
-        for (let j = 0; j < numOfToAssets; j++) {
-          toAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
-          nextByte += 32;
-        }
-        const numOfAmounts = aggregatorBuffer.readUInt32LE(nextByte);
-        nextByte += 4;
-        const amounts: bigint[] = [];
-        for (let j = 0; j < numOfAmounts; j++) {
-          amounts.push(aggregatorBuffer.readBigInt64LE(nextByte));
-          nextByte += 8;
-        }
-        const numOfSlippages = aggregatorBuffer.readUInt32LE(nextByte);
-        nextByte += 4;
-        const slippages: number[] = [];
-        for (let j = 0; j < numOfSlippages; j++) {
-          slippages.push(aggregatorBuffer.readUInt16LE(nextByte));
-          nextByte += 2;
-        }
-        const votesYes = aggregatorBuffer.readBigInt64LE(nextByte);
-        nextByte += 8;
-        const votesNo = aggregatorBuffer.readBigInt64LE(nextByte);
-        nextByte += 8;
-        const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
-        nextByte += 8;
-        const deadline = aggregatorBuffer.readBigInt64LE(nextByte);
-        nextByte += 8;
-        const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
-        nextByte += 1;
+  //     for (let i = 0; i < numOfProposals; i++) {
+  //       const proposer = new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32));
+  //       nextByte += 32;
+  //       const numOfFromAssets = aggregatorBuffer.readUInt32LE(nextByte);
+  //       nextByte += 4;
+  //       const fromAssets: PublicKey[] = [];
+  //       for (let j = 0; j < numOfFromAssets; j++) {
+  //         fromAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
+  //         nextByte += 32;
+  //       }
+  //       const numOfToAssets = aggregatorBuffer.readUInt32LE(nextByte);
+  //       nextByte += 4;
+  //       const toAssets: PublicKey[] = [];
+  //       for (let j = 0; j < numOfToAssets; j++) {
+  //         toAssets.push(new PublicKey(aggregatorBuffer.slice(nextByte, nextByte + 32)));
+  //         nextByte += 32;
+  //       }
+  //       const numOfAmounts = aggregatorBuffer.readUInt32LE(nextByte);
+  //       nextByte += 4;
+  //       const amounts: bigint[] = [];
+  //       for (let j = 0; j < numOfAmounts; j++) {
+  //         amounts.push(aggregatorBuffer.readBigInt64LE(nextByte));
+  //         nextByte += 8;
+  //       }
+  //       const numOfSlippages = aggregatorBuffer.readUInt32LE(nextByte);
+  //       nextByte += 4;
+  //       const slippages: number[] = [];
+  //       for (let j = 0; j < numOfSlippages; j++) {
+  //         slippages.push(aggregatorBuffer.readUInt16LE(nextByte));
+  //         nextByte += 2;
+  //       }
+  //       const votesYes = aggregatorBuffer.readBigInt64LE(nextByte);
+  //       nextByte += 8;
+  //       const votesNo = aggregatorBuffer.readBigInt64LE(nextByte);
+  //       nextByte += 8;
+  //       const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
+  //       nextByte += 8;
+  //       const deadline = aggregatorBuffer.readBigInt64LE(nextByte);
+  //       nextByte += 8;
+  //       const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
+  //       nextByte += 1;
 
-        proposalss.push({
-          proposalIndex: currentIndex,
-          vecIndex: i,
-          proposer,
-          numOfSwaps: numOfAmounts,
-          fromAssets,
-          toAssets,
-          amounts,
-          slippages,
-          votesYes,
-          votesNo,
-          creationTime,
-          deadline,
-          executed
-        });
-      }
+  //       proposalss.push({
+  //         proposalIndex: currentIndex,
+  //         vecIndex: i,
+  //         proposer,
+  //         numOfSwaps: numOfAmounts,
+  //         fromAssets,
+  //         toAssets,
+  //         amounts,
+  //         slippages,
+  //         votesYes,
+  //         votesNo,
+  //         creationTime,
+  //         deadline,
+  //         executed
+  //       });
+  //     }
 
-      setProposals(proposalss);
-      console.log(proposals);
-    } catch (err) {
-      console.log('Error fetching fund proposals: ', err);
-    }
-  }, [fundId, wallet.publicKey, connection, fund?.currentIndex, programId]);
+  //     setProposals(proposalss);
+  //     console.log(proposals);
+  //   } catch (err) {
+  //     console.log('Error fetching fund proposals: ', err);
+  //   }
+  // }, [fundId, wallet.publicKey, connection, fund?.currentIndex, programId]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       await fetchFundData();
-      await fetchProposalsData();
+      // await fetchProposalsData();
       setLoading(false);
     };
 
     load();
-  }, [fetchFundData, fetchProposalsData]);
+  }, [fetchFundData]);
 
   return (
     <div className="p-2 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
+      <GlobalSocketListener currentFundPubkey={fund?.fund_address?.toBase58() || null}/>
       <div className="flex relative">
         {/* Left Scrollable Section */}
         <div className="w-3/4 pr-4 overflow-y-auto h-[calc(100vh-1rem)] fancy-scrollbar">
@@ -265,7 +268,7 @@ export default function FundDetails() {
             </div>
           ) : (
             <div className="bg-[#1f2937] rounded-2xl h-full flex flex-col overflow-y-auto fancy-scrollbar">
-              <Proposals proposals={proposals} fund={fund} vecIndex={vecIndex} fundId={fundId} />
+              <Proposals fund={fund} fundId={fundId} />
             </div>
           )}
         </div>
