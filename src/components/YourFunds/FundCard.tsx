@@ -218,7 +218,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
         )}
         {status === 'pending' && (
           <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-300/30 shadow-sm">
-            {fund.isEligible ? 'Eligible' : 'Not Eligible'}
+            {fund.isEligible ? 'Eligible' : (BigInt(2)*fund.votesNo > fund.totalDeposit) ? 'Rejected' : 'Under Voting'}
           </span>
         )}
       </div>
@@ -267,19 +267,6 @@ export default function FundCard({ fund, status }: FundCardProps) {
           </span>
         </div>
 
-        {/* <div className="flex justify-end mt-4">
-            {status !== 'pending' && (
-              <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
-                View Details
-                <ArrowRight className="ml-1 w-4 h-4" />
-              </button>
-            )}
-            {status === 'pending' && fund.isEligible && (
-              <button onClick={() => joinFund()} className="flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
-                Join
-              </button>
-            )}
-        </div> */}
       {/* Progress + Buttons */}
       <div className="flex flex-col gap-2 mt-4">
         {status === "pending" && (

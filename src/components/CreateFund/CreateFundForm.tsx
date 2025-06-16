@@ -30,6 +30,8 @@ export default function CreateFundForm() {
   const [isChecked, setIsChecked] = useState(false);
   const [expectedMembers, setExpectedMembers] = useState<number | ''>('');
   const [hasTouchedInput, setHasTouchedInput] = useState(false);
+  const [totalRent, setTotalRent] = useState(0.0);
+  const [calculatingRent, setCalculatingRent] = useState(false);
 
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -100,7 +102,21 @@ export default function CreateFundForm() {
         return;
       }
 
+      setCalculatingRent(true);
+
       setPrivacy(!isPublic);
+
+      const rentGovernanceExempt = await connection.getMinimumBalanceForRentExemption(327 + fundName.length) / 1000000000;
+      // const fundRent = await connection.getMinimumBalanceForRentExemption(150) / 1000000000;
+      // const vaultRent = await connection.getMinimumBalanceForRentExemption(40) / 1000000000;
+      // const proposalAggregatorRent = await connection.getMinimumBalanceForRentExemption(37) / 1000000000;
+      // const joinProposalAggregatorRent = await connection.getMinimumBalanceForRentExemption(37) / 1000000000;
+      // const totalRent = rentGovernanceExempt + fundRent + vaultRent + proposalAggregatorRent + joinProposalAggregatorRent + 0.000348;
+      const totalRent = 0.00575 + rentGovernanceExempt;
+      console.log('Rent Exempt:', totalRent);
+      setTotalRent(totalRent);
+
+      setCalculatingRent(false);
 
       setStep(2);
     } else {
@@ -132,15 +148,6 @@ export default function CreateFundForm() {
           [Buffer.from('vault'), fundAccountPda.toBuffer()],
           programId,
         );
-
-        // const [metadataPda] = PublicKey.findProgramAddressSync(
-        //   [
-        //     Buffer.from("metadata"),
-        //     TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-        //     governanceMint.toBuffer()
-        //   ],
-        //   TOKEN_METADATA_PROGRAM_ID
-        // );
 
         const [rentPda] = PublicKey.findProgramAddressSync(
           [Buffer.from("rent")],
@@ -203,9 +210,7 @@ export default function CreateFundForm() {
             {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: fundAccountPda, isSigner: false, isWritable: true},
             {pubkey: creator, isSigner: true, isWritable: true},
-            // {pubkey: metadataPda, isSigner: false, isWritable: true},
             {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false},
-            // {pubkey: TOKEN_METADATA_PROGRAM_ID, isSigner: false, isWritable: false},
             {pubkey: userAccountPda, isSigner: false, isWritable: true},
             {pubkey: proposalAggregatorAccount, isSigner: false, isWritable: true},
             {pubkey: joinProposalAggregatorAccount, isSigner: false, isWritable: true}
@@ -378,14 +383,14 @@ return (
             {/* Continue Button */}
             <button
               type="submit"
-              disabled={!fundName.trim() || nameTaken || checking || fundSymbol.length !== 5}
+              disabled={!fundName.trim() || nameTaken || checking || fundSymbol.length !== 5 || calculatingRent}
               className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
                 !fundName.trim() || nameTaken || checking || fundSymbol.length !== 5
                   ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 shadow-md'
               }`}
             >
-              Continue
+              {calculatingRent ? 'Calculating Rent...' : 'Continue'}
             </button>
           </form>
         ) : (
@@ -403,7 +408,7 @@ return (
                 <li>View everything on the <a href="https://github.com/Shivam-Gujjar-Boy/investment-fund" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">official GitHub</a>.</li>
                 <li>Metadata and user PDAs are also updated accordingly during fund activity.</li>
                 <li>A <strong>Proposal Aggregator PDA Account</strong> is created which hold all the fund's proposals data.</li>
-                <li>Fund creation costs ~<strong>0.009 SOL</strong>.</li>
+                <li>Fund creation costs ~<strong>{totalRent.toFixed(5)} SOL</strong>.</li>
                 <li>
                   You must specify how many members you <strong>expect to join</strong> the fund in the future.
                   This number directly affects your refund eligibility.
@@ -423,7 +428,9 @@ return (
                   type="number"
                   min={1}
                   value={expectedMembers}
-                  onChange={(e) => setExpectedMembers(e.target.value ? parseInt(e.target.value) : '')}
+                  onChange={(e) => {
+                    setExpectedMembers(e.target.value ? parseInt(e.target.value) : '');
+                  }}
                   onBlur={() => setHasTouchedInput(true)}
                   className="w-full mt-1 bg-[#1a1d36] border border-indigo-800 rounded-lg px-3 py-2 text-white text-sm placeholder:text-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                   placeholder="e.g. 5"
@@ -433,6 +440,11 @@ return (
                   <p className="text-red-400 text-xs mt-1">Please enter a valid number of members.</p>
                 )}
               </div>
+              {expectedMembers && (
+                <div className='text-sm mt-2 text-yellow-600'>
+                  You'll get {(totalRent * (expectedMembers - 1)/expectedMembers).toFixed(5)} SOL when expected members are completed in the fund
+                </div>
+              )}
 
               <div className="mt-6">
                 <label className="flex items-center space-x-2 text-sm text-indigo-200">

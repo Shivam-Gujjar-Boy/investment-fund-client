@@ -146,7 +146,7 @@ export default function FundDetails() {
         {/* Fixed Proposals Section */}
         <div className="w-1/4 fixed right-2 top-19 h-[calc(100vh-1rem)]">
           {loading ? (
-            <div className="bg-[#1f2937] rounded-2xl h-[41rem] animate-pulse flex flex-col">
+            <div className="bg-[#1f2937] rounded-2xl h-[90%] animate-pulse flex flex-col">
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
                 <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                 {[...Array(4)].map((_, idx) => (
@@ -167,7 +167,7 @@ export default function FundDetails() {
               </div>
             </div>
           ) : (
-            <div className="bg-[#1f2937] rounded-2xl h-full flex flex-col overflow-y-auto fancy-scrollbar">
+            <div className="bg-[#1f2937] rounded-2xl h-[90%] flex flex-col overflow-y-auto fancy-scrollbar">
               <Proposals fund={fund} fundId={fundId} />
             </div>
           )}
