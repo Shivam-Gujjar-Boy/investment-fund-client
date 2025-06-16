@@ -62,11 +62,10 @@ export interface Proposal {
 
 export interface JoinProposal {
   joiner: PublicKey,
-  vecIndex: number,
   votesYes: bigint,
   votesNo: bigint,
   creationTime: bigint,
-  executed: boolean,
+  proposalIndex: number,
 }
 
 export const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');

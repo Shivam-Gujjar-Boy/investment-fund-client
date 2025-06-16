@@ -137,12 +137,17 @@ export default function JoinFundForm() {
         return;
       };
       const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
-      const vecIndex = joinBuffer.readUInt32LE(33);
-      console.log('vec index:', vecIndex);
+      const numOfJoinProposals = joinBuffer.readUInt32LE(33);
+      console.log('Number of join proposals:', numOfJoinProposals);
+      let proposalIndex = 0;
+      if (numOfJoinProposals !== 0) {
+        proposalIndex = joinBuffer.readUInt8(37 + (numOfJoinProposals)*57);
+      }
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("join-vote"), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
+        [Buffer.from("join-vote"), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],
         programId,
       );
+      console.log('Proposal Index:', proposalIndex);
 
       const accounts = [
         { pubkey: user, isSigner: true, isWritable: true },

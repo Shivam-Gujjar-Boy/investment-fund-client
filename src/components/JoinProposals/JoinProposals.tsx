@@ -24,18 +24,18 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
 
     try {
       if (!fund) return;
-      const [currentJoinAggregatorPda] = PublicKey.findProgramAddressSync(
+      const [joinProposalAggregatorPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("join-proposal-aggregator"), Buffer.from([0]), fundAccountPda.toBuffer()],
         programId,
       );
-      console.log('join aggregator:', currentJoinAggregatorPda.toBase58());
+      console.log('join aggregator:', joinProposalAggregatorPda.toBase58());
 
-      const currentAggregatorBuffer = await connection.getAccountInfo(currentJoinAggregatorPda);
-      if (!currentAggregatorBuffer) {
+      const joinProposalAggregatorBuffer = await connection.getAccountInfo(joinProposalAggregatorPda);
+      if (!joinProposalAggregatorBuffer) {
         console.log("No Proposal aggregator found");
         return;
       }
-      const aggregatorBuffer = Buffer.from(currentAggregatorBuffer.data);
+      const aggregatorBuffer = Buffer.from(joinProposalAggregatorBuffer.data);
       const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
       if (fundAddress.toBase58() !== fundAccountPda.toBase58()) {
         console.log("Wrong join proposal aggregator");
@@ -55,10 +55,10 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         nextByte += 8;
         const creationTime = aggregatorBuffer.readBigInt64LE(nextByte);
         nextByte += 8;
-        const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
+        const proposalIndex = aggregatorBuffer.readUInt8(nextByte);
         nextByte += 1;
 
-        joinProposals.push({ joiner, vecIndex: i, votesYes, votesNo, creationTime, executed });
+        joinProposals.push({ joiner, votesYes, votesNo, creationTime, proposalIndex });
       }
 
       setJoinProposals(joinProposals);
@@ -78,7 +78,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
     load();
   }, [fetchJoinProposalsData]);
 
-  const handleVote = async (vote: number, vecIndex: number) => {
+  const handleVote = async (vote: number, proposalIndex: number) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       console.log("Connect the wallet first");
       return;
@@ -103,7 +103,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       );
 
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("join-vote"), Buffer.from([vecIndex]), fund.fund_address.toBuffer()],
+        [Buffer.from("join-vote"), Buffer.from([proposalIndex]), fund.fund_address.toBuffer()],
         programId,
       );
 
@@ -112,11 +112,27 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         return;
       }
       const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
-      const joinerWallet = new PublicKey(joinBuffer.slice(37 + vecIndex*57, 69 + vecIndex*57));
+
+      const numOfJoinProposals = joinBuffer.readUInt32LE(33);
+      if (numOfJoinProposals === 0) {
+        return;
+      }
+
+      let joinerWallet: PublicKey = new PublicKey('');
+
+      for (let i=0; i<numOfJoinProposals; i++) {
+        const index = joinBuffer.readUInt8(37 + (i+1)*57);
+        if (index === proposalIndex) {
+          joinerWallet = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
+          break;
+        }
+      }
+
       const [joinerAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("user"), joinerWallet.toBuffer()],
-        programId,
-      )
+        [Buffer.from('user'), joinerWallet.toBuffer()],
+        programId
+      );
+
       const keys = [
         { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
         { pubkey: voteAccountPda, isSigner: false, isWritable: true },
@@ -141,7 +157,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       offset += 1;
       buffer.writeUInt8(vote, offset);
       offset += 1;
-      buffer.writeUInt8(vecIndex, offset);
+      buffer.writeUInt8(proposalIndex, offset);
       offset += 1;
       nameBytes.copy(buffer, offset);
       const instructionData = buffer;
@@ -154,7 +170,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       console.log('vote account: ', voteAccountPda.toBase58());
       console.log('governance ata: ', governanceATA.toBase58());
       console.log('proposal aggregator: ', joinAggregatorPda.toBase58());
-      console.log('vec index:', vecIndex);
+      console.log('proposal index:', proposalIndex);
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
@@ -179,8 +195,8 @@ return (
   <>
     {loading ? (
       <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"></div>
-    ) : joinProposals?.some(p => !p.executed) ? (
-      <div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+    ) : (
+      (joinProposals && joinProposals?.length > 0) ? (<div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
         {/* Header */}
         <div className="flex justify-between items-center p-6">
           <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
@@ -188,9 +204,7 @@ return (
 
         {/* Proposal Cards */}
         <div className="flex-1 px-6 pb-6 overflow-x-auto flex flex-row gap-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {joinProposals
-            ?.filter(p => !p.executed)
-            .map((proposal) => (
+          {joinProposals?.map((proposal) => (
               <div
                 key={proposal.creationTime.toString()}
                 className="bg-[#111827] border border-gray-700 rounded-2xl p-5 min-w-[20rem] max-w-[20rem] flex flex-col justify-between hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl"
@@ -201,13 +215,6 @@ return (
                       <span className="text-gray-300 font-medium">Joiner:</span>{' '}
                       {proposal.joiner.toBase58().slice(0, 4)}...
                       {proposal.joiner.toBase58().slice(-4)}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        proposal.executed ? 'bg-green-700' : 'bg-yellow-700'
-                      } text-white`}
-                    >
-                      {proposal.executed ? 'Executed' : 'Pending'}
                     </span>
                   </div>
                   <div>
@@ -252,28 +259,28 @@ return (
                       </>
                     )}
                   </div>
-                  {!proposal.executed && (
-                    <div className="flex gap-2">
-                      <button
-                        className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                        onClick={() => handleVote(1, proposal.vecIndex)}
-                      >
-                        YES
-                      </button>
-                      <button
-                        className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                        onClick={() => handleVote(0, proposal.vecIndex)}
-                      >
-                        NO
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-2">
+                    <button
+                      className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                      onClick={() => handleVote(1, proposal.proposalIndex)}
+                    >
+                      YES
+                    </button>
+                    <button
+                      className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
+                      onClick={() => handleVote(0, proposal.proposalIndex)}
+                    >
+                      NO
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
         </div>
-      </div>
-    ) : null}
+      </div>) : (
+        <></>
+      )
+    )}
   </>
 );
 

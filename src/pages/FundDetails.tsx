@@ -138,7 +138,9 @@ export default function FundDetails() {
               <div>
               </div>
             ) : (
-              <JoinProposals fund={fund} fundId={fundId} />
+              <>
+                {fund?.is_private ? <JoinProposals fund={fund} fundId={fundId} /> : <></>}
+              </>
             )}
           </div>
         </div>
