@@ -190,6 +190,12 @@ export default function FundCard({ fund, status }: FundCardProps) {
     toast.success('Successfully joined the Fund!');
   }
 
+  const getPercentage = (value: bigint, total: bigint) => {
+    if (total === 0n) return 0;
+    return Number((value*10000n) / total) / 100;
+  }
+
+// bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] border border-indigo-900/40 backdrop-blur-md rounded-xl p-6 shadow-[0_0_10px_#7c3aed33] hover:shadow-[0_0_20px_#a78bfa55] hover:scale-[1.015] transition-all duration-300 cursor-pointer group
  
   return (
     <div
@@ -261,7 +267,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
           </span>
         </div>
 
-        <div className="flex justify-end mt-4">
+        {/* <div className="flex justify-end mt-4">
             {status !== 'pending' && (
               <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
                 View Details
@@ -273,7 +279,67 @@ export default function FundCard({ fund, status }: FundCardProps) {
                 Join
               </button>
             )}
+        </div> */}
+      {/* Progress + Buttons */}
+      <div className="flex flex-col gap-2 mt-4">
+        {status === "pending" && (
+          <>
+            {/* Progress Bar */}
+            <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden w-full">
+              {(() => {
+                const green = fund.votesYes;
+                const red = fund.votesNo;
+                const total = fund.totalDeposit;
+                const gray = total - green - red;
+
+                const greenPct = getPercentage(green, total);
+                const grayPct = getPercentage(gray, total);
+                const redPct = getPercentage(red, total);
+
+                return (
+                  <>
+                    <div
+                      className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
+                      style={{ width: `${greenPct}%` }}
+                    />
+                    <div
+                      className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-500"
+                      style={{ left: `${greenPct}%`, width: `${grayPct}%` }}
+                    />
+                    <div
+                      className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-500"
+                      style={{
+                        left: `${greenPct + grayPct}%`,
+                        width: `${redPct}%`,
+                      }}
+                    />
+                  </>
+                );
+              })()}
+            </div>
+          </>
+        )}
+
+        <div className="flex justify-end items-center mt-2 gap-3">
+          {status !== "pending" && (
+            <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
+              View Details
+              <ArrowRight className="ml-1 w-4 h-4" />
+            </button>
+          )}
+          {status === "pending" && fund.isEligible && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                joinFund();
+              }}
+              className="flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all"
+            >
+              Join
+            </button>
+          )}
         </div>
+      </div>
       </div>
     </div>
   );

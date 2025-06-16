@@ -20,6 +20,8 @@ export interface UserFund {
   fundPubkey: PublicKey,
   isPending: boolean,
   isEligible: boolean,
+  votesYes: bigint,
+  votesNo: bigint,
   name: string,
   expectedMembers: number,
   creatorExists: boolean,
@@ -60,6 +62,7 @@ export interface Proposal {
 
 export interface JoinProposal {
   joiner: PublicKey,
+  vecIndex: number,
   votesYes: bigint,
   votesNo: bigint,
   creationTime: bigint,

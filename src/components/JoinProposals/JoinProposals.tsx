@@ -58,7 +58,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
         nextByte += 1;
 
-        joinProposals.push({ joiner, votesYes, votesNo, creationTime, executed });
+        joinProposals.push({ joiner, vecIndex: i, votesYes, votesNo, creationTime, executed });
       }
 
       setJoinProposals(joinProposals);
@@ -190,7 +190,7 @@ return (
         <div className="flex-1 px-6 pb-6 overflow-x-auto flex flex-row gap-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {joinProposals
             ?.filter(p => !p.executed)
-            .map((proposal, index) => (
+            .map((proposal) => (
               <div
                 key={proposal.creationTime.toString()}
                 className="bg-[#111827] border border-gray-700 rounded-2xl p-5 min-w-[20rem] max-w-[20rem] flex flex-col justify-between hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl"
@@ -256,13 +256,13 @@ return (
                     <div className="flex gap-2">
                       <button
                         className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                        onClick={() => handleVote(1, index)}
+                        onClick={() => handleVote(1, proposal.vecIndex)}
                       >
                         YES
                       </button>
                       <button
                         className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                        onClick={() => handleVote(0, index)}
+                        onClick={() => handleVote(0, proposal.vecIndex)}
                       >
                         NO
                       </button>

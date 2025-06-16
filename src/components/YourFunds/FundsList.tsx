@@ -42,6 +42,8 @@ export default function FundsList() {
 
           const isPendings: boolean[] = [];
           const isEligibles: boolean[] = [];
+          const votesYess: bigint[] = [];
+          const votesNos: bigint[] = [];
 
           for (let i=0; i<num_of_funds; i++) {
             const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 68+i*50));
@@ -50,6 +52,31 @@ export default function FundsList() {
             console.log(fund_pubkey.toBase58());
             isPendings.push(isPending);
             isEligibles.push(isEligible);
+            if (isPending) {
+              const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from('join-proposal-aggregator'), Buffer.from([0]), fund_pubkey.toBuffer()],
+                programId
+              );
+              const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
+              if (!joinAggregatorPdaInfo) {
+                votesYess.push(BigInt(0));
+                votesNos.push(BigInt(0));
+              } else {
+                const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
+                const numOfJoinProposals = joinBuffer.readUInt32LE(33);
+                for (let i=0; i<numOfJoinProposals; i++) {
+                  const joiner = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
+                  if (joiner.toBase58() == user_key.toBase58()) {
+                    votesYess.push(joinBuffer.readBigInt64LE(69 + i*57));
+                    votesNos.push(joinBuffer.readBigInt64LE(77 + i*57));
+                    break;
+                  }
+                }
+              }
+            } else {
+              votesYess.push(BigInt(0));
+              votesNos.push(BigInt(0));
+            }
             funds_pubkey.push(fund_pubkey)
           }
 
@@ -104,6 +131,8 @@ export default function FundsList() {
               fundPubkey: funds_pubkey[i],
               isPending: isPendings[i],
               isEligible: isEligibles[i],
+              votesYes: votesYess[i],
+              votesNo: votesNos[i],
               name,
               creator,
               numOfMembers,
