@@ -30,12 +30,12 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       );
       console.log('join aggregator:', joinProposalAggregatorPda.toBase58());
 
-      const joinProposalAggregatorBuffer = await connection.getAccountInfo(joinProposalAggregatorPda);
-      if (!joinProposalAggregatorBuffer) {
+      const joinProposalAggregatorInfo = await connection.getAccountInfo(joinProposalAggregatorPda);
+      if (!joinProposalAggregatorInfo) {
         console.log("No Proposal aggregator found");
         return;
       }
-      const aggregatorBuffer = Buffer.from(joinProposalAggregatorBuffer.data);
+      const aggregatorBuffer = Buffer.from(joinProposalAggregatorInfo.data);
       const fundAddress = new PublicKey(aggregatorBuffer.slice(0, 32));
       if (fundAddress.toBase58() !== fundAccountPda.toBase58()) {
         console.log("Wrong join proposal aggregator");
@@ -78,7 +78,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
     load();
   }, [fetchJoinProposalsData]);
 
-  const handleVote = async (vote: number, proposalIndex: number) => {
+  const handleVote = async (vote: number, proposal: JoinProposal) => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       console.log("Connect the wallet first");
       return;
@@ -87,6 +87,8 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       console.log("Fund don't exist");
       return;
     }
+
+    if (!proposal) return;
 
     try {
       const governanceATA = await getAssociatedTokenAddress(
@@ -103,7 +105,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       );
 
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("join-vote"), Buffer.from([proposalIndex]), fund.fund_address.toBuffer()],
+        [Buffer.from("join-vote"), Buffer.from([proposal.proposalIndex]), fund.fund_address.toBuffer()],
         programId,
       );
 
@@ -118,18 +120,8 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         return;
       }
 
-      let joinerWallet: PublicKey = new PublicKey('');
-
-      for (let i=0; i<numOfJoinProposals; i++) {
-        const index = joinBuffer.readUInt8(37 + (i+1)*57);
-        if (index === proposalIndex) {
-          joinerWallet = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
-          break;
-        }
-      }
-
       const [joinerAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user'), joinerWallet.toBuffer()],
+        [Buffer.from('user'), proposal.joiner.toBuffer()],
         programId
       );
 
@@ -142,7 +134,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
         { pubkey: fund.governanceMint, isSigner: false, isWritable: true },
         { pubkey: governanceATA, isSigner: false, isWritable: true },
         { pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
-        { pubkey: joinerWallet, isSigner: false, isWritable: false},
+        { pubkey: proposal.joiner, isSigner: false, isWritable: false},
         { pubkey: joinerAccountPda, isSigner: false, isWritable: true},
       ];
 
@@ -157,7 +149,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       offset += 1;
       buffer.writeUInt8(vote, offset);
       offset += 1;
-      buffer.writeUInt8(proposalIndex, offset);
+      buffer.writeUInt8(proposal.proposalIndex, offset);
       offset += 1;
       nameBytes.copy(buffer, offset);
       const instructionData = buffer;
@@ -170,7 +162,7 @@ export default function JoinProposals({ fund, fundId }: JoinProposalsProps) {
       console.log('vote account: ', voteAccountPda.toBase58());
       console.log('governance ata: ', governanceATA.toBase58());
       console.log('proposal aggregator: ', joinAggregatorPda.toBase58());
-      console.log('proposal index:', proposalIndex);
+      console.log('proposal index:', proposal.proposalIndex);
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
@@ -262,13 +254,13 @@ return (
                   <div className="flex gap-2">
                     <button
                       className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                      onClick={() => handleVote(1, proposal.proposalIndex)}
+                      onClick={() => handleVote(1, proposal)}
                     >
                       YES
                     </button>
                     <button
                       className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition flex-1"
-                      onClick={() => handleVote(0, proposal.proposalIndex)}
+                      onClick={() => handleVote(0, proposal)}
                     >
                       NO
                     </button>
