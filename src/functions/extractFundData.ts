@@ -1,5 +1,5 @@
 import { AccountInfo, PublicKey } from "@solana/web3.js";
-import { Fund } from "../types";
+import { Fund, programId } from "../types";
 import { Buffer } from "buffer";
 
 export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBufferLike>> | null) {
@@ -26,8 +26,13 @@ export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBuffer
     }
     const creator = new PublicKey(fund_buffer.slice(118, 150));
 
+    const [fund_address] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fund'), Buffer.from(name)],
+        programId
+    );
+
     const fund: Fund = {
-        fund_address: new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG'),
+        fund_address,
         name,
         expectedMembers,
         creatorExists,

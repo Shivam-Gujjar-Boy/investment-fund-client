@@ -14,7 +14,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         {/* <ProposalSocketListener/> */}
-        <Toaster position='bottom-right'/>
+        <Toaster position='top-right'/>
       </BrowserRouter>
     
   );

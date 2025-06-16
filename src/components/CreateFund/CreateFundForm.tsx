@@ -107,11 +107,6 @@ export default function CreateFundForm() {
       setPrivacy(!isPublic);
 
       const rentGovernanceExempt = await connection.getMinimumBalanceForRentExemption(327 + fundName.length) / 1000000000;
-      // const fundRent = await connection.getMinimumBalanceForRentExemption(150) / 1000000000;
-      // const vaultRent = await connection.getMinimumBalanceForRentExemption(40) / 1000000000;
-      // const proposalAggregatorRent = await connection.getMinimumBalanceForRentExemption(37) / 1000000000;
-      // const joinProposalAggregatorRent = await connection.getMinimumBalanceForRentExemption(37) / 1000000000;
-      // const totalRent = rentGovernanceExempt + fundRent + vaultRent + proposalAggregatorRent + joinProposalAggregatorRent + 0.000348;
       const totalRent = 0.00575 + rentGovernanceExempt;
       console.log('Rent Exempt:', totalRent);
       setTotalRent(totalRent);
@@ -385,7 +380,7 @@ return (
               type="submit"
               disabled={!fundName.trim() || nameTaken || checking || fundSymbol.length !== 5 || calculatingRent}
               className={`w-full py-3 px-4 rounded-xl font-medium text-white transition-all duration-200 ${
-                !fundName.trim() || nameTaken || checking || fundSymbol.length !== 5
+                !fundName.trim() || nameTaken || checking || fundSymbol.length !== 5 || calculatingRent
                   ? 'bg-gray-600 cursor-not-allowed'
                   : 'bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 shadow-md'
               }`}
