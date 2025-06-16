@@ -199,16 +199,22 @@ export default function JoinFundForm() {
     try {
       if (!fundStatus.isPrivate) {
         await joinPublicFund();
+        setShowPrivateJoinModal(false);
       } else {
         await createJoinProposal();
+        setShowPublicJoinModal(false);
       }
       setIsConfirming(false);
     } catch (err) {
       console.error('Error joining fund:', err);
       setIsConfirming(false);
+      setShowPrivateJoinModal(false);
+      setShowPublicJoinModal(false);
     } finally {
       setLoading(false);
       setIsConfirming(false);
+      setShowPrivateJoinModal(false);
+      setShowPublicJoinModal(false);
     }
   }
 
