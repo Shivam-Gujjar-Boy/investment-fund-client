@@ -141,7 +141,7 @@ export default function JoinFundForm() {
       console.log('Number of join proposals:', numOfJoinProposals);
       let proposalIndex = 0;
       if (numOfJoinProposals !== 0) {
-        proposalIndex = joinBuffer.readUInt8(37 + (numOfJoinProposals)*57 - 1);
+        proposalIndex = joinBuffer.readUInt8(37 + (numOfJoinProposals)*57 - 1) + 1;
       }
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("join-vote"), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],
@@ -344,7 +344,8 @@ export default function JoinFundForm() {
                   </span>
                 )}{" "}
                 <span className='text-indigo-400'>SOL (proposal creation).</span><br />
-                <span>This cost will be refunded to the fund's creator.</span>
+                <span>This cost will be refunded to your wallet if <span className='font-semibold text-orange-400'>your proposal is accepted and you join the fund</span> or if <span className='font-semibold text-orange-400'>you cancel the proposal</span>. 
+                You can cancel the proposal at any time by navigating to the pending funds.</span>
               </p>
 
               {/* Total */}
