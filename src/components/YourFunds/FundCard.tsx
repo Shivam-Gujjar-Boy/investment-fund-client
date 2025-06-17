@@ -178,7 +178,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
       const numOfJoinProposals = joinBuffer.readUInt32LE(33);
       console.log('Number of join proposals:', numOfJoinProposals);
       let proposalIndex = 0;
-      if (numOfJoinProposals !== 0) {
+      if (numOfJoinProposals === 0) {
         return;
       }
 
@@ -201,16 +201,18 @@ export default function FundCard({ fund, status }: FundCardProps) {
       );
 
       const instructionTag = 12;
+      console.log(fund.name);
       const nameBytes = Buffer.from(fund.name, 'utf8');
       const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
       let offset = 0;
       buffer.writeUInt8(instructionTag, offset);
       offset += 1;
-      buffer.writeUInt8(proposalIndex);
+      buffer.writeUInt8(proposalIndex, offset);
       offset += 1;
       nameBytes.copy(buffer, offset);
 
       const instructionData = buffer;
+      console.log(instructionData);
 
       const instruction = new TransactionInstruction({
         keys: [
@@ -240,10 +242,12 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
       toast.success('Successfully Deleted Join Proposal');
       setIsDeleting(false);
+      setShowDeleteModal(false);
     } catch (err) {
       console.log(err);
       toast.error('Failed to delete join proposal');
       setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   }
 
@@ -405,14 +409,16 @@ export default function FundCard({ fund, status }: FundCardProps) {
                 Join
               </button>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openDeleteModal();
-              }}
-            >
-              Delete Proposal
-            </button>
+            {status === "pending" && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDeleteModal();
+                }}
+              >
+                Delete Proposal
+              </button>
+            )}
           </div>
         </div>
         </div>
@@ -435,7 +441,8 @@ export default function FundCard({ fund, status }: FundCardProps) {
                     {rentPaid.toFixed(5)}
                   </span>
                 )}{" "}
-                <span className='text-indigo-400'>SOL (fund creation) + <span className='font-semibold'>0.00022</span> SOL (fund’s accommodation)</span> to join this fund. <br />
+                <span className='text-indigo-400'>SOL (fund creation) + <span className='font-semibold'>0.00022</span> SOL (fund’s accommodation)</span> to join this fund. 
+                Also, you get <span className='text-green-500 font-semibold'>0.00039 SOL</span><br />
                 <span>This cost will be refunded to the fund's creator.</span>
               </p>
 
@@ -445,7 +452,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
                 {rentPaid === null ? (
                   <span className="inline-block w-24 h-5 bg-indigo-700/30 rounded-md animate-pulse" />
                 ) : (
-                  <span className="text-green-400 font-medium">{(rentPaid + 0.00022).toFixed(5)} SOL</span>
+                  <span className="text-green-400 font-medium">{(rentPaid + 0.00022 - 0.00039).toFixed(5)} SOL</span>
                 )}
               </p>
             </div>
@@ -486,26 +493,14 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
               {/* Info Text */}
               <p className="text-sm text-indigo-100 leading-relaxed">
-                You will need to pay a small amount of{" "}
-                {rentPaid === null ? (
-                  <span className="inline-block w-20 h-4 bg-indigo-700/30 rounded-md animate-pulse" />
-                ) : (
-                  <span className="font-semibold text-indigo-400">
-                    {rentPaid.toFixed(5)}
-                  </span>
-                )}{" "}
-                <span className='text-indigo-400'>SOL (fund creation) + <span className='font-semibold'>0.00022</span> SOL (fund’s accommodation)</span> to join this fund. <br />
-                <span>This cost will be refunded to the fund's creator.</span>
+                You will get
+                <span className='text-indigo-400'> 0.00074 SOL</span> after deleting this proposal. <br />
               </p>
 
               {/* Total */}
               <p className="pt-1">
-                Required:&nbsp;
-                {rentPaid === null ? (
-                  <span className="inline-block w-24 h-5 bg-indigo-700/30 rounded-md animate-pulse" />
-                ) : (
-                  <span className="text-green-400 font-medium">{(rentPaid + 0.00022).toFixed(5)} SOL</span>
-                )}
+                Refund:&nbsp;
+                  <span className="text-green-400 font-medium"> +0.00074 SOL</span>
               </p>
             </div>
 

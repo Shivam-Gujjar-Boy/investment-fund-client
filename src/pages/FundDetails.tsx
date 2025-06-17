@@ -102,11 +102,37 @@ export default function FundDetails() {
         {/* Left Scrollable Section */}
         <div className="w-3/4 pr-4 overflow-y-auto h-[calc(100vh-1rem)]">
           <div className="flex flex-col gap-2">
-            {/* Graph, Members, and Holdings */}
+            {/* Details, Graph, Members, and Holdings */}
+            <div className="w-full p-4 bg-slate-900 border border-white/10 rounded-xl backdrop-blur-md shadow-lg text-white flex flex-wrap justify-between items-center animate-fadeIn">
+              <div className="flex flex-col gap-1 min-w-[160px]">
+                <p className="text-sm text-white/60">Fund Name</p>
+                <p className="text-lg font-semibold tracking-wide">{fund?.name}</p>
+              </div>
+
+              <div className="flex flex-col gap-1 min-w-[120px]">
+                <p className="text-sm text-white/60">Members</p>
+                <p className="text-lg font-semibold">{fund?.members.length}</p>
+              </div>
+
+              <div className="flex flex-col gap-1 min-w-[160px]">
+                <p className="text-sm text-white/60">Your Contribution</p>
+                <p className="text-lg font-semibold">
+                  {1.111.toFixed(2)}%
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1 min-w-[180px]">
+                <p className="text-sm text-white/60">Created At</p>
+                <p className="text-lg font-semibold">
+                  {new Date(Number(fund?.created_at ?? BigInt(0)) * (1000)).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               {/* Members */}
               {loading ? (
-                <div className="bg-[#1f2937] p-6 h-[28rem] w-[25%] animate-pulse space-y-4">
+                <div className="bg-[#1f2937] p-6 h-[28rem] w-[25%] animate-pulse space-y-4 rounded-xl">
                   <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                   <ul className="space-y-4">
                     {[...Array(5)].map((_, idx) => (
@@ -148,7 +174,7 @@ export default function FundDetails() {
         {/* Fixed Proposals Section */}
         <div className="w-1/4 fixed right-2 top-19 h-[calc(100vh-1rem)]">
           {loading ? (
-            <div className="bg-[#1f2937] rounded-2xl h-[90%] animate-pulse flex flex-col">
+            <div className="bg-[#1f2937] rounded-xl h-[90%] animate-pulse flex flex-col">
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
                 <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                 {[...Array(4)].map((_, idx) => (
@@ -169,7 +195,7 @@ export default function FundDetails() {
               </div>
             </div>
           ) : (
-            <div className="bg-[#1f2937] rounded-2xl h-[90%] flex flex-col overflow-y-auto fancy-scrollbar">
+            <div className="bg-[#1f2937] rounded-xl h-[90%] flex flex-col overflow-y-auto fancy-scrollbar">
               <Proposals fund={fund} fundId={fundId} />
             </div>
           )}

@@ -642,7 +642,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
   return (
     <>
       { loading ? (
-            <div className="bg-[#1f2937] rounded-2xl h-[41rem] animate-pulse flex flex-col">
+            <div className="bg-[#1f2937] rounded-2xl h-full animate-pulse flex flex-col">
               <div className="p-6 overflow-y-auto flex-1 space-y-4">
                 <div className="h-6 w-32 bg-gray-700 rounded mb-4"></div>
                 {[...Array(4)].map((_, idx) => (
@@ -663,7 +663,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
               </div>
             </div>
       ) : (
-      <div className="relative flex flex-col h-[41rem] bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+      <div className="relative flex flex-col h-full bg-gradient-to-b from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
 
         {/* Top Scrollable Content */}
         <div className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">

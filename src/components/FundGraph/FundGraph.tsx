@@ -39,7 +39,7 @@ export default function FundGraph() {
 
   return (
     <motion.div
-      className="relative bg-[#1f2937]/60 backdrop-blur-md shadow-2xl border border-white/10 rounded-2xl flex flex-col w-[55%] p-6 h-[28rem] overflow-hidden"
+      className="relative bg-[#1f2937]/60 backdrop-blur-md shadow-2xl border border-white/10 rounded-xl flex flex-col w-[55%] p-6 h-[28rem] overflow-hidden"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: "easeOut" }}

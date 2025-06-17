@@ -25,12 +25,14 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
             const info = acc.account.data?.parsed.info;
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
+            const decimals = info.decimals;
             return {
             pubkey: acc.pubkey,
             mint,
             symbol: 'Unknown',
             image: '',
             balance,
+            decimals
             };
         })
         .filter((token) => token.balance > 0);
@@ -42,6 +44,7 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
         symbol: 'SOL',
         image: '',
         balance: balance/Math.pow(10, 9),
+        decimals: 9,
         });
 
         const tokensWithMetadata = await Promise.all(

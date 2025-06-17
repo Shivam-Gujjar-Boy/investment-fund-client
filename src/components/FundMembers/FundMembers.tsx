@@ -4,7 +4,7 @@ import { Fund, Token, programId } from '../../types';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { Metaplex } from '@metaplex-foundation/js';
 import { fetchUserTokens } from '../../functions/fetchuserTokens';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getMint, TOKEN_PROGRAM_ID, getAccount, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID, getAccount, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
@@ -77,7 +77,7 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
     };
 
     fetchBalances();
-  }, [members, governanceMint]);
+  }, [members, governanceMint, connection]);
 
   function truncateAddress(address: string): string {
     return `${address.slice(0, 6)}...${address.slice(-6)}`;
@@ -189,15 +189,23 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
       console.log("governance mint", fund?.governanceMint.toBase58());
       console.log("token program 2022", TOKEN_2022_PROGRAM_ID.toBase58());
 
-      const ui_amount = BigInt(amount);
+      let transferAmount: bigint = BigInt(0);
+      if (!amount.includes('.')) {
+        transferAmount = BigInt(amount + '0'.repeat(selectedToken.decimals));
+      } else {
+        const [inPart, fracPart = ''] = amount.split('.');
+        const paddedFrac = fracPart.slice(0, selectedToken.decimals).padEnd(selectedToken.decimals, '0');
+        const fullStr = inPart + paddedFrac;
+        transferAmount = BigInt(fullStr);
+      }
       const instructionTag = Buffer.from([7]);
-      const mintInfo = await getMint(connection, mint);
-      const decimals = mintInfo.decimals;
-      const transfer_amount = ui_amount * BigInt(Math.pow(10, decimals));
+      // const mintInfo = await getMint(connection, mint);
+      // const decimals = mintInfo.decimals;
+      // const transfer_amount = ui_amount * BigInt(Math.pow(10, decimals));
       const amountBuffer = Buffer.alloc(8);
-      amountBuffer.writeBigInt64LE(transfer_amount);
+      amountBuffer.writeBigInt64LE(transferAmount);
 
-      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=${transfer_amount}&slippageBps=50`);
+      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=${transferAmount}&slippageBps=50`);
       if (!response) {
         toast.error('Failed to fetch token price');
         return;
@@ -235,16 +243,18 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
         lastValidBlockHeight
       });
 
+      setisDepositing(false);
       setShowDepositModal(false);
       toast.success('Successfully deposited assets to fund');
     } catch (err) {
       toast.error('Error depositing assets');
       console.log(err);
+      setisDepositing(false);
     }
   };
 
   return (
-    <div className="bg-gradient-to-b from-[#1f2937] to-[#0f172a] h-[28rem] w-[25%] relative rounded-2xl shadow-[0_0_20px_#6366f155] border border-white/10 transition-all duration-500 flex flex-col">
+    <div className="bg-gradient-to-b from-[#1f2937] to-[#0f172a] h-[28rem] w-[25%] relative rounded-xl shadow-[0_0_20px_#6366f155] border border-white/10 transition-all duration-500 flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 p-6 pb-0">
         <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2">
@@ -389,7 +399,19 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  const decimals = selectedToken?.decimals ?? 0;
+
+                  if (val.includes('.')) {
+                    const [inPart, decimalPart] = val.split('.');
+                    if (decimalPart.length > decimals) {
+                      val = `${inPart}.${decimalPart.slice(0, decimals)}`
+                    }
+                  }
+
+                  setAmount(val);
+                }}
                 className="flex-1 text-right px-4 py-3 text-2xl bg-transparent outline-none placeholder-white"
               />
             </div>

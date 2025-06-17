@@ -154,7 +154,7 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
     };
 
     return (
-      <div className="relative p-6 h-[28rem] w-[45%] rounded-2xl overflow-hidden bg-[#1f2937] border border-white/10 shadow-[0_0_30px_#0f172a99] group">
+      <div className="relative p-6 h-[28rem] w-[45%] rounded-xl overflow-hidden bg-[#1f2937] border border-white/10 shadow-[0_0_30px_#0f172a99] group">
         {/* Dynamic Gradient Glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-teal-900/20 via-purple-800/10 to-indigo-900/20 opacity-30 blur-2xl pointer-events-none group-hover:opacity-50 transition duration-1000 ease-in-out" />
 

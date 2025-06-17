@@ -184,6 +184,8 @@ export default function JoinFundForm() {
         blockhash,
         lastValidBlockHeight,
       });
+
+      toast.success('Join Proposal created successfully');
       
       return signature;
     } catch (err) {

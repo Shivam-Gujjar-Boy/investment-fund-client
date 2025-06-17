@@ -24,7 +24,13 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Left: Brand & Desktop Nav */}
           <div className="flex items-center space-x-10">
-            <h1 className="text-white text-2xl font-bold tracking-tight">🚀 PeerFunds</h1>
+            <div onClick={(e) => {
+              e.preventDefault();
+              navigate('/dashboard');
+            }} className='flex justify-center items-center gap-2 cursor-pointer'>
+              <img src="../../../peerfunds.png" alt="" className='w-12 rounded-full'/>
+              <h1 className="text-white text-2xl font-bold tracking"> PeerFunds</h1>
+            </div>
 
             <div className="hidden md:flex space-x-2">
               <NavLink to="/dashboard/discover" className={navItemStyle}>

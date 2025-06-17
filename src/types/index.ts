@@ -42,6 +42,7 @@ export interface Token {
   symbol: string,
   image: string,
   balance: number,
+  decimals: number,
 };
 
 export interface Proposal {
