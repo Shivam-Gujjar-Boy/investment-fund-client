@@ -188,7 +188,7 @@ return (
     {loading ? (
       <div className="bg-[#1f2937] rounded-2xl h-[20rem] animate-pulse flex flex-col"></div>
     ) : (
-      (joinProposals && joinProposals?.length > 0) ? (<div className="relative flex flex-col h-[20rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
+      (joinProposals && joinProposals?.length > 0) ? (<div className="relative flex flex-col h-[22rem] bg-gradient-to-r from-[#1e293b] via-[#111827] to-black rounded-2xl overflow-hidden border border-gray-700 shadow-[0_0_15px_#00000088]">
         {/* Header */}
         <div className="flex justify-between items-center p-6">
           <h2 className="text-2xl font-semibold text-white tracking-tight">Join Proposals</h2>
@@ -220,6 +220,10 @@ return (
                   <div>
                     <span className="text-gray-300 font-medium">No Votes:</span>{' '}
                     {proposal.votesNo.toString()}
+                  </div>
+                  <div>
+                    <span className="text-gray-300 font-medium">Proposal Index:</span>{' '}
+                    {proposal.proposalIndex.toString()}
                   </div>
                 </div>
 

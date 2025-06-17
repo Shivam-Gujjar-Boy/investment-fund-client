@@ -274,7 +274,9 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
           <div className="h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-700 scrollbar-track-gray-800">
             <div className="space-y-4 text-sm">
               <ul className="space-y-4">
-                {memberInfos.map(({ pubkey, balance }) => {
+                {memberInfos
+                  .sort((a, b) => (b.balance > a.balance ? 1 : b.balance < a.balance ? -1 : 0))
+                  .map(({ pubkey, balance }) => {
                   const percentage = totalBalance > 0 ? (balance / totalBalance) * 100 : 0;
                   const shortAddr = truncateAddress(pubkey.toBase58());
 
@@ -285,7 +287,11 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
                       onClick={() => handleCopy(pubkey.toBase58())}
                     >
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-gray-300 group-hover:text-white transition-all font-mono">
+                        <span className={`${
+                          pubkey.toBase58() === fund.creator.toBase58() ?
+                          'text-orange-300 hover:text-green' :
+                          'text-gray-300 hover:text-white'
+                        } transition-all font-mono`}>
                           {shortAddr}
                         </span>
                         <span className="text-green-400 font-semibold">{percentage.toFixed(2)}%</span>
@@ -307,7 +313,7 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
 
       {/* Fixed Buttons at Bottom */}
       <div className="flex-shrink-0 bg-[#111827] pt-3 pb-4 px-6 space-y-3 border-t border-gray-700 rounded-b-2xl">
-        {['Deposit', 'Invite', 'Withdraw', 'Activities'].map((label, idx) => (
+        {['Deposit', 'Withdraw', 'Activities'].map((label, idx) => (
           <button
             onClick={() => {
               if (label === 'Deposit') {
