@@ -19,8 +19,10 @@ interface FundCardProps {
 
 export default function FundCard({ fund, status }: FundCardProps) {
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [rentPaid, setRentPaid] = useState<number | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
   const wallet = useWallet();
@@ -150,6 +152,101 @@ export default function FundCard({ fund, status }: FundCardProps) {
     }
   }
 
+  async function deleteProposal() {
+    try {
+      const user = wallet.publicKey;
+      if (!user) throw new Error('Wallet not connected');
+      if (!wallet.signTransaction) throw new Error('Wallet does not support transaction signing');
+
+      const [joinerAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('user'), user.toBuffer()],
+        programId
+      );
+
+      const fundAccountPda = fund.fundPubkey;
+
+      const [joinProposalAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('join-proposal-aggregator'), Buffer.from([0]), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const joinProposalAggregatorInfo = await connection.getAccountInfo(joinProposalAggregatorPda);
+      if (!joinProposalAggregatorInfo) return;
+
+      const joinBuffer = Buffer.from(joinProposalAggregatorInfo.data);
+
+      const numOfJoinProposals = joinBuffer.readUInt32LE(33);
+      console.log('Number of join proposals:', numOfJoinProposals);
+      let proposalIndex = 0;
+      if (numOfJoinProposals !== 0) {
+        return;
+      }
+
+      for (let i=0; i<numOfJoinProposals; i++) {
+        const joiner = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
+        if (joiner.toBase58() === user.toBase58()) {
+          proposalIndex = joinBuffer.readUInt8(37 + (i+1)*57 - 1);
+          break;
+        }
+      }
+
+      const [voteAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('join-vote'), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const [rentPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('rent')],
+        programId
+      );
+
+      const instructionTag = 12;
+      const nameBytes = Buffer.from(fund.name, 'utf8');
+      const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
+      let offset = 0;
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(proposalIndex);
+      offset += 1;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: false},
+          {pubkey: joinerAccountPda, isSigner: false, isWritable: true},
+          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+          {pubkey: joinProposalAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: voteAccountPda, isSigner: false, isWritable: true},
+          {pubkey: rentPda, isSigner: false, isWritable: true}
+        ],
+        programId,
+        data: instructionData
+      });
+
+      const transaction = new Transaction().add(instruction);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey!;
+
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      });
+
+      toast.success('Successfully Deleted Join Proposal');
+      setIsDeleting(false);
+    } catch (err) {
+      console.log(err);
+      toast.error('Failed to delete join proposal');
+      setIsDeleting(false);
+    }
+  }
+
   const getPercentage = (value: bigint, total: bigint) => {
     if (total === 0n) return 0;
     return Number((value*10000n) / total) / 100;
@@ -167,6 +264,10 @@ export default function FundCard({ fund, status }: FundCardProps) {
     } else {
       setRentPaid(0);
     }
+  }
+
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
   }
 
   return (
@@ -304,6 +405,14 @@ export default function FundCard({ fund, status }: FundCardProps) {
                 Join
               </button>
             )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                openDeleteModal();
+              }}
+            >
+              Delete Proposal
+            </button>
           </div>
         </div>
         </div>
@@ -362,6 +471,65 @@ export default function FundCard({ fund, status }: FundCardProps) {
                 } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
               >
                 {isConfirming ? 'Confirming...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+          <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
+
+            {/* Heading */}
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-indigo-300">Deleting Join Proposal</h2>
+
+              {/* Info Text */}
+              <p className="text-sm text-indigo-100 leading-relaxed">
+                You will need to pay a small amount of{" "}
+                {rentPaid === null ? (
+                  <span className="inline-block w-20 h-4 bg-indigo-700/30 rounded-md animate-pulse" />
+                ) : (
+                  <span className="font-semibold text-indigo-400">
+                    {rentPaid.toFixed(5)}
+                  </span>
+                )}{" "}
+                <span className='text-indigo-400'>SOL (fund creation) + <span className='font-semibold'>0.00022</span> SOL (fund’s accommodation)</span> to join this fund. <br />
+                <span>This cost will be refunded to the fund's creator.</span>
+              </p>
+
+              {/* Total */}
+              <p className="pt-1">
+                Required:&nbsp;
+                {rentPaid === null ? (
+                  <span className="inline-block w-24 h-5 bg-indigo-700/30 rounded-md animate-pulse" />
+                ) : (
+                  <span className="text-green-400 font-medium">{(rentPaid + 0.00022).toFixed(5)} SOL</span>
+                )}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsDeleting(true);
+                  deleteProposal();
+                }}
+                disabled={isDeleting}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                  isDeleting ?
+                  'bg-gray-600 cursor-not-allowed' :
+                  'bg-indigo-500 hover:bg-indigo-400'
+                } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
