@@ -78,23 +78,33 @@ export default function FundCard({ fund, status }: FundCardProps) {
       }
       const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
       const numOfJoinProposals = joinBuffer.readUint32LE(33);
-      let i = 0;
 
-      for ( ; i < numOfJoinProposals; i++) {
+      let proposalIndex = 0;
+      for ( let i = 0; i < numOfJoinProposals; i++) {
         const joiner = new PublicKey(joinBuffer.slice(37 + i*57 , 69 + i*57));
         if (joiner.toBase58() === user.toBase58()) {
+          console.log('Itthe aaya mai');
+          proposalIndex = joinBuffer.readUInt8(37 + (i+1)*57 - 1);
           break;
         }
       }
+
+      console.log('proposal index:', proposalIndex);
+
+      const [votePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('join-vote'), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],
+        programId
+      );
 
       const accounts = [
         { pubkey: fundAccountPda, isSigner: false, isWritable: true },
         { pubkey: user, isSigner: true, isWritable: true },
         { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
         { pubkey: userAccountPda, isSigner: false, isWritable: true },
-        { pubkey: rentReservePda, isSigner: false, isWritable: true},
-        { pubkey: joinAggregatorPda, isSigner: false, isWritable: true},
-        { pubkey: fund.creator, isSigner: false, isWritable: true},
+        { pubkey: rentReservePda, isSigner: false, isWritable: true },
+        { pubkey: joinAggregatorPda, isSigner: false, isWritable: true },
+        { pubkey: votePda, isSigner: false, isWritable: true },
+        { pubkey: fund.creator, isSigner: false, isWritable: true },
       ];
 
       const instructionTag = 3;
@@ -104,7 +114,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
       buffer.writeUInt8(instructionTag, offset);
       offset += 1;
-      buffer.writeUint8(i, offset);
+      buffer.writeUint8(proposalIndex, offset);
       offset += 1;
       nameBytes.copy(buffer, offset);
 

@@ -141,7 +141,7 @@ export default function JoinFundForm() {
       console.log('Number of join proposals:', numOfJoinProposals);
       let proposalIndex = 0;
       if (numOfJoinProposals !== 0) {
-        proposalIndex = joinBuffer.readUInt8(37 + (numOfJoinProposals)*57);
+        proposalIndex = joinBuffer.readUInt8(37 + (numOfJoinProposals)*57 - 1);
       }
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("join-vote"), Buffer.from([proposalIndex]), fundAccountPda.toBuffer()],

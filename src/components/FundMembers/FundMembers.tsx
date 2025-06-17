@@ -22,6 +22,7 @@ interface MemberInfo {
 }
 
 export default function FundMembers({ members, governanceMint, fund }: FundMembersProps) {
+  const [isDepositing, setisDepositing] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [userTokens, setUserTokens] = useState<Token[]>([]);
@@ -406,11 +407,18 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
                 Cancel
               </button>
               <button
-                onClick={handleDeposit}
-                className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                disabled={!selectedToken || !amount || parseFloat(amount) > selectedToken.balance}
+                onClick={() => {
+                  setisDepositing(true);
+                  handleDeposit();
+                }}
+                className={`px-5 py-2 rounded-xl ${
+                  isDepositing ?
+                  'bg-gray-600 hover:bg-gray-500' :
+                  'bg-green-600 hover:bg-green-500'
+                } transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
+                disabled={!selectedToken || !amount || parseFloat(amount) > selectedToken.balance || isDepositing}
               >
-                ✅ Deposit
+                {isDepositing ? 'Depositing...' : 'Deposit'}
               </button>
             </div>
           </div>
