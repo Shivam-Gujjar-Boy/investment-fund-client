@@ -28,7 +28,7 @@ interface ProposalSwap {
 
 export default function Proposals({ fund, fundId }: ProposalsProps) {
   const wallet = useWallet();
-  
+
   const [loading, setLoading] = useState(false);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
@@ -387,6 +387,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       return;
     }
 
+    if (!proposals) return;
+
     if (!wallet.publicKey || !wallet.signTransaction) {
       console.log('wallet hi na hai');
       return;
@@ -405,7 +407,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       console.log('fund: ', fundpda.toBase58());
       const nameLength = nameBytes.length;
 
-      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + nameLength);
+      const buffer = Buffer.alloc(1 + 1 + 1 + 2 + nameLength);
       let offset = 0;
 
       buffer.writeUInt8(instructionTag, offset);
@@ -414,8 +416,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       offset += 1;
       buffer.writeUInt8(proposalIndex, offset);
       offset += 1;
-      buffer.writeUInt8(vecIndex, offset);
-      offset += 1;
+      buffer.writeUInt16LE(vecIndex, offset);
+      offset += 2;
       nameBytes.copy(buffer, offset);
 
       const instructionData = buffer;
@@ -425,8 +427,11 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       }
       const fundAccountPda = new PublicKey(fundId);
 
+      const vecBytes = Buffer.alloc(2);
+      vecBytes.writeUInt16LE(vecIndex);
+
       const [voteAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('vote'), Buffer.from([proposalIndex]), Buffer.from([vecIndex]), fundAccountPda.toBuffer()],
+        [Buffer.from('vote'), Buffer.from([proposalIndex]), vecBytes, fundAccountPda.toBuffer()],
         programId
       );
 
@@ -439,11 +444,19 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         fund?.governanceMint,
         user,
         false,
-        TOKEN_PROGRAM_ID,
+        TOKEN_2022_PROGRAM_ID,
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
       const governanceMint = new PublicKey(fund.governanceMint);
+
+      let proposer: PublicKey = proposals[0].proposer;
+      for (const proposal of proposals) {
+        if (proposal.vecIndex === vecIndex) {
+          proposer = proposal.proposer;
+          break;
+        }
+      }
 
       const instruction = new TransactionInstruction({
         keys: [
@@ -455,6 +468,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
           {pubkey: governanceMint, isSigner: false, isWritable: true},
           {pubkey: governanceATA, isSigner: false, isWritable: true},
           {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: proposer, isSigner: false, isWritable: false}
         ],
         programId,
         data: instructionData,
@@ -681,14 +695,14 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
             <div onClick={(e) => {
               e.preventDefault();
               setFilterOption('by-you');
-            }} className='bg-gray-800 px-5 py-2 rounded-xl shadow-md text-sm hover:bg-gray-700 cursor-pointer'>
+            }} className='bg-gray-800 px-5 py-2 rounded-xl shadow-lg text-sm hover:bg-gray-700 cursor-pointer'>
               By You
             </div>
             
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl transition-all shadow-md"
+                className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-xl transition-all shadow-lg"
               >
                 <Filter size={16} />
                 Filter & Sort
