@@ -10,7 +10,7 @@ import { findAmmConfig } from '../../functions/pool_accounts';
 import { findTickArrayAccounts } from '../../functions/tick_array';
 import { Buffer } from 'buffer';
 import { fetchVaultTokens } from '../../functions/fetchuserTokens';
-import { Metaplex } from '@metaplex-foundation/js';
+import { isSigner, Metaplex } from '@metaplex-foundation/js';
 import { TokenSelector } from './TokenSelector';
 import { Filter } from "lucide-react";
 
@@ -657,6 +657,100 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
 
   const getSymbol = (mint: string) => {
     return userTokens.find(t => t.mint === mint)?.symbol || '';
+  }
+
+  // Deleting of an investment proposal
+  const handleCancellation = async (proposalIndex: number, vecIndex: number) => {
+
+    const user = wallet.publicKey;
+    if (!user) return;
+    
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      console.log("Wallet hi nahi hai betche");
+      return;
+    }
+
+    try {
+
+      if (!fundId) {
+        return;
+      }
+
+      if (!fund) {
+        console.log("Fund hi ni hai bro");
+        return;
+      }
+
+      const fundAddress = new PublicKey(fundId);
+      const instructionTag = 13;
+      const fundName = fund.name;
+      const nameBytes = Buffer.from(fundName, 'utf8');
+      const nameLength = nameBytes.length;
+
+      const buffer = Buffer.alloc(1 + 1 + 2 + nameLength);
+      let offset = 0;
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(proposalIndex, offset);
+      offset += 1;
+      buffer.writeUInt16LE(vecIndex, offset);
+      offset += 2;
+      nameBytes.copy(buffer, offset);
+
+      const vecBytes = Buffer.alloc(2);
+      vecBytes.writeUInt16LE(vecIndex);
+
+      const instructionData = buffer;
+      console.log("Yeh raha bhai tera instruction data: ", instructionData);
+
+      const[proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("proposal-aggregator"), Buffer.from([proposalIndex]), fundAddress.toBuffer()],
+        programId,
+      );
+
+      const [proposalVotePda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vote"), Buffer.from([proposalIndex]), vecBytes, fundAddress.toBuffer()],
+        programId,
+      )
+
+      const [rentPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("rent")],
+        programId,
+      )
+
+      const instruction = new TransactionInstruction({  
+        keys: [
+        {pubkey: user, isSigner: true, isWritable: false},
+        {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+        {pubkey: proposalVotePda, isSigner: false, isWritable: true},
+        {pubkey: fundAddress, isSigner: false, isWritable: true},
+        {pubkey: rentPda, isSigner: false, isWritable: true}
+        ],
+        programId,
+        data: instructionData,
+      })
+
+      const transaction = new Transaction().add(instruction);
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = user;
+
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+      toast.success('Voted Successfully');
+
+    } catch(err) {
+      toast.error("Could not delete the proposal!")
+      return err;
+    }
   }
 
   return (
