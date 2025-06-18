@@ -82,12 +82,14 @@ export const fetchVaultTokens = async (vault: PublicKey | undefined, connection:
             const info = acc.account.data?.parsed.info;
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
+            const decimals = info.decimals;
             return {
             pubkey: acc.pubkey,
             mint,
             symbol: 'Unknown',
             image: '',
             balance,
+            decimals,
             };
         })
         .filter((token) => token.balance > 0);

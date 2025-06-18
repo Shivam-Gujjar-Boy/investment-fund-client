@@ -215,13 +215,9 @@ export default function JoinFundForm() {
     } catch (err) {
       console.error('Error joining fund:', err);
       setIsConfirming(false);
-      setShowPrivateJoinModal(false);
-      setShowPublicJoinModal(false);
     } finally {
       setLoading(false);
       setIsConfirming(false);
-      setShowPrivateJoinModal(false);
-      setShowPublicJoinModal(false);
     }
   }
 

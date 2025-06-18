@@ -27,17 +27,18 @@ interface ProposalSwap {
 }
 
 export default function Proposals({ fund, fundId }: ProposalsProps) {
-  const [refresh, setRefresh] = useState(0);
+  const wallet = useWallet();
+  
   const [loading, setLoading] = useState(false);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
-  const [vecIndex, setVecIndex] = useState(0);
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
-  const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted'>('all');
+  const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted' | 'by-you'>('all');
   const [isCreating, setIsCreating] = useState(false);
   const filteredAndSortedProposals = [...(proposals ?? [])]
     .filter((p) => {
       if (filterOption === 'executed') return p.executed;
       if (filterOption === 'nonExecuted') return !p.executed;
+      if (filterOption === 'by-you') return p.proposer.toBase58() === wallet.publicKey?.toBase58();
       return true;
     })
     .sort((a, b) => {
@@ -54,7 +55,6 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
     { fromMint: '', toMint: '', amount: '', slippage: '0.5' }
   ]);
 
-  const wallet = useWallet();
   const { connection } = useConnection();
   const metaplex = Metaplex.make(connection);
 
@@ -140,7 +140,6 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       console.log('Aggregator Index : ', proposalIndex);
 
       const numOfProposals = aggregatorBuffer.readUInt32LE(33);
-      setVecIndex(numOfProposals);
       let nextByte = 37;
 
       const proposalss: Proposal[] = [];
@@ -186,10 +185,12 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         nextByte += 8;
         const executed = aggregatorBuffer.readUInt8(nextByte) ? true : false;
         nextByte += 1;
+        const vecIndex = aggregatorBuffer.readUInt16LE(nextByte);
+        nextByte += 2;
 
         proposalss.push({
           proposalIndex: currentIndex,
-          vecIndex: i,
+          vecIndex,
           proposer,
           numOfSwaps: numOfAmounts,
           fromAssets,
@@ -209,7 +210,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
     } catch (err) {
       console.log('Error fetching fund proposals: ', err);
     }
-  }, [fundId, fund, wallet.publicKey, connection, refresh]);
+  }, [fundId, fund, wallet.publicKey, connection]);
 
   useEffect(() => {
     const load = async () => {
@@ -230,6 +231,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
     if (!fund) {
       return;
     }
+
+    if (!proposals) return;
 
     console.log(fund);
 
@@ -273,11 +276,6 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       const instructionData = buffer;
       console.log(instructionData);
 
-      const [userAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user'), user.toBuffer()],
-        programId
-      );
-
       const [fundAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('fund'), Buffer.from(fund.name)],
         programId
@@ -293,13 +291,25 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         programId
       );
 
-      console.log(fundAccountPda.toBase58());
-      const [voteAccountPda1] = PublicKey.findProgramAddressSync(
-        [Buffer.from('vote'), Buffer.from([fund.currentIndex]), Buffer.from([(vecIndex)]), fundAccountPda.toBuffer()],
+      const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+      if (!currentAggregatorInfo) return;
+
+      const aggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+      const numOfProposals = aggregatorBuffer.readUInt32LE(33);
+      let vecIndex = 0;
+      if (numOfProposals != 0) {
+        vecIndex = proposals[numOfProposals - 1].vecIndex + 1;
+      }
+
+      const vecBuffer = Buffer.alloc(2);
+      vecBuffer.writeUInt16LE(vecIndex);
+
+      const [voteAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('vote'), Buffer.from([fund.currentIndex]), vecBuffer, fundAccountPda.toBuffer()],
         programId
       );
 
-      const [voteAccountPda2] = PublicKey.findProgramAddressSync(
+      const [newVoteAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('vote'), Buffer.from([fund.currentIndex + 1]), Buffer.from([0]), fundAccountPda.toBuffer()],
         programId
       );
@@ -310,13 +320,12 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
 
       const keys = [
           {pubkey: user, isSigner: true, isWritable: true},
-          {pubkey: userAccountPda, isSigner: false, isWritable: true},
           {pubkey: fundAccountPda, isSigner: false, isWritable: true},
           {pubkey: currentAggregatorPda, isSigner: false, isWritable: true},
           {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
           {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
-          {pubkey: voteAccountPda1, isSigner: false, isWritable: true},
-          {pubkey: voteAccountPda2, isSigner: false, isWritable: true},
+          {pubkey: voteAccountPda, isSigner: false, isWritable: true},
+          {pubkey: newVoteAccountPda, isSigner: false, isWritable: true},
       ];
 
       for (const swap of swaps) {
@@ -342,8 +351,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       console.log("current index: ", fund.currentIndex);
       console.log("Current aggregator: ", currentAggregatorPda.toBase58());
       console.log("New aggregator: ", newAggregatorPda.toBase58());
-      console.log("vote account 1: ", voteAccountPda1.toBase58());
-      console.log("vote account 2: ", voteAccountPda2.toBase58());
+      console.log("vote account 1: ", voteAccountPda.toBase58());
+      console.log("vote account 2: ", newVoteAccountPda.toBase58());
 
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
@@ -357,9 +366,6 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         blockhash,
         lastValidBlockHeight
       });
-      // const p: Proposals[] = [];
-      // setProposals(proposals);
-      setRefresh(refresh + 1);
 
       setShowProposalModal(false);
       setIsCreating(false);
@@ -671,6 +677,13 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
           {/* Heading & Filter */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold text-white tracking-tight">Proposals</h2>
+
+            <div onClick={(e) => {
+              e.preventDefault();
+              setFilterOption('by-you');
+            }} className='bg-gray-800 px-5 py-2 rounded-xl shadow-md text-sm hover:bg-gray-700 cursor-pointer'>
+              By You
+            </div>
             
             <div className="relative">
               <button
@@ -1078,7 +1091,6 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                     const deadlineTimestamp = BigInt(Math.floor(new Date(deadline).getTime() / 1000));
                     setIsCreating(true);
                     handleProposalCreation(formatted, deadlineTimestamp);
-                    setIsCreating(false);
                   } else {
                     toast.error('Please complete all fields');
                     return;
@@ -1089,9 +1101,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                   isCreating ? "bg-green-400 cursor-not-allowed opacity-50" : "bg-green-600 hover:bg-green-500"
                 }`}
               >
-                {isCreating ? "Creating..." : "✅ Create Proposal"}
+                {isCreating ? "Creating..." : "Create Proposal"}
               </button>
-
             </div>
           </div>
         </div>

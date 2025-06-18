@@ -147,7 +147,6 @@ export default function FundCard({ fund, status }: FundCardProps) {
     } catch (err) {
       console.log(err);
       setIsConfirming(false);
-      setShowJoinModal(false);
       toast.error('Error joining fund!');
     }
   }
@@ -247,7 +246,6 @@ export default function FundCard({ fund, status }: FundCardProps) {
       console.log(err);
       toast.error('Failed to delete join proposal');
       setIsDeleting(false);
-      setShowDeleteModal(false);
     }
   }
 

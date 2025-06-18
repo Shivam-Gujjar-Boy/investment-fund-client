@@ -1,13 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { PublicKey } from '@solana/web3.js';
-// import io from 'socket.io-client';
 import axios from 'axios';
 import { Clock4 } from 'lucide-react';
-// import { toast } from 'react-hot-toast';
-
-// const socket = io(`https://peerfunds.onrender.com`, {
-//   transports: ['websocket']
-// }); // Make sure this is in your .env
 
 interface ActivityLog {
   logMessage: string;
@@ -41,23 +35,6 @@ export default function FundActivity({fundAddress}: ActicityProps) {
       });
   }, [fundAddress]);
 
-  // Listen for real-time logs
-  // useEffect(() => {
-  //   const handleLog = (activity: ActivityLog) => {
-  //     console.log('🔥 Incoming activity:', activity);
-
-  //     if (!fundRef.current || activity.fund !== fundRef.current) return;
-  //     setLogs(prev => [activity, ...prev]);
-  //     toast.success(activity.logMessage);
-  //   };
-
-  //   socket.on('fund_activity', handleLog);
-
-  //   return () => {
-  //     socket.off('fund_activity', handleLog);
-  //   };
-  // }, []);
-
   // Format timestamp
   const formatTime = (timestamp: string) => {
     try {
@@ -68,6 +45,10 @@ export default function FundActivity({fundAddress}: ActicityProps) {
       return 'Invalid time';
     }
   };
+
+  function handleCopy(text: string) {
+    navigator.clipboard.writeText(text);
+  }
 
   return (
     <div className="bg-gradient-to-b from-[#0f172a] to-[#020617] p-6 rounded-2xl shadow-[0_0_30px_#0d948855] border border-[#334155]/40 max-h-80 overflow-y-auto fancy-scrollbar transition-all">
@@ -89,7 +70,10 @@ export default function FundActivity({fundAddress}: ActicityProps) {
               <span className="text-sm text-gray-100">{log.logMessage}</span>
               <span className="text-xs text-gray-500 mt-1 group-hover:text-teal-400 transition-all">
                 Signature:{" "}
-                <span className="font-mono text-gray-400 group-hover:text-white">
+                <span className="font-mono text-gray-400 group-hover:text-white" onClick={(e) => {
+                  e.preventDefault();
+                  handleCopy(log.signature);
+                }}>
                   {log.signature.slice(0, 6)}...{log.signature.slice(-6)}
                 </span>
               </span>
