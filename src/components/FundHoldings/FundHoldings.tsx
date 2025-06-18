@@ -159,7 +159,7 @@ export default function FundHoldings({ vault, connection, metaplex }: FundHoldin
         <div className="absolute inset-0 bg-gradient-to-br from-teal-900/20 via-purple-800/10 to-indigo-900/20 opacity-30 blur-2xl pointer-events-none group-hover:opacity-50 transition duration-1000 ease-in-out" />
 
         {/* Title with neon hover */}
-        <h2 className="text-xl font-bold text-center mb-4 text-white tracking-wide relative z-9 group-hover:text-teal-400 transition duration-300">
+        <h2 className="text-xl font-bold text-center mb-4 text-white tracking-wide relative z-9 transition duration-300">
           Vault Holdings
         </h2>
 

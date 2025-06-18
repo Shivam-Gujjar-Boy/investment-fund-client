@@ -29,6 +29,8 @@ interface ProposalSwap {
 export default function Proposals({ fund, fundId }: ProposalsProps) {
   const wallet = useWallet();
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
@@ -374,6 +376,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
     } catch (err) {
       console.log(err);
       toast.error('Error Creating Proposal');
+      setIsCreating(false);
     }
   }
 
@@ -746,10 +749,13 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       });
 
       toast.success('Voted Successfully');
+      setIsDeleting(false);
+      setShowDeleteModal(false);
 
     } catch(err) {
-      toast.error("Could not delete the proposal!")
-      return err;
+      console.log(err);
+      toast.error("Could not delete the proposal!");
+      setIsDeleting(false);
     }
   }
 
@@ -1046,6 +1052,15 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
 
             {/* Action Buttons */}
             <div className="flex justify-end gap-4">
+              {selectedProposal.proposer.toBase58() === wallet.publicKey?.toBase58() && (
+                <button 
+                  onClick={() => {
+                    setShowDeleteModal(true);
+                  }}
+                  className={`bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition`}>
+                  Delete Proposal
+                </button>
+              )}
               {selectedProposal.deadline > Date.now() && (
                 <button 
                     className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition"
@@ -1210,6 +1225,54 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                 }`}
               >
                 {isCreating ? "Creating..." : "Create Proposal"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
+          <div className='bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn'>
+
+            {/* Heading */}
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-indigo-300">Deleting Join Proposal</h2>
+
+              {/* Info Text */}
+              <p className="text-sm text-indigo-100 leading-relaxed">
+                You will get
+                <span className='text-indigo-400'> {
+                    selectedProposal?.amounts.length === 1 ? '0.00109' : selectedProposal?.amounts.length === 2 ? '0.00161' : selectedProposal?.amounts.length === 3 ? '0.00212' : '0.00264'
+                  } SOL</span> after deleting this proposal. <br />
+              </p>
+
+              {/* Total */}
+              <p className="pt-1">
+                Refund:&nbsp;
+                  <span className="text-green-400 font-medium"> {selectedProposal?.amounts.length === 1 ? '0.00109' : selectedProposal?.amounts.length === 2 ? '0.00161' : selectedProposal?.amounts.length === 3 ? '0.00212' : '0.00264'} SOL</span>
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsDeleting(true);
+                  handleCancellation(selectedProposal?.proposalIndex ?? 0, selectedProposal?.vecIndex ?? 0);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                  isDeleting ?
+                  'bg-gray-600 cursor-not-allowed' :
+                  'bg-red-500 hover:bg-red-400'
+                } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
