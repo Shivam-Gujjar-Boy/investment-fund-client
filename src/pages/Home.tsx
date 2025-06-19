@@ -37,17 +37,6 @@ export default function Home() {
         if (accountInfo !== null) {
           console.log("User already exists");
           toast.success('User Account found and logged in!');
-          const account_buffer = Buffer.from(accountInfo.data);
-          const public_key = new PublicKey(account_buffer.slice(0, 32));
-          console.log('Users Wallet address: ', public_key.toBase58());
-          const number_of_funds = account_buffer.readUInt32LE(32);
-          console.log('Number of funds: ', number_of_funds);
-          for (let i=0; i<number_of_funds; i++) {
-            console.log(`fund number ${i}: ${(new PublicKey(account_buffer.slice(36+i*50, 68+i*50))).toBase58()}`);
-            console.log(`user's governance token balance in fund ${i} = ${account_buffer.readBigInt64LE(68+i*50)}`);
-            console.log(`user's number of proposals in fund ${i} = ${account_buffer.readUInt16LE(76+i*50)}`);
-            console.log(`user's join time in fund ${i} = ${account_buffer.readBigInt64LE(78+i*50)}`);
-          }
           navigate('/dashboard/create');
         } else {
           if (!wallet.signTransaction || !wallet.publicKey) {
@@ -87,20 +76,6 @@ export default function Home() {
             console.log("User PDA created");
             toast.success('User Account created and logged in');
             navigate('/dashboard/create');
-
-            const accountInfo = await connection.getAccountInfo(userAccountPda);
-            if (!accountInfo) return;
-            const account_buffer = Buffer.from(accountInfo.data);
-            const public_key = new PublicKey(account_buffer.slice(0, 32));
-            console.log('Users Wallet address: ', public_key.toBase58());
-            const number_of_funds = account_buffer.readUInt32LE(32);
-            console.log('Number of funds: ', number_of_funds);
-            for (let i=0; i<number_of_funds; i++) {
-              console.log(`fund number ${i}: ${(new PublicKey(account_buffer.slice(36+i*50, 68+i*50))).toBase58()}`);
-              console.log(`user's governance token balance in fund ${i} = ${account_buffer.readBigInt64LE(68+i*50)}`);
-              console.log(`user's number of proposals in fund ${i} = ${account_buffer.readUInt16LE(76+i*50)}`);
-              console.log(`user's join time in fund ${i} = ${account_buffer.readBigInt64LE(78+i*50)}`);
-            }
 
           } catch (userCreationErr) {
             console.log('Error creating User PDA : ', userCreationErr);

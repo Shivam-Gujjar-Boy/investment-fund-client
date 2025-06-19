@@ -14,6 +14,8 @@ export interface Fund {
   currentIndex: number,
   created_at: bigint,
   is_private: number,
+  underIncrementation: boolean,
+  incrementProposer: PublicKey | null,
 }
 
 export interface UserFund {

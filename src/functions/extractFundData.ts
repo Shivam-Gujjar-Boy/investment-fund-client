@@ -1,8 +1,8 @@
-import { AccountInfo, PublicKey } from "@solana/web3.js";
+import { AccountInfo, Connection, PublicKey } from "@solana/web3.js";
 import { Fund, programId } from "../types";
 import { Buffer } from "buffer";
 
-export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBufferLike>> | null) {
+export async function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBufferLike>> | null, connection: Connection) {
     if (!fundAccountInfo) return null;
     const fund_buffer = Buffer.from(fundAccountInfo.data);
     const name_dummy = fund_buffer.slice(0, 27).toString();
@@ -31,6 +31,23 @@ export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBuffer
         programId
     );
 
+    const [incrementProposalPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('increment-proposal-account'), fund_address.toBuffer()],
+        programId
+    );
+
+    let underIncrementation = false;
+    let incrementProposer;
+    const incrementProposalInfo = await connection.getAccountInfo(incrementProposalPda);
+    if (!incrementProposalInfo) {
+        underIncrementation = false;
+        incrementProposer = new PublicKey('');
+    } else {
+        const incrementBuffer = Buffer.from(incrementProposalInfo.data);
+        underIncrementation = true;
+        incrementProposer = new PublicKey(incrementBuffer.slice(0, 32));
+    }
+
     const fund: Fund = {
         fund_address,
         name,
@@ -44,8 +61,10 @@ export function extractFundData (fundAccountInfo: AccountInfo<Buffer<ArrayBuffer
         vault,
         currentIndex,
         created_at,
-        is_private
-    }
+        is_private,
+        underIncrementation,
+        incrementProposer
+    };
 
     return fund;
 }

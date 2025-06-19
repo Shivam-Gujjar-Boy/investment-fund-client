@@ -323,103 +323,114 @@ export default function FundCard({ fund, status }: FundCardProps) {
 
         {/* Footer */}
         <div className="pt-4 border-t border-indigo-800/40 space-y-2 text-sm text-indigo-300">
-          <div className="flex items-center gap-1">
-            <span className="text-indigo-500">Fund Address:</span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopy(fund.fundPubkey.toBase58());
-              }}
-              className="hover:text-white hover:underline cursor-pointer transition"
-            >
-              {truncateAddress(fund.fundPubkey.toBase58())}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <span className="text-indigo-500">Creator:</span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopy(fund.creator.toBase58());
-              }}
-              className="hover:text-white hover:underline cursor-pointer transition"
-            >
-              {truncateAddress(fund.creator.toBase58())}
-            </span>
-          </div>
-
-        {/* Progress + Buttons */}
-        <div className="flex flex-col gap-2 mt-4">
-          {status === "pending" && (
-            <>
-              {/* Progress Bar */}
-              <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden w-full">
-                {(() => {
-                  const green = fund.votesYes;
-                  const red = fund.votesNo;
-                  const total = fund.totalDeposit;
-                  const gray = total - green - red;
-
-                  const greenPct = getPercentage(green, total);
-                  const grayPct = getPercentage(gray, total);
-                  const redPct = getPercentage(red, total);
-
-                  return (
-                    <>
-                      <div
-                        className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
-                        style={{ width: `${greenPct}%` }}
-                      />
-                      <div
-                        className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-500"
-                        style={{ left: `${greenPct}%`, width: `${grayPct}%` }}
-                      />
-                      <div
-                        className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-500"
-                        style={{
-                          left: `${greenPct + grayPct}%`,
-                          width: `${redPct}%`,
-                        }}
-                      />
-                    </>
-                  );
-                })()}
+          <div className='flex justify-between'>
+            <div className='flex flex-col gap-2'>
+              <div className="flex items-center gap-1">
+                <span className="text-indigo-500">Fund Address:</span>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopy(fund.fundPubkey.toBase58());
+                  }}
+                  className="hover:text-white hover:underline cursor-pointer transition"
+                >
+                  {truncateAddress(fund.fundPubkey.toBase58())}
+                </span>
               </div>
-            </>
-          )}
 
-          <div className="flex justify-end items-center mt-2 gap-3">
-            {status !== "pending" && (
-              <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
-                View Details
-                <ArrowRight className="ml-1 w-4 h-4" />
-              </button>
-            )}
-            {status === "pending" && fund.isEligible && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openJoinModal();
-                }}
-                className="flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all"
-              >
-                Join
-              </button>
-            )}
-            {status === "pending" && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openDeleteModal();
-                }}
-                className='flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all'
-              >
-                Delete Proposal
-              </button>
-            )}
+              <div className="flex items-center gap-1">
+                <span className="text-indigo-500">Creator:</span>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCopy(fund.creator.toBase58());
+                  }}
+                  className="hover:text-white hover:underline cursor-pointer transition"
+                >
+                  {truncateAddress(fund.creator.toBase58())}
+                </span>
+              </div>
+            </div>
+            <div className='flex items-center justify-end'>
+              <p className={`text-lg font-bold ${
+                fund.is_private ?
+                'text-red-300' :
+                'text-green-300'
+              }`}>{fund.is_private ? 'Private' : 'Public'}</p>
+            </div>
           </div>
-        </div>
+
+          {/* Progress + Buttons */}
+          <div className="flex flex-col gap-2 mt-4">
+            {status === "pending" && (
+              <>
+                {/* Progress Bar */}
+                <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden w-full">
+                  {(() => {
+                    const green = fund.votesYes;
+                    const red = fund.votesNo;
+                    const total = fund.totalDeposit;
+                    const gray = total - green - red;
+
+                    const greenPct = getPercentage(green, total);
+                    const grayPct = getPercentage(gray, total);
+                    const redPct = getPercentage(red, total);
+
+                    return (
+                      <>
+                        <div
+                          className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${greenPct}%` }}
+                        />
+                        <div
+                          className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-500"
+                          style={{ left: `${greenPct}%`, width: `${redPct}%` }}
+                        />
+                        <div
+                          className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-500"
+                          style={{
+                            left: `${greenPct + redPct}%`,
+                            width: `${grayPct}%`,
+                          }}
+                        />
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end items-center mt-2 gap-3">
+              {status !== "pending" && (
+                <button className="flex items-center text-sm font-semibold text-indigo-400 hover:text-indigo-200 transition-all">
+                  View Details
+                  <ArrowRight className="ml-1 w-4 h-4" />
+                </button>
+              )}
+              {status === "pending" && fund.isEligible && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openJoinModal();
+                  }}
+                  className="flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all"
+                >
+                  Join
+                </button>
+              )}
+              {status === "pending" && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteModal();
+                  }}
+                  className='flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all'
+                >
+                  Delete Proposal
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       {showJoinModal && (

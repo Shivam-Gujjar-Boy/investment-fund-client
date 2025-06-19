@@ -10,9 +10,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
 import { SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { Fund, programId } from '../../types';
-import { extractFundData } from '../../functions/extractFundData';
-import { printFundDetails } from '../../functions/printFundDetails';
+import { programId } from '../../types';
 import { Buffer } from 'buffer';
 
 let debounceTimer: NodeJS.Timeout;
@@ -245,15 +243,8 @@ export default function CreateFundForm() {
 
         toast.success('Successfully created fund');
 
-        // Printing created accounts data for debugging
-        const fundAccountInfo = await connection.getAccountInfo(fundAccountPda);
-        const fund: Fund | null = extractFundData(fundAccountInfo);
-        if (!fund) return;
-        fund.fund_address = fundAccountPda;
-        printFundDetails(fund);
-
         const res = await axios.post('https://peerfunds.onrender.com/api/funds', {
-          name: fund.name
+          name: fundName
         });
         if (res.status === 201) {
           console.log('Fund name added in database');
