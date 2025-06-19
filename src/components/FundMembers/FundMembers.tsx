@@ -346,8 +346,10 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
 
       {/* Modals */}
       {showDepositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-xl text-white transition-all duration-300 scale-100 relative">
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowDepositModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-xl text-white transition-all duration-300 scale-100 relative animate-fadeIn">
             <h2 className="text-2xl font-bold mb-6 tracking-wide">💰 Deposit Tokens</h2>
             {selectedToken && (
               <div className="flex justify-between text-xs text-white mb-2 px-1">

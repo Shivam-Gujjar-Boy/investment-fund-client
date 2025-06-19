@@ -10,7 +10,7 @@ import { findAmmConfig } from '../../functions/pool_accounts';
 import { findTickArrayAccounts } from '../../functions/tick_array';
 import { Buffer } from 'buffer';
 import { fetchVaultTokens } from '../../functions/fetchuserTokens';
-import { isSigner, Metaplex } from '@metaplex-foundation/js';
+import { Metaplex } from '@metaplex-foundation/js';
 import { TokenSelector } from './TokenSelector';
 import { Filter } from "lucide-react";
 
@@ -190,6 +190,27 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         const vecIndex = aggregatorBuffer.readUInt16LE(nextByte);
         nextByte += 2;
 
+        const vecBytes = Buffer.alloc(2);
+        vecBytes.writeUInt16LE(vecIndex);
+
+        const [voteAccountPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('vote'), Buffer.from([currentIndex]), vecBytes, fundAccountPda.toBuffer()],
+          programId
+        );
+
+        const voteAccountInfo = await connection.getAccountInfo(voteAccountPda);
+        if (!voteAccountInfo) continue;
+        const voteBuffer = Buffer.from(voteAccountInfo.data);
+        const numOfVoters = voteBuffer.readUInt32LE(3);
+        let userVoted = false;
+        for (let i=0; i<numOfVoters; i++) {
+          const voter = new PublicKey(voteBuffer.slice(7 + i*33, 39 + i*33));
+          if (voter.toBase58() === wallet.publicKey.toBase58()) {
+            userVoted = true;
+            break;
+          }
+        }
+
         proposalss.push({
           proposalIndex: currentIndex,
           vecIndex,
@@ -203,7 +224,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
           votesNo,
           creationTime,
           deadline,
-          executed
+          executed,
+          userVoted
         });
       }
 
@@ -809,7 +831,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-60 bg-[#0f172a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+                <div className="absolute right-0 mt-2 w-60 bg-[#0f172a] border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-fadeIn">
                   <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider bg-[#1e293b]">
                     Sort by
                   </div>
@@ -874,11 +896,11 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                       <span className="text-gray-300 font-medium">Proposal Index:</span> {p.proposalIndex.toString()}
                     </span>
                     {p.executed ? (
-                      <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full">Executed</span>
+                      <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full cursor-default">Executed</span>
                     ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
-                      <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full">Under Voting</span>
+                      <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full cursor-default">Under Voting</span>
                     ) : (
-                      <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full">Executable</span>
+                      <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full cursor-default">Executable</span>
                     )}
                   </div>
 
@@ -896,11 +918,11 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                       <>
                         <div
                           className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
-                          style={{ width: `${Number(p.votesYes * 100n / (p.votesYes + p.votesNo))}%` }}
+                          style={{ width: `${Number(p.votesYes * 100n / (fund?.totalDeposit ?? p.votesYes + p.votesNo))}%` }}
                         />
                         <div
                           className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
-                          style={{ width: `${Number(p.votesNo * 100n / (p.votesYes + p.votesNo))}%` }}
+                          style={{ width: `${Number(p.votesNo * 100n / (fund?.totalDeposit ?? p.votesYes + p.votesNo))}%` }}
                         />
                       </>
                     )}
@@ -916,7 +938,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                           Execute
                         </button>
                       )}
-                      {p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && (
+                      {(p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted) ? (
                         <>
                           <button
                             className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition"
@@ -931,6 +953,12 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                             NO
                           </button>
                         </>
+                      ) : (
+                        (p.deadline < BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted) ? (
+                          <p className='text-xs text-white bg-red-500 py-1 px-2 rounded-full cursor-default'>Didn't Vote</p>
+                        ) : (
+                          <p className='text-xs text-white bg-green-500 py-1 px-2 rounded-full cursor-default'>Already Voted</p>
+                        )
                       )}
                     </div>
                   )}
@@ -955,8 +983,10 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
 
       {/* Proposal Modal */}
       {selectedProposal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50">
-          <div className="bg-[#111827]/90 backdrop-blur-2xl p-6 rounded-2xl w-[95%] max-w-3xl text-white shadow-2xl border border-gray-700 animate-fade-in">
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setSelectedProposal(null);
+        }} className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex justify-center items-center z-50">
+          <div className="bg-[#111827]/90 backdrop-blur-2xl p-6 rounded-2xl w-[95%] max-w-3xl text-white shadow-2xl border border-gray-700 animate-fadeIn">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-white">
@@ -973,7 +1003,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
 
             {/* Proposer Info */}
             <div className="text-sm text-gray-400 mb-6">
-              Proposed by: <span className="text-white font-medium">{selectedProposal.proposer.toBase58()}</span>
+              Proposed by: <span className="text-white font-medium">{selectedProposal.proposer.toBase58()} <span className='text-violet-500'>{selectedProposal.proposer.toBase58() === wallet.publicKey?.toBase58() ? '(You)' : ''}</span></span>
             </div>
 
             {/* Swaps Breakdown */}
@@ -1010,13 +1040,13 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                     <div
                       className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
                       style={{
-                        width: `${Number(selectedProposal.votesYes * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`,
+                        width: `${Number(selectedProposal.votesYes * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo))}%`,
                       }}
                     />
                     <div
                       className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
                       style={{
-                        width: `${Number(selectedProposal.votesNo * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`,
+                        width: `${Number(selectedProposal.votesNo * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo))}%`,
                       }}
                     />
                   </>
@@ -1026,13 +1056,16 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                 <span>
                   {selectedProposal.votesYes + selectedProposal.votesNo === 0n
                     ? '0%'
-                    : `${Number(selectedProposal.votesYes * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`
+                    : `${Number(selectedProposal.votesYes * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo))}%`
                   } YES
+                </span>
+                <span>
+                  {100 - Number(selectedProposal.votesYes * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo)) - Number(selectedProposal.votesNo * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo))}% Not Voted
                 </span>
                 <span>
                   {selectedProposal.votesYes + selectedProposal.votesNo === 0n
                     ? '0%'
-                    : `${Number(selectedProposal.votesNo * 100n / (selectedProposal.votesYes + selectedProposal.votesNo))}%`
+                    : `${Number(selectedProposal.votesNo * 100n / (fund?.totalDeposit ?? selectedProposal.votesYes + selectedProposal.votesNo))}%`
                   } NO
                 </span>
               </div>
@@ -1051,17 +1084,19 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end gap-4">
-              {selectedProposal.proposer.toBase58() === wallet.publicKey?.toBase58() && (
-                <button 
-                  onClick={() => {
-                    setShowDeleteModal(true);
-                  }}
-                  className={`bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition`}>
-                  Delete Proposal
-                </button>
-              )}
-              {selectedProposal.deadline > Date.now() && (
+            <div className="flex justify-between gap-4">
+              <div className='w-[67%]'>
+                {selectedProposal.proposer.toBase58() === wallet.publicKey?.toBase58() && (
+                  <button 
+                    onClick={() => {
+                      setShowDeleteModal(true);
+                    }}
+                    className={`bg-violet-600 hover:bg-violet-500 px-4 py-2 rounded-lg font-semibold transition`}>
+                    Delete Proposal
+                  </button>
+                )}
+              </div>
+              {selectedProposal.deadline > BigInt(Math.floor(Date.now() / 1000)) && (
                 <button 
                     className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-semibold transition"
                     onClick={() => handleVote(1, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
@@ -1069,7 +1104,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                   YES
                 </button>
               )}
-              {selectedProposal.deadline > Date.now() && (
+              {selectedProposal.deadline > BigInt(Math.floor(Date.now() / 1000)) && (
                 <button 
                   className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg font-semibold transition"
                   onClick={() => handleVote(0, selectedProposal.proposalIndex, selectedProposal.vecIndex)}
@@ -1077,7 +1112,7 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
                   NO
                 </button>
               )}
-              {selectedProposal.deadline < Date.now() && selectedProposal.votesYes > selectedProposal.votesNo && !selectedProposal.executed && (
+              {selectedProposal.deadline < BigInt(Math.floor(Date.now() / 1000)) && selectedProposal.votesYes > selectedProposal.votesNo && !selectedProposal.executed && (
                 <button
                   className='bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-semibold transition'
                   onClick={() => handleExecute(selectedProposal.proposalIndex, selectedProposal.vecIndex)}
@@ -1097,8 +1132,10 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
       )}
 
       {showProposalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
-          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[95%] max-w-2xl text-white relative">
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowProposalModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[95%] max-w-2xl text-white relative animate-fadeIn">
             <h2 className="text-2xl font-bold mb-6">📝 Create Proposal</h2>
 
             <div className="mb-4">
@@ -1231,7 +1268,9 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         </div>
       )}
       {showDeleteModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowDeleteModal(false);
+        }} className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
           <div className='bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn'>
 
             {/* Heading */}

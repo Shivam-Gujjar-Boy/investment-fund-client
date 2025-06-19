@@ -324,7 +324,9 @@ export default function JoinFundForm() {
         )}
       </div>
       {showPrivateJoinModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowPrivateJoinModal(false);
+        }} className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
           <div className='bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn'>
 
             {/* Heading */}
@@ -384,7 +386,9 @@ export default function JoinFundForm() {
         </div>
       )}
       {showPublicJoinModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowPublicJoinModal(false);
+        }} className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
           <div className='bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn'>
 
             {/* Heading */}

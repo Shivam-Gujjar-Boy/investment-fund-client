@@ -413,6 +413,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
                   e.stopPropagation();
                   openDeleteModal();
                 }}
+                className='flex items-center text-lg px-3 rounded-xl font-semibold text-indigo-400 hover:text-indigo-200 transition-all'
               >
                 Delete Proposal
               </button>
@@ -422,7 +423,9 @@ export default function FundCard({ fund, status }: FundCardProps) {
         </div>
       </div>
       {showJoinModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowJoinModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
           <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
 
             {/* Heading */}
@@ -482,7 +485,9 @@ export default function FundCard({ fund, status }: FundCardProps) {
         </div>
       )}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowDeleteModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
           <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
 
             {/* Heading */}

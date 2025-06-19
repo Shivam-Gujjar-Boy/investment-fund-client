@@ -58,7 +58,8 @@ export interface Proposal {
   votesNo: bigint,
   creationTime: bigint,
   deadline: bigint,
-  executed: boolean
+  executed: boolean,
+  userVoted: boolean,
 }
 
 export interface JoinProposal {
