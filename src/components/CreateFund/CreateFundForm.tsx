@@ -419,6 +419,7 @@ return (
                   Expected Number of Members <span className="text-red-400">*</span>
                 </label>
                 <span className='text-xs'>(Be mindful, since you will get creation refund only when this strength is reached)</span>
+                <p className='text-xs text-violet-200'>This will be the maximum strength of this fund by default. Although it can be extended through voting later. If maximum strength is increased through voting, after fund reaches the previous maximum strength, new members won't pay any creation cost! Members pay until expected number is hit at any time.</p>
                 <input
                   type="number"
                   min={1}

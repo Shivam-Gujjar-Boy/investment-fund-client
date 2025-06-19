@@ -4,6 +4,7 @@ import {
   Menu, X, PlusCircle, Users, Layers, DollarSign, Compass
 } from 'lucide-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import peerfunds from './peerfunds.png';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,7 +29,7 @@ export default function Navbar() {
               e.preventDefault();
               navigate('/dashboard');
             }} className='flex justify-center items-center gap-2 cursor-pointer'>
-              <img src="../../../peerfunds.png" alt="" className='w-12 rounded-full'/>
+              <img src={peerfunds} alt=":)" className='w-12 rounded-full'/>
               <h1 className="text-white text-2xl font-bold tracking"> PeerFunds</h1>
             </div>
 
