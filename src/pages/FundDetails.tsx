@@ -27,9 +27,12 @@ export default function FundDetails() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isYesVoting, setIsYesVoting] = useState(false);
   const [isNoVoting, setIsNoVoting] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
   const [newSize, setNewSize] = useState('');
   const [newIntSize, setIntNewSize] = useState(0);
   const [refundType, setRefundType] = useState('power');
+  const [deleteTab, setDeleteTab] = useState<'delete' | 'toggle'>('delete');
+  const [refundChoice, setRefundChoice] = useState<'power' | 'sol'>('power');
 
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -210,6 +213,80 @@ export default function FundDetails() {
     }
   }
 
+  const toggleRefundType = async (refundType: number) => {
+    if (!wallet.publicKey || !wallet.signTransaction) return;
+    if (!fund) return;
+    const user = wallet.publicKey;
+
+    try {
+      const [fundAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('fund'), Buffer.from(fund.name)],
+        programId
+      );
+
+      const [incrementProposalPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('increment-proposal-account'), fundAccountPda.toBuffer()],
+        programId
+      );
+
+      const userTokenAccount = await getAssociatedTokenAddress(
+        fund.governanceMint,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const instructionTag = 17;
+      const nameBytes = Buffer.from(fund.name, 'utf8');
+      const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
+      let offset = 0;
+
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(refundType, offset);
+      offset += 1;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: fundAccountPda, isSigner: false, isWritable: true},
+          {pubkey: incrementProposalPda, isSigner: false, isWritable: true},
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: fund.governanceMint, isSigner: false, isWritable: true},
+          {pubkey: userTokenAccount, isSigner: false, isWritable: true}
+        ],
+        programId,
+        data: instructionData
+      });
+
+      const transaction = new Transaction().add(instruction);
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey!;
+
+      const signedTransaction = await wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight,
+      });
+
+      setShowDeleteModal(false);
+      setIsToggling(false);
+      toast.success('Toggled refund type successfully');
+    } catch (err) {
+      console.log(err);
+      toast.error('Error!');
+      setIsToggling(false);
+    }
+  }
+
   const voteOnIncrementProposal = async (vote: number) => {
     if (!wallet.publicKey || !wallet.signTransaction) return;
     if (!fund) return;
@@ -243,6 +320,13 @@ export default function FundDetails() {
       if (!incrementProposalInfo) return;
       const incrementBuffer = Buffer.from(incrementProposalInfo.data);
       const proposer = new PublicKey(incrementBuffer.slice(0, 32));
+      const proposerTokenAccount = await getAssociatedTokenAddress(
+        fund.governanceMint,
+        proposer,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
 
       const instructionTag = 15;
       const nameBytes = Buffer.from(fund.name, 'utf8');
@@ -267,7 +351,8 @@ export default function FundDetails() {
           {pubkey: tokenAccount, isSigner: false, isWritable: false},
           {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
           {pubkey: proposer, isSigner: false, isWritable: true},
-          {pubkey: rentPda, isSigner: false, isWritable: true}
+          {pubkey: rentPda, isSigner: false, isWritable: true},
+          {pubkey: proposerTokenAccount, isSigner: false, isWritable: true}
         ],
         programId,
         data: instructionData
@@ -338,6 +423,14 @@ export default function FundDetails() {
         programId
       );
 
+      const userTokenAccount = await getAssociatedTokenAddress(
+        fund.governanceMint,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
       const instructionTag = 16;
       const nameBytes = Buffer.from(fund.name, 'utf8');
       const buffer = Buffer.alloc(1 + nameBytes.length);
@@ -354,7 +447,10 @@ export default function FundDetails() {
           {pubkey: user, isSigner: true, isWritable: true},
           {pubkey: incrementProposalPda, isSigner: false, isWritable: true},
           {pubkey: fundAccountPda, isSigner: false, isWritable: true},
-          {pubkey: rentPda, isSigner: false, isWritable: true}
+          {pubkey: rentPda, isSigner: false, isWritable: true},
+          {pubkey: fund.governanceMint, isSigner: false, isWritable: true},
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: userTokenAccount, isSigner: false, isWritable: true}
         ],
         programId,
         data: instructionData
@@ -738,45 +834,129 @@ export default function FundDetails() {
         </div>
       )}
       {showDeleteModal && (
-        <div onClick={(e) => {
-          if (e.target === e.currentTarget) setShowDeleteModal(false);
-        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDeleteModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md"
+        >
           <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
 
-            {/* Heading */}
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-indigo-300">Delete Your Increment Proposal</h2>
-
-              {/* Info Text */}
+            {/* Tabs */}
+            <div className="flex justify-center gap-2 border-b border-white/10 pb-2">
+              <button
+                onClick={() => setDeleteTab('delete')}
+                className={`px-4 py-1 rounded-full text-sm font-medium transition-all ${
+                  deleteTab === 'delete'
+                    ? 'bg-indigo-500 text-white shadow'
+                    : 'bg-transparent text-indigo-300 hover:bg-white/5'
+                }`}
+              >
+                Delete Proposal
+              </button>
+              <button
+                onClick={() => setDeleteTab('toggle')}
+                className={`px-4 py-1 rounded-full text-sm font-medium transition-all ${
+                  deleteTab === 'toggle'
+                    ? 'bg-indigo-500 text-white shadow'
+                    : 'bg-transparent text-indigo-300 hover:bg-white/5'
+                }`}
+              >
+                Toggle Refund Type
+              </button>
             </div>
 
-            {/* Input + Action Buttons */}
-            <div className="flex flex-col gap-3 pt-4">
+            {/* Main Content */}
+            {deleteTab === 'delete' ? (
+              <>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-indigo-300">Delete Your Increment Proposal</h2>
+                  <p className="text-sm text-indigo-200">
+                    This action will delete your pending increment proposal and refund your deposit.
+                  </p>
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setIsDeleting(true);
-                    deleteIncrementProposal();
-                  }}
-                  disabled={isDeleting}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold ${
-                    isDeleting
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-indigo-500 hover:bg-indigo-400'
-                  } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDeleting(true);
+                      deleteIncrementProposal();
+                    }}
+                    disabled={isDeleting}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                      isDeleting
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-indigo-500 hover:bg-indigo-400'
+                    } text-white transition shadow-[0_0_10px_#6366f1aa]`}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <h2 className="text-2xl font-bold text-indigo-300">Toggle Refund Preference</h2>
+                  <p className="text-sm text-indigo-200">
+                    Choose how you'd like to receive your refund when deleting a proposal — as direct SOL or equivalent voting power.
+                  </p>
+
+                  {/* Toggle Bar */}
+                  <div className="w-full bg-white/10 rounded-xl p-1 flex justify-between items-center border border-indigo-700/30 shadow-inner">
+                    <button
+                      onClick={() => setRefundChoice('power')}
+                      className={`w-1/2 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        refundChoice === 'power'
+                          ? 'bg-indigo-500 text-white shadow-md'
+                          : 'text-indigo-300 hover:bg-white/5'
+                      }`}
+                    >
+                      Voting Power
+                    </button>
+                    <button
+                      onClick={() => setRefundChoice('sol')}
+                      className={`w-1/2 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                        refundChoice === 'sol'
+                          ? 'bg-indigo-500 text-white shadow-md'
+                          : 'text-indigo-300 hover:bg-white/5'
+                      }`}
+                    >
+                      SOL
+                    </button>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      onClick={() => setShowDeleteModal(false)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsToggling(true);
+                        toggleRefundType(refundChoice === 'sol' ? 1 : 0);
+                      }}
+                      disabled={isToggling}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+                        isToggling ?
+                        'bg-gray-500 hover:bg-gray-400  cursor-not-allowed' :
+                        'bg-indigo-500 hover:bg-indigo-400'
+                      } text-white transition shadow-[0_0_10px_#6366f1aa]`}
+                    >
+                      {isToggling ? 'Toggling...' : 'Toggle'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

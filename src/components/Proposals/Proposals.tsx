@@ -338,6 +338,14 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
         programId
       );
 
+      const userTokenAccount = await getAssociatedTokenAddress(
+        fund.governanceMint,
+        user,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
       // const solMint = new PublicKey('So11111111111111111111111111111111111111112');
       // const pumpkingMint = new PublicKey('5ovFctxb6gPZeGxT5WwDf5vLt2ichsd9qENJ92omPKiN');
       // const bondMint = new PublicKey('9LC2j9sHFjNYKnqiH6PzhXnLby23DoihnuHHxLnYpKin');
@@ -350,6 +358,9 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
           {pubkey: newAggregatorPda, isSigner: false, isWritable: true},
           {pubkey: voteAccountPda, isSigner: false, isWritable: true},
           {pubkey: newVoteAccountPda, isSigner: false, isWritable: true},
+          {pubkey: userTokenAccount, isSigner: false, isWritable: false},
+          {pubkey: fund.governanceMint, isSigner: false, isWritable: false},
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false}
       ];
 
       for (const swap of swaps) {
@@ -781,6 +792,18 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
     }
   }
 
+  const countdown = (deadline: bigint) => {
+    const now = Math.floor(Date.now() / 1000);
+    const secondsLeft = Number(deadline) - now;
+    if (secondsLeft <= 0) return "Expired";
+
+    const hours = Math.floor(secondsLeft / 3600);
+    const minutes = Math.floor((secondsLeft % 3600) / 60);
+    const seconds = secondsLeft % 60;
+
+    return `${hours}h ${minutes}m ${seconds}s`;
+  };
+
   return (
     <>
       { loading ? (
@@ -883,87 +906,113 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
             filteredAndSortedProposals.map((p) => (
               <div
                 key={p.creationTime.toString()}
-                className="bg-[#111827] border border-gray-700 rounded-2xl p-5 mb-5 cursor-pointer hover:scale-[1.015] transition-transform duration-300 shadow-md hover:shadow-xl group"
+                className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] border border-indigo-900/40 rounded-2xl p-6 mb-6 cursor-pointer hover:scale-[1.02] transition-transform duration-300 shadow-[0_0_25px_#4f46e5aa] hover:shadow-[0_0_40px_#7c3aedaa] group relative overflow-hidden"
                 onClick={(e) => {
                   if (!(e.target as HTMLElement).closest("button")) {
                     setSelectedProposal(p);
                   }
                 }}
               >
-                <div className="space-y-3 mb-4 text-sm text-gray-400">
-                  <div className="flex justify-between">
+                {/* Glow border effect */}
+                <div className="absolute inset-0 rounded-2xl border border-indigo-500/10 animate-pulse pointer-events-none"></div>
+
+                {/* Proposal Details */}
+                <div className="space-y-4 mb-6 text-sm text-gray-400 relative z-10">
+                  <div className="flex justify-between items-center">
                     <span>
-                      <span className="text-gray-300 font-medium">Proposal Index:</span> {p.proposalIndex.toString()}
+                      <span className="text-indigo-300 font-semibold">Proposal Index:</span> {p.proposalIndex.toString()}
                     </span>
                     {p.executed ? (
-                      <span className="text-xs bg-green-700 text-white px-2 py-1 rounded-full cursor-default">Executed</span>
+                      <span className="text-xs bg-green-700 text-white px-3 py-1 rounded-full">Executed</span>
                     ) : p.deadline > BigInt(Math.floor(Date.now() / 1000)) ? (
-                      <span className="text-xs bg-yellow-700 text-white px-2 py-1 rounded-full cursor-default">Under Voting</span>
+                      <span className="text-xs bg-yellow-700 text-white px-3 py-1 rounded-full animate-pulse">Under Voting</span>
                     ) : (
-                      <span className="text-xs bg-blue-700 text-white px-2 py-1 rounded-full cursor-default">Executable</span>
+                      <span className="text-xs bg-blue-700 text-white px-3 py-1 rounded-full">Executable</span>
                     )}
                   </div>
 
-                  <div><span className="text-gray-300 font-medium">Vec Index:</span> {p.vecIndex.toString()}</div>
-                  <div><span className="text-gray-300 font-medium">Created:</span> {formatTimeStamp(p.creationTime)}</div>
-                  <div><span className="text-gray-300 font-medium">Deadline:</span> {formatTimeStamp(p.deadline)}</div>
+                  <div><span className="text-indigo-300 font-semibold">Vec Index:</span> {p.vecIndex.toString()}</div>
+                  <div><span className="text-indigo-300 font-semibold">Created:</span> {formatTimeStamp(p.creationTime)}</div>
+                  <div>
+                    <span className="text-indigo-300 font-semibold">Deadline:</span> {formatTimeStamp(p.deadline)}
+                    {p.deadline > BigInt(Math.floor(Date.now() / 1000)) && (
+                      <span className="ml-3 text-xs text-white bg-black/20 px-2 py-0.5 rounded-full border border-white/10 animate-pulse">
+                        ⏳ {countdown(p.deadline)}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Vote Progress Bar & Buttons */}
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1 h-3 rounded-full bg-gray-700 overflow-hidden">
-                    {p.votesYes + p.votesNo === 0n ? (
-                      <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
-                    ) : (
-                      <>
-                        <div
-                          className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
-                          style={{ width: `${Number(p.votesYes * 100n / (fund?.totalDeposit ?? p.votesYes + p.votesNo))}%` }}
-                        />
-                        <div
-                          className="absolute top-0 right-0 h-full bg-red-500 transition-all duration-500"
-                          style={{ width: `${Number(p.votesNo * 100n / (fund?.totalDeposit ?? p.votesYes + p.votesNo))}%` }}
-                        />
-                      </>
-                    )}
-                  </div>
-
-                  {!p.executed && (
-                    <div className="flex gap-2">
-                      {p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
-                        <button
-                          className="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                          onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
-                        >
-                          Execute
-                        </button>
-                      )}
-                      {(p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted) ? (
-                        <>
-                          <button
-                            className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                            onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
-                          >
-                            YES
-                          </button>
-                          <button
-                            className="bg-red-600 hover:bg-red-500 px-3 py-1 rounded-md text-xs font-medium transition"
-                            onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
-                          >
-                            NO
-                          </button>
-                        </>
-                      ) : (
-                        (p.deadline < BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted) ? (
-                          <p className='text-xs text-white bg-red-500 py-1 px-2 rounded-full cursor-default'>Didn't Vote</p>
-                        ) : (
-                          <p className='text-xs text-white bg-green-500 py-1 px-2 rounded-full cursor-default'>Already Voted</p>
-                        )
-                      )}
-                    </div>
+                {/* Vote Distribution Bar */}
+                <div className="relative flex-1 h-4 rounded-full bg-gray-800 overflow-hidden mb-4 border border-white/10">
+                  {fund ? (
+                    <>
+                      <div
+                        className="absolute top-0 left-0 h-full bg-green-500 transition-all duration-500"
+                        style={{
+                          width: `${Number(p.votesYes * 100n / fund.totalDeposit)}%`,
+                        }}
+                      />
+                      <div
+                        className="absolute top-0 h-full bg-red-500 transition-all duration-500"
+                        style={{
+                          left: `${Number(p.votesYes * 100n / fund.totalDeposit)}%`,
+                          width: `${Number(p.votesNo * 100n / fund.totalDeposit)}%`,
+                        }}
+                      />
+                      <div
+                        className="absolute top-0 h-full bg-gray-500 transition-all duration-500"
+                        style={{
+                          left: `${Number((p.votesYes + p.votesNo) * 100n / fund.totalDeposit)}%`,
+                          width: `${Number((fund.totalDeposit - (p.votesYes + p.votesNo)) * 100n / fund.totalDeposit)}%`,
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 bg-gray-500 transition-all duration-500" />
                   )}
                 </div>
+
+                {/* Actions */}
+                <div className="flex justify-between items-center gap-4 relative z-10">
+                  <div className="flex gap-2">
+                    {!p.executed && p.deadline < BigInt(Math.floor(Date.now() / 1000)) && (
+                      <button
+                        className="bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-md text-xs font-semibold text-white shadow-lg transition"
+                        onClick={() => handleExecute(p.proposalIndex, p.vecIndex)}
+                      >
+                        🚀 Execute
+                      </button>
+                    )}
+
+                    {!p.executed && p.deadline >= BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted && (
+                      <>
+                        <button
+                          className="bg-green-600 hover:bg-green-500 px-4 py-1.5 rounded-md text-xs font-semibold text-white shadow-lg transition"
+                          onClick={() => handleVote(1, p.proposalIndex, p.vecIndex)}
+                        >
+                          👍 YES
+                        </button>
+                        <button
+                          className="bg-red-600 hover:bg-red-500 px-4 py-1.5 rounded-md text-xs font-semibold text-white shadow-lg transition"
+                          onClick={() => handleVote(0, p.proposalIndex, p.vecIndex)}
+                        >
+                          👎 NO
+                        </button>
+                      </>
+                    )}
+
+                    {!p.executed && p.deadline < BigInt(Math.floor(Date.now() / 1000)) && !p.userVoted && (
+                      <p className="text-xs text-white bg-red-500 py-1 px-2 rounded-full shadow">⚠️ Didn't Vote</p>
+                    )}
+
+                    {p.userVoted && (
+                      <p className="text-xs text-white bg-green-500 py-1 px-2 rounded-full shadow">✅ Already Voted</p>
+                    )}
+                  </div>
+                </div>
               </div>
+
             ))
           )}
         </div>

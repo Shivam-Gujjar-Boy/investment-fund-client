@@ -383,11 +383,11 @@ export default function FundCard({ fund, status }: FundCardProps) {
                           style={{ width: `${greenPct}%` }}
                         />
                         <div
-                          className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-500"
+                          className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-500"
                           style={{ left: `${greenPct}%`, width: `${redPct}%` }}
                         />
                         <div
-                          className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-500"
+                          className="absolute left-0 top-0 h-full bg-gray-500 transition-all duration-500"
                           style={{
                             left: `${greenPct + redPct}%`,
                             width: `${grayPct}%`,
