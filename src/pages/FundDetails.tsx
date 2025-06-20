@@ -397,18 +397,18 @@ export default function FundDetails() {
         <GlobalSocketListener currentFundPubkey={fund?.fund_address?.toBase58() || null} />
         <div className="flex relative">
           {/* Left Scrollable Section */}
-          <div className="w-3/4 pr-4 overflow-y-auto h-[calc(100vh-1rem)]">
+          <div className="w-[74%] overflow-y-auto">
             <div className="flex flex-col gap-2">
               {/* Details, Graph, Members, and Holdings */}
               {fund ? (
-              <div className="w-full p-6 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-lg shadow-xl text-white flex flex-wrap justify-between items-center gap-6 transition-all duration-300 hover:shadow-2xl hover:border-white/20 group animate-fadeIn">
+              <div className="w-full p-6 bg-white/5 border border-white/10 rounded-xl backdrop-blur-lg shadow-xl text-white flex flex-wrap justify-between items-center transition-all duration-300 hover:shadow-2xl hover:border-white/20 group animate-fadeIn">
                 {/* Fund Name */}
-                <div className="flex flex-col gap-1 min-w-[180px]">
+                <div className="flex flex-col gap-1 w-[20%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Fund Name</p>
                   <p className="text-2xl font-bold text-cyan-400 tracking-wide group-hover:scale-105 transition-transform">{fund?.name}</p>
                 </div>
 
-                <div className="flex flex-col gap-2 min-w-[220px] w-[20%]">
+                <div className="flex flex-col gap-2 w-[25%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Members</p>
 
                   {/* Progress Bar */}
@@ -448,7 +448,7 @@ export default function FundDetails() {
 
 
                 {/* Contribution */}
-                <div className="flex flex-col gap-1 min-w-[180px]">
+                <div className="flex flex-col gap-1 w-[15%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Your Contribution</p>
                   <p className="text-2xl font-semibold text-purple-400 group-hover:scale-105 transition-transform">
                     {1.111.toFixed(2)}%
@@ -456,7 +456,7 @@ export default function FundDetails() {
                 </div>
 
                 {/* Created At */}
-                <div className="flex flex-col gap-1 min-w-[200px]">
+                <div className="flex flex-col gap-1 w-[12%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Created At</p>
                   <p className="text-lg font-medium text-yellow-400 group-hover:scale-105 transition-transform">
                     {new Date(Number(fund?.created_at ?? BigInt(0)) * 1000).toLocaleDateString()}
@@ -508,7 +508,7 @@ export default function FundDetails() {
           </div>
 
           {/* Fixed Proposals Section */}
-          <div className="w-1/4 fixed right-2 top-19 h-[calc(100vh-1rem)]">
+          <div className="w-[25.2%] fixed right-2 top-19 h-[calc(100vh-1rem)]">
             {loading ? (
               <div className="bg-[#1f2937] rounded-xl h-[90%] animate-pulse flex flex-col">
                 <div className="p-6 overflow-y-auto flex-1 space-y-4">
