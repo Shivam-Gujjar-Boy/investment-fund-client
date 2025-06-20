@@ -15,7 +15,7 @@ export default function Layout({ children }: LayoutProps) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="">
       <Navbar />
       <main className="pt-16 min-w-full mx-auto">
         {children}

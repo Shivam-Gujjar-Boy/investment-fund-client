@@ -291,7 +291,7 @@ return (
                 id="fundName"
                 value={fundName}
                 onChange={(e) => setFundName(e.target.value)}
-                maxLength={27}
+                maxLength={26}
                 className={`w-full px-4 py-3 rounded-lg bg-[#2a2d4a] text-white placeholder:text-gray-400 border ${
                   nameTaken
                     ? 'border-red-500 focus:ring-red-500'

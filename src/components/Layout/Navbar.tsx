@@ -28,7 +28,7 @@ export default function Navbar() {
               e.preventDefault();
               navigate('/dashboard');
             }} className='flex justify-center items-center gap-2 cursor-pointer'>
-              <img src="" alt=":)" className='w-12 rounded-full'/>
+              <img src="/peerfunds.png" alt=":)" className='w-12 rounded-full'/>
               <h1 className="text-white text-2xl font-bold tracking"> PeerFunds</h1>
             </div>
 

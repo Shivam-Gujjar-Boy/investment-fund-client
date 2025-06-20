@@ -22,36 +22,19 @@ export default function FundDetails() {
   const [showIncrementModal, setShowIncrementModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showVoteModal, setShowVoteModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isYesVoting, setIsYesVoting] = useState(false);
   const [isNoVoting, setIsNoVoting] = useState(false);
   const [newSize, setNewSize] = useState('');
   const [newIntSize, setIntNewSize] = useState(0);
+  const [refundType, setRefundType] = useState('power');
 
   const wallet = useWallet();
   const { connection } = useConnection();
   const { fundId } = useParams();
   const metaplex = Metaplex.make(connection);
-
-  const actionLabel = !fund?.underIncrementation
-    ? 'Upgrade'
-    : fund.incrementProposer?.toBase58() === wallet.publicKey?.toBase58()
-      ? 'Delete'
-      : 'Vote';
-
-  const getButtonClasses = () => {
-    switch (actionLabel) {
-      case 'Upgrade':
-        return 'bg-gradient-to-tr from-purple-500 to-pink-500';
-      case 'Delete':
-        return 'bg-gradient-to-tr from-red-600 to-orange-500';
-      case 'Vote':
-        return 'bg-gradient-to-tr from-cyan-400 to-teal-500 shadow-[0_0_15px_#22d3ee80] animate-pulse';
-      default:
-        return '';
-    }
-  };
 
   const fetchFundData = useCallback(async () => {
     if (!wallet.publicKey) {
@@ -71,7 +54,7 @@ export default function FundDetails() {
         return;
       }
       const buffer = Buffer.from(accountInfo?.data);
-      const name_dummy = buffer.slice(0, 27).toString();
+      const name_dummy = buffer.slice(0, 26).toString();
       let name = '';
       for (const c of name_dummy) {
         if (c === '\x00') break;
@@ -82,6 +65,7 @@ export default function FundDetails() {
       for (let i = 0; i < numOfMembers; i++) {
         members.push(new PublicKey(buffer.slice(118 + 32 * i, 150 + 32 * i)));
       }
+      const isRefunded = buffer.readUInt8(26) ? true : false;
       const expectedMembers = buffer.readUint32LE(27);
       const creatorExists = buffer.readUInt8(31) ? true : false;
       const creator = new PublicKey(buffer.slice(118, 150));
@@ -124,7 +108,8 @@ export default function FundDetails() {
         created_at,
         is_private,
         underIncrementation,
-        incrementProposer
+        incrementProposer,
+        isRefunded
       });
     } catch (err) {
       toast.error('Error fetching fund data');
@@ -142,7 +127,7 @@ export default function FundDetails() {
     load();
   }, [fetchFundData]);
 
-  const createIncrementProposal = async (newSize: number) => {
+  const createIncrementProposal = async (newSize: number, refundType: number) => {
     if (!wallet.publicKey || !wallet.signTransaction) return;
     if (!fund) return;
     const user = wallet.publicKey;
@@ -166,12 +151,19 @@ export default function FundDetails() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
+      const [rentPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('rent')],
+        programId
+      );
+
       const instructionTag = 14;
       const nameBytes = Buffer.from(fund.name, 'utf8');
-      const buffer = Buffer.alloc(1 + 4 + nameBytes.length);
+      const buffer = Buffer.alloc(1 + 1 + 4 + nameBytes.length);
       let offset = 0;
 
       buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8(refundType, offset);
       offset += 1;
       buffer.writeUInt32LE(newSize, offset);
       offset += 4;
@@ -187,7 +179,8 @@ export default function FundDetails() {
           {pubkey: fundAccountPda, isSigner: false, isWritable: true},
           {pubkey: fund.governanceMint, isSigner: false, isWritable: true},
           {pubkey: userTokenAccount, isSigner: false, isWritable: true},
-          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false}
+          {pubkey: TOKEN_2022_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: rentPda, isSigner: false, isWritable: true}
         ],
         programId,
         data: instructionData,
@@ -391,6 +384,46 @@ export default function FundDetails() {
     }
   }
 
+  if (!fund) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#0e1117] to-[#1b1f27] min-h-screen">
+        <div className="flex flex-col items-center space-y-6">
+          {/* Glowing Spinner */}
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-600 opacity-30 animate-ping"></div>
+            <div className="w-full h-full border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+
+          {/* Text with glow */}
+          <p className="text-purple-400 text-xl font-semibold animate-pulse drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">
+            Fetching fund data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const actionLabel = !fund?.underIncrementation && ((fund?.expectedMembers ?? 0) <= (fund?.members.length ?? 0))
+    ? 'Upgrade'
+    : !fund?.underIncrementation && (fund?.expectedMembers ?? 0 > (fund?.members.length ?? 0))
+    ? 'All Set'
+    : fund?.incrementProposer?.toBase58() === wallet.publicKey?.toBase58()
+      ? 'Delete'
+      : 'Vote';
+
+  const getButtonClasses = () => {
+    switch (actionLabel) {
+      case 'Upgrade':
+        return 'bg-gradient-to-tr from-purple-500 to-pink-500';
+      case 'Delete':
+        return 'bg-gradient-to-tr from-red-600 to-orange-500';
+      case 'Vote':
+        return 'bg-gradient-to-tr from-cyan-400 to-teal-500 shadow-[0_0_15px_#22d3ee80] animate-pulse';
+      default:
+        return '';
+    }
+  };
+
   return (
     <>
       <div className="p-2 text-white min-h-screen w-full bg-gradient-to-b from-[#0e1117] to-[#1b1f27]">
@@ -401,7 +434,7 @@ export default function FundDetails() {
             <div className="flex flex-col gap-2">
               {/* Details, Graph, Members, and Holdings */}
               {fund ? (
-              <div className="w-full p-6 bg-white/5 border border-white/10 rounded-xl backdrop-blur-lg shadow-xl text-white flex flex-wrap justify-between items-center transition-all duration-300 hover:shadow-2xl hover:border-white/20 group animate-fadeIn">
+              <div className="w-full p-6 bg-white/5 border border-white/10 rounded-xl backdrop-blur-lg shadow-xl text-white flex flex-wrap justify-between items-top transition-all duration-300 hover:shadow-2xl hover:border-white/20 group animate-fadeIn">
                 {/* Fund Name */}
                 <div className="flex flex-col gap-1 w-[20%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Fund Name</p>
@@ -435,8 +468,10 @@ export default function FundDetails() {
                           setShowIncrementModal(true);
                         } else if (actionLabel === 'Delete') {
                           setShowDeleteModal(true);
-                        } else {
+                        } else if (actionLabel === 'Vote') {
                           openVoteModal();
+                        } else {
+                          setShowInfoModal(true);
                         }
                       }}
                       className={`text-xs font-semibold px-3 py-1 rounded-md text-white transition-all duration-200 shadow-md hover:scale-105 hover:shadow-lg ${getButtonClasses()}`}
@@ -564,19 +599,20 @@ export default function FundDetails() {
         `}</style>
       </div>
       {showIncrementModal && (
-        <div onClick={(e) => {
-          if (e.target === e.currentTarget) setShowIncrementModal(false);
-        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowIncrementModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md"
+        >
           <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
 
             {/* Heading */}
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-indigo-300">Increase Fund Members Limit</h2>
-
-              {/* Info Text */}
             </div>
 
-            {/* Input + Action Buttons */}
+            {/* Input + Explanation */}
             <div className="flex flex-col gap-3">
 
               {/* Number Input */}
@@ -588,8 +624,37 @@ export default function FundDetails() {
                 className="w-full px-4 py-2 rounded-lg bg-white/10 text-white placeholder-white/50 border border-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 shadow-inner backdrop-blur-sm"
               />
 
+              {/* Explanation */}
+              <p className="text-sm text-indigo-200 bg-indigo-900/20 px-3 py-2 rounded-xl shadow-inner border border-indigo-700/40">
+                <span className="font-semibold text-indigo-300">Note:</span> A fee of <span className="text-purple-400">0.00151 SOL</span> will be temporarily deducted if your voting power is under 50%. Upon proposal execution or deletion, you'll be <span className="text-green-400">fully refunded</span>. You may choose to get the refund as either SOL or <span className="text-yellow-400">voting power equivalent</span> to a 0.00151 SOL deposit into the fund.
+              </p>
+
+              {/* Toggle Bar */}
+              <div className="w-full bg-white/10 rounded-xl p-1 flex justify-between items-center border border-indigo-700/30 shadow-inner">
+                <button
+                  onClick={() => setRefundType('power')}
+                  className={`w-1/2 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    refundType === 'power'
+                      ? 'bg-indigo-500 text-white shadow-md'
+                      : 'text-indigo-300 hover:bg-white/5'
+                  }`}
+                >
+                  Voting Power
+                </button>
+                <button
+                  onClick={() => setRefundType('sol')}
+                  className={`w-1/2 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    refundType === 'sol'
+                      ? 'bg-indigo-500 text-white shadow-md'
+                      : 'text-indigo-300 hover:bg-white/5'
+                  }`}
+                >
+                  SOL
+                </button>
+              </div>
+
               {/* Action Buttons */}
-              <div className="flex justify-end gap-3">
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   onClick={() => setShowIncrementModal(false)}
                   className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all duration-200"
@@ -599,7 +664,7 @@ export default function FundDetails() {
                 <button
                   onClick={() => {
                     setIsCreating(true);
-                    createIncrementProposal(Number(newSize));
+                    createIncrementProposal(Number(newSize), refundType === 'sol' ? 1 : 0);
                   }}
                   disabled={isCreating || !newSize}
                   className={`px-4 py-2 rounded-lg text-sm font-semibold ${
@@ -709,6 +774,51 @@ export default function FundDetails() {
                   } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
                 >
                   {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showInfoModal && (
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowInfoModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md">
+          <div className="bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-md border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn">
+
+            {/* Heading */}
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-indigo-300">Members Count Info</h2>
+
+              {/* Info Text */}
+              <p className='text-sm'>
+                Fund still has vacant positions for new members. Once the fund is filled, anyone can initiate the Fund Limit Increment Proposal by clicking on the <span className='font-semibold text-violet-400'>Upgrade</span> button, and entering the New Fund Size Limit.
+              </p>
+              {fund.creator.toBase58() === wallet.publicKey?.toBase58() && !fund.isRefunded ? (
+                <p className="text-sm text-violet-300 bg-violet-950/40 border border-violet-600 px-4 py-2 rounded-2xl shadow-md backdrop-blur-sm hover:shadow-violet-700/30 transition duration-300">
+                  You’ll get the fund creation refund automatically when the fund is <span className='font-semibold text-red-300'>FULL</span> (reaches {fund.expectedMembers} members).
+                </p>
+              ) : (
+                fund.creator.toBase58() === wallet.publicKey?.toBase58() && fund.isRefunded ? (
+                  <p className="text-sm text-violet-300 bg-violet-950/40 border border-violet-600 px-4 py-2 rounded-2xl shadow-md backdrop-blur-sm hover:shadow-violet-700/30 transition duration-300">
+                    You've refunded the fund creations costs, since fund already reached the initial expected members.
+                  </p>
+                ) : (
+                  <></>
+                )
+              )}
+            </div>
+
+            {/* Input + Action Buttons */}
+            <div className="flex flex-col gap-3 pt-4">
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium bg-violet-700 hover:bg-violet-600 text-white transition-all duration-200"
+                >
+                  Ok
                 </button>
               </div>
             </div>

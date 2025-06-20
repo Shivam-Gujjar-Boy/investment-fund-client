@@ -16,6 +16,7 @@ export interface Fund {
   is_private: number,
   underIncrementation: boolean,
   incrementProposer: PublicKey | null,
+  isRefunded: boolean,
 }
 
 export interface UserFund {

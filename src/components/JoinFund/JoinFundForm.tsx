@@ -39,7 +39,7 @@ export default function JoinFundForm() {
         setFundStatus({ exists: false, isPrivate: false });
         toast.error(`No fund with name "${fundName}" exists`);
       } else {
-        const fund = extractFundData(fundAccountInfo);
+        const fund = await extractFundData(fundAccountInfo, connection);
         if (!fund) {
           throw new Error('Failed to extract fund data');
         }
@@ -206,10 +206,10 @@ export default function JoinFundForm() {
     try {
       if (!fundStatus.isPrivate) {
         await joinPublicFund();
-        setShowPrivateJoinModal(false);
+        setShowPublicJoinModal(false);
       } else {
         await createJoinProposal();
-        setShowPublicJoinModal(false);
+        setShowPrivateJoinModal(false);
       }
       setIsConfirming(false);
     } catch (err) {

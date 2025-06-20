@@ -11,6 +11,7 @@ export async function extractFundData (fundAccountInfo: AccountInfo<Buffer<Array
         if (c === '\x00') break;
         name += c;
     }
+    const isRefunded = fund_buffer.readUInt8(26) ? true : false;
     const expectedMembers = fund_buffer.readUInt32LE(27);
     const creatorExists = fund_buffer.readUInt8(31) ? true : false;
     const totalDeposit = fund_buffer.readBigInt64LE(32);
@@ -41,7 +42,7 @@ export async function extractFundData (fundAccountInfo: AccountInfo<Buffer<Array
     const incrementProposalInfo = await connection.getAccountInfo(incrementProposalPda);
     if (!incrementProposalInfo) {
         underIncrementation = false;
-        incrementProposer = new PublicKey('');
+        incrementProposer = fund_address;
     } else {
         const incrementBuffer = Buffer.from(incrementProposalInfo.data);
         underIncrementation = true;
@@ -63,7 +64,8 @@ export async function extractFundData (fundAccountInfo: AccountInfo<Buffer<Array
         created_at,
         is_private,
         underIncrementation,
-        incrementProposer
+        incrementProposer,
+        isRefunded
     };
 
     return fund;

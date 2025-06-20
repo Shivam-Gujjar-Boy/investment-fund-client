@@ -96,7 +96,7 @@ export default function FundsList() {
             const acc_buffer = Buffer.from(acc?.data);
             console.log("Length of account data is : ", acc_buffer.length);
             console.log('Account data is : ', acc_buffer);
-            const name_dummy = acc_buffer.slice(0, 27).toString();
+            const name_dummy = acc_buffer.slice(0, 26).toString();
             let name = '';
             for (const c of name_dummy) {
                 if (c === '\x00') break;
@@ -104,7 +104,7 @@ export default function FundsList() {
             }
             console.log(name);
 
-            const expectedMembers = acc_buffer.readUInt32LE(27);
+            const expectedMembers = acc_buffer.readUInt32LE(26);
             const creatorExists = acc_buffer.readUInt8(31) ? true : false;
             const totalDeposit = acc_buffer.readBigInt64LE(32);
             console.log(totalDeposit);

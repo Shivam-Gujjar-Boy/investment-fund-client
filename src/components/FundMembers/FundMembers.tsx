@@ -455,7 +455,11 @@ export default function FundMembers({ members, governanceMint, fund }: FundMembe
         </div>
       )}
       {showActivityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-fadeIn">
+        <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowActivityModal(false);
+        }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-3xl text-white transition-all duration-300 scale-100 relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold tracking-wide">Fund Activities</h2>
