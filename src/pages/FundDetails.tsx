@@ -12,7 +12,7 @@ import FundGraph from '../components/FundGraph/FundGraph';
 import { Metaplex } from '@metaplex-foundation/js';
 import FundHoldings from '../components/FundHoldings/FundHoldings';
 import  GlobalSocketListener  from './GlobalSocketListener'; 
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAccount, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 
 
@@ -33,6 +33,7 @@ export default function FundDetails() {
   const [refundType, setRefundType] = useState('power');
   const [deleteTab, setDeleteTab] = useState<'delete' | 'toggle'>('delete');
   const [refundChoice, setRefundChoice] = useState<'power' | 'sol'>('power');
+  const [contribution, setContribution] = useState(0);
 
   const wallet = useWallet();
   const { connection } = useConnection();
@@ -94,6 +95,22 @@ export default function FundDetails() {
         underIncrementation = true;
         const incrementBuffer = Buffer.from(incrementProposalInfo.data);
         incrementProposer = new PublicKey(incrementBuffer.slice(0, 32));
+      }
+
+      const userTokenAccount = await getAssociatedTokenAddress(
+        governanceMint,
+        wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      const accountinfo = await connection.getAccountInfo(userTokenAccount);
+      if (accountinfo) {
+        const tokenAccountInfo = await getAccount(connection, userTokenAccount, 'confirmed', TOKEN_2022_PROGRAM_ID);
+        const balance = Number(tokenAccountInfo.amount);
+        const contribution = (balance / Number(totalDeposit)) * 100;
+        setContribution(contribution);
       }
 
       setFund({
@@ -582,7 +599,7 @@ export default function FundDetails() {
                 <div className="flex flex-col gap-1 w-[15%]">
                   <p className="text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-all">Your Contribution</p>
                   <p className="text-2xl font-semibold text-purple-400 group-hover:scale-105 transition-transform">
-                    {1.111.toFixed(2)}%
+                    {(contribution).toFixed(2)}%
                   </p>
                 </div>
 
