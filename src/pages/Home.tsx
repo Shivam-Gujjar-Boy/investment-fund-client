@@ -1,204 +1,789 @@
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import '@solana/wallet-adapter-react-ui/styles.css';
-import { useEffect, useState } from 'react';
+import React, { ChangeEvent, DragEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {toast} from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { PublicKey, TransactionInstruction, SystemProgram, Transaction } from '@solana/web3.js';
 import { programId } from '../types';
 import { Buffer } from 'buffer';
+import { Upload, X, User, Mail, Wallet, Sparkles, Shield, Zap } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import { getCroppedImg } from '../functions/cropImage';
+
+interface SignUpData {
+  username: string;
+  email: string;
+  image: File | null;
+}
+
+interface FormErrors {
+  username?: string;
+  email?: string;
+  image?: string;
+}
 
 export default function Home() {
   const navigate = useNavigate();
   const wallet = useWallet();
-  const {connection} = useConnection();
+  const { connection } = useConnection();
   const { connected } = wallet;
   const [loading, setLoading] = useState(false);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [signUpData, setSignUpData] = useState<SignUpData>({
+    username: '',
+    email: '',
+    image: null
+  });
+  const [dragActive, setDragActive] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [showWalletConnect, setShowWalletConnect] = useState(false);
+
+  const [cropModalVisible, setCropModalVisible] = useState(false);
+  const [tempImage, setTempImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [croppedFileSize, setCroppedFileSize] = useState<string | null>(null);
+  const [croppedFileMBExceeded, setCroppedFileMBExceeded] = useState<boolean>(false);
   
-  // Redirect to dashboard if connected by creating the account if doesn't exist
+  // Enhanced useEffect to handle wallet connection after sign-up
   useEffect(() => {
     const handleUser = async () => {
-      if (!connected || !wallet) return;
+      // Only proceed if wallet is connected AND we have sign-up data (meaning they came from sign-up flow)
+      if (!connected || !wallet || !wallet.publicKey) return;
+      
+      // If user connected wallet through the sign-up flow
+      if (showWalletConnect && signUpData.username && signUpData.email) {
+        const user = wallet.publicKey;
+        setLoading(true);
+        setShowWalletConnect(false); // Close the wallet connect modal
 
-      const user = wallet.publicKey;
-      if (!user) throw new Error('Wallet not connected');
+        console.log('Creating user account for:', signUpData.username, user.toBase58());
 
-      setLoading(true);
+        const [userAccountPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('user'), user.toBuffer()],
+          programId,
+        );
 
-      console.log(user, connected);
-
-      const [userAccountPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user'), user.toBuffer()],
-        programId,
-      );
-
-      try {
-        const accountInfo = await connection.getAccountInfo(userAccountPda);
-        if (accountInfo !== null) {
-          console.log("User already exists");
-          toast.success('User Account found and logged in!');
-          navigate('/dashboard/create');
-        } else {
-          if (!wallet.signTransaction || !wallet.publicKey) {
-            return;
-          }
-
-          try {
-            const instructionData = Buffer.from([6]);
-
-            const instruction = new TransactionInstruction({
-              keys: [
-                {pubkey: user, isSigner: true, isWritable: true},
-                {pubkey: userAccountPda, isSigner: false, isWritable: true},
-                {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-              ],
-              programId,
-              data: instructionData,
-            });
-
-            const transaction = new Transaction().add(instruction);
-
-            console.log("User account key : ", userAccountPda.toBase58());
-
-            const {blockhash, lastValidBlockHeight} = await connection.getLatestBlockhash();
-            transaction.recentBlockhash = blockhash;
-            transaction.feePayer = user;
-
-            const signedTransaction = await wallet.signTransaction(transaction);
-            const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-
-            await connection.confirmTransaction({
-              signature,
-              blockhash,
-              lastValidBlockHeight
-            });
-
-            console.log("User PDA created");
-            toast.success('User Account created and logged in');
+        try {
+          const accountInfo = await connection.getAccountInfo(userAccountPda);
+          if (accountInfo !== null) {
+            console.log("User already exists");
+            toast.success(`Welcome back ${signUpData.username}! Account found and logged in.`);
+            // Reset form data after successful login
+            setSignUpData({ username: '', email: '', image: null });
+            setImagePreview(null);
+            setErrors({});
             navigate('/dashboard/create');
+          } else {
+            if (!wallet.signTransaction || !wallet.publicKey) {
+              setLoading(false);
+              return;
+            }
 
-          } catch (userCreationErr) {
-            console.log('Error creating User PDA : ', userCreationErr);
-            toast.error('Error creating User Account');
+            try {
+              const instructionData = Buffer.from([6]);
+
+              const instruction = new TransactionInstruction({
+                keys: [
+                  { pubkey: user, isSigner: true, isWritable: true },
+                  { pubkey: userAccountPda, isSigner: false, isWritable: true },
+                  { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+                ],
+                programId,
+                data: instructionData,
+              });
+
+              const transaction = new Transaction().add(instruction);
+
+              console.log("User account key : ", userAccountPda.toBase58());
+
+              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+              transaction.recentBlockhash = blockhash;
+              transaction.feePayer = user;
+
+              const signedTransaction = await wallet.signTransaction(transaction);
+              const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+
+              await connection.confirmTransaction({
+                signature,
+                blockhash,
+                lastValidBlockHeight
+              });
+
+              console.log("User PDA created");
+              toast.success(`Welcome to PeerFunds, ${signUpData.username}! Your account has been created successfully.`);
+              
+              // TODO: Here you would typically send the signUpData to your backend to store user details
+              console.log('User registration complete:', {
+                username: signUpData.username,
+                email: signUpData.email,
+                walletAddress: user.toBase58(),
+                image: signUpData.image
+              });
+              
+              // Reset form data after successful registration
+              setSignUpData({ username: '', email: '', image: null });
+              setImagePreview(null);
+              setErrors({});
+              navigate('/dashboard/create');
+
+            } catch (userCreationErr) {
+              console.log('Error creating User PDA : ', userCreationErr);
+              toast.error('Error creating User Account. Please try again.');
+            }
           }
+        } catch (err) {
+          console.log("Error checking user PDA existence : ", err);
+          toast.error('Error fetching User Account!')
+        } finally {
+          setLoading(false);
         }
-      } catch (err) {
-        console.log("Error checking user PDA existance : ", err);
-        toast.error('Error fetching User Account!')
-      } finally {
-        setLoading(false);
+      }
+      // Handle direct wallet connection (without sign-up flow)
+      else if (connected && !showWalletConnect && !signUpData.username) {
+        const user = wallet.publicKey;
+        setLoading(true);
+
+        console.log('Direct wallet connection:', user.toBase58());
+
+        const [userAccountPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('user'), user.toBuffer()],
+          programId,
+        );
+
+        try {
+          const accountInfo = await connection.getAccountInfo(userAccountPda);
+          if (accountInfo !== null) {
+            console.log("Existing user found");
+            toast.success('Welcome back! Account found and logged in.');
+            navigate('/dashboard/create');
+          } else {
+            // User doesn't exist, redirect to sign-up
+            toast.error('No account found. Please create an account first.');
+            setShowSignUpModal(true);
+          }
+        } catch (err) {
+          console.log("Error checking user PDA existence : ", err);
+          toast.error('Error fetching User Account!')
+        } finally {
+          setLoading(false);
+        }
       }
     };
 
     handleUser();
-  }, [connected, navigate, wallet, connection]);
+  }, [connected, navigate, wallet, connection, showWalletConnect, signUpData]);
 
-return (
-  <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
-    {loading ? (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-white text-lg">Preparing your dashboard...</p>
+  const handleInputChange = (field: keyof SignUpData, value: string): void => {
+    setSignUpData(prev => ({ ...prev, [field]: value }));
+    // Clear specific field error when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field as keyof FormErrors];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleImageUpload = (file: File) => {
+    if (file && file.type.startsWith('image/')) {
+      setSignUpData(prev => ({ ...prev, image: file }));
+      const reader = new FileReader();
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        if (e.target?.result) {
+          setImagePreview(e.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      toast.error('Please select a valid image file');
+    }
+  };
+
+  const handleDrag = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
+      handleImageUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // handleImageUpload(e.target.files[0]);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempImage(reader.result as string);
+        setCropModalVisible(true);  
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    if (!signUpData.username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (signUpData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+    
+    if (!signUpData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signUpData.email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
+
+    if ((signUpData.image?.size ?? 0) > 512000) {
+      newErrors.image = 'Please upload an image of size less than 500kB';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSignUp = async () => {
+    if (validateForm()) {
+      // Store sign-up data
+      const signUpPayload = {
+        username: signUpData.username.trim(),
+        email: signUpData.email.trim(),
+        image: signUpData.image // File object or null
+      };
+      
+      console.log('Sign-up payload:', signUpPayload);
+
+      const formData = new FormData();
+      formData.append('username', signUpData.username.trim());
+      formData.append('email', signUpData.email.trim());
+      if (signUpData.image) {
+        formData.append('image', signUpData.image);
+      }
+
+      console.log('Request marne wali hai');
+
+      try {
+        const res = await fetch('https://peerfunds.onrender.com/api/upload-user-data', {
+          method: 'POST',
+          body: formData
+        });
+
+        // const res = await fetch('http://localhost:5000/api/upload/upload-user-data', {
+        //   method: 'POST',
+        //   body: formData
+        // });
+
+        console.log('Request mar gai');
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result?.error || 'Failed to upload user data');
+        }
+
+        console.log('✅ Upload success:', result);
+        console.log('Success:', result.success);
+        console.log('folder cid:', result.folderCid);
+        console.log('metadata url:', result.metadataUrl);
+        console.log('image url:', result.imageUrl);
+        console.log('cid object:', result.cidObject);
+        // const {cid, hash} = result;
+      } catch (err) {
+        console.error('❌ Upload failed:', err);
+        throw err;
+      }
+      
+      // Close sign-up modal and show wallet connect
+      setShowSignUpModal(false);
+      setShowWalletConnect(true);
+      toast.success('Account details saved! Now connect your wallet to complete registration.');
+    }
+  };
+
+  const CustomWalletButton = () => (
+    <button
+      onClick={() => setShowSignUpModal(true)}
+      className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_#8b5cf6aa] border border-purple-500/30"
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="relative flex items-center space-x-3">
+        <Wallet className="w-5 h-5" />
+        <span>Join PeerFunds</span>
+        <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+    </button>
+  );
+
+  const WalletConnectModal: React.FC = () => (
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setShowWalletConnect(false);
+          setShowSignUpModal(true); // Go back to sign up if they close
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+    >
+      <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border border-purple-500/30 shadow-[0_0_10px_#8b5cf6aa] overflow-hidden">
+        
+        {/* Close button */}
+        <button
+          onClick={() => {
+            setShowWalletConnect(false);
+            setShowSignUpModal(true);
+          }}
+          className="absolute top-6 right-6 w-8 h-8 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-colors duration-200 z-10"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="relative p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Wallet className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Connect Your Wallet</h2>
+            <p className="text-gray-400">
+              Hello <span className="text-purple-400 font-semibold">{signUpData.username}</span>! 
+              Connect your wallet to complete your PeerFunds registration.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700">
+              <h3 className="text-white font-medium mb-2">Account Summary</h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Username:</span>
+                  <span className="text-white">{signUpData.username}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Email:</span>
+                  <span className="text-white">{signUpData.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Profile Image:</span>
+                  <span className="text-white">{signUpData.image ? 'Uploaded' : 'None'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <WalletMultiButton className="!w-full !py-4 !bg-gradient-to-r !from-purple-600 !via-violet-600 !to-indigo-600 !border-purple-500/30 hover:!shadow-[0_0_20px_#8b5cf6aa] !transition-all !duration-300" />
+            </div>
+
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <Shield className="w-4 h-4" />
+              <span>Your wallet will be securely connected to complete registration</span>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-gray-700">
+            <button
+              onClick={() => {
+                setShowWalletConnect(false);
+                setShowSignUpModal(true);
+              }}
+              className="text-gray-400 hover:text-white text-sm transition-colors duration-200"
+            >
+              ← Back to account details
+            </button>
+          </div>
         </div>
       </div>
-    ) : (
-      <>
-        <header className="pt-6 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-gray-900 via-purple-900/20 to-gray-900">
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-white text-lg">Preparing your dashboard...</p>
           </div>
-        </header>
+        </div>
+      ) : (
+        <>
+          <header className="pt-6 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto flex justify-between items-center">
+              <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
+              {connected && (
+                <div className="hidden sm:block">
+                  <WalletMultiButton />
+                </div>
+              )}
+            </div>
+          </header>
 
-        <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10">
-          <div className="max-w-6xl mx-auto">
-            <section className="text-center mb-20">
-              <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
-                Decentralized <span className="text-gradient">Investment Funds</span>
-              </h1>
-              <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                Create and manage trustless investment funds on the Solana blockchain. Join forces with friends, colleagues or communities.
-              </p>
-              <div className="mt-8">
-                <WalletMultiButton />
-              </div>
-            </section>
+          <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10">
+            <div className="max-w-6xl mx-auto">
+              <section className="text-center mb-20">
+                <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
+                  Decentralized{' '}
+                  <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
+                    Investment Funds
+                  </span>
+                </h1>
+                <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+                  Create and manage trustless investment funds on the Solana blockchain. Join forces with friends, colleagues or communities.
+                </p>
+                <div className="mt-8">
+                  {connected ? (
+                    <WalletMultiButton />
+                  ) : (
+                    <CustomWalletButton />
+                  )}
+                </div>
+              </section>
 
-            <section className="mb-24">
-              <div className="grid sm:grid-cols-4 gap-8">
-                {['Create a Fund', 'Join Together', 'Invest Together', 'Grow Together'].map((title, i) => (
-                  <div key={i} className="glass rounded-2xl p-6 text-center border border-indigo-800 hover:shadow-[0_0_10px_#a78bfa55] hover:scale-[1.01] transition-all duration-300 group">
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold">
-                      {i + 1}
+              <section className="mb-24">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {[
+                    {
+                      title: 'Create a Fund',
+                      description: 'Start a DAO-style fund and set governance rules.'
+                    },
+                    {
+                      title: 'Join Together',
+                      description: 'Collaboratively pool resources for smarter investing.'
+                    },
+                    {
+                      title: 'Invest Together',
+                      description: 'Invest through decentralized proposals on-chain!'
+                    },
+                    {
+                      title: 'Grow Together',
+                      description: 'See returns, PnL, and distribute profits fairly.'
+                    }
+                  ].map((item, i) => (
+                    <div 
+                      key={i} 
+                      className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 text-center border border-gray-700/50 hover:border-purple-500/50 hover:shadow-[0_0_20px_#8b5cf622] hover:scale-[1.02] transition-all duration-300 group"
+                    >
+                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold group-hover:scale-110 transition-transform duration-300">
+                        {i + 1}
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
+                      <p className="text-gray-400 text-sm">{item.description}</p>
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-                    <p className="text-gray-400 text-sm">
-                      {i === 0
-                        ? 'Start a DAO-style fund and set governance rules.'
-                        : i === 1
-                        ? 'Collaboratively pool resources for smarter investing.'
-                        : i === 2
-                        ? 'Invest through decentralized proposals on-chain!'
-                        : 'See returns, PnL, and distribute profits fairly.'}
-                    </p>
+                  ))}
+                </div>
+              </section>
+
+              <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
+                <div className="space-y-6">
+                  <h2 className="text-3xl font-bold text-white">Why PeerFunds?</h2>
+                  <p className="text-gray-300 leading-relaxed">
+                    Whether you're a solo crypto trader or a team of enthusiastic friends, PeerFunds empowers you to invest with trustless collaboration.
+                    On-chain governance, proposal voting, and fund transparency ensure every decision is made fairly.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-5 h-5 text-purple-400" />
+                      <span className="text-gray-300">Trustless voting system</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Zap className="w-5 h-5 text-purple-400" />
+                      <span className="text-gray-300">Performance analytics and portfolio insights</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Sparkles className="w-5 h-5 text-purple-400" />
+                      <span className="text-gray-300">Learn by joining funds, even with minimal risk</span>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </section>
+                </div>
+                <div className="h-64 bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-gray-900/30 rounded-2xl border border-purple-500/20 flex items-center justify-center text-purple-300">
+                  <div className="text-center">
+                    <Shield className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm opacity-75">Secure & Transparent</p>
+                  </div>
+                </div>
+              </section>
 
-            <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
-              <div className="space-y-4">
-                <h2 className="text-3xl font-bold text-white">Why PeerFunds?</h2>
-                <p className="text-gray-300">
-                  Whether you're a solo crypto trader or a team of enthusiastic friends, PeerFunds empowers you to invest with trustless collaboration.
-                  On-chain governance, proposal voting, and fund transparency ensure every decision is made fairly.
-                </p>
-                <p className="text-gray-400 text-sm">
-                  🔒 Trustless voting system<br />
-                  📈 Performance analytics and portfolio insights<br />
-                  🧠 Learn by joining funds, even with minimal risk
-                </p>
-              </div>
-              <div className="h-64 bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-300">
-                {/* Add illustration/image here */}
-                [ IMAGE PLACEHOLDER ]
-              </div>
-            </section>
+              <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
+                <div className="h-64 bg-gradient-to-br from-violet-900/30 via-purple-900/30 to-gray-900/30 rounded-2xl border border-violet-500/20 flex items-center justify-center text-violet-300">
+                  <div className="text-center">
+                    <User className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm opacity-75">Learn & Grow</p>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <h2 className="text-3xl font-bold text-white">Not Just Investing – It's Learning</h2>
+                  <p className="text-gray-300 leading-relaxed">
+                    Beginners can join public funds, learn how proposals work, and participate in governance without affecting real fund outcomes.
+                    Small voting powers ensure minimal risk, while real-time engagement drives crypto knowledge growth.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <Zap className="w-5 h-5 text-violet-400" />
+                      <span className="text-gray-300">Proposals with real-time outcomes</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Sparkles className="w-5 h-5 text-violet-400" />
+                      <span className="text-gray-300">PnL dashboards, voting analytics, and educational feedback</span>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Shield className="w-5 h-5 text-violet-400" />
+                      <span className="text-gray-300">Learn by doing — not just reading</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
 
-            <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
-              <div className="h-64 bg-purple-800/30 rounded-xl flex items-center justify-center text-purple-300">
-                {/* Add illustration/image here */}
-                [ IMAGE PLACEHOLDER ]
-              </div>
-              <div className="space-y-4">
-                <h2 className="text-3xl font-bold text-white">Not Just Investing – It's Learning</h2>
-                <p className="text-gray-300">
-                  Beginners can join public funds, learn how proposals work, and participate in governance without affecting real fund outcomes.
-                  Small voting powers ensure minimal risk, while real-time engagement drives crypto knowledge growth.
+              <section className="text-center mb-10">
+                <h2 className="text-3xl font-bold text-white mb-4">Ready to Join the Future of Community Investing?</h2>
+                <p className="text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+                  Connect your wallet and dive into the world of decentralized fund management. It takes just a few seconds to get started.
                 </p>
-                <p className="text-sm text-gray-400">
-                  🧩 Proposals with real-time outcomes<br />
-                  📊 PnL dashboards, voting analytics, and educational feedback<br />
-                  🧪 Learn by doing — not just reading
-                </p>
-              </div>
-            </section>
+                {connected ? (
+                  <WalletMultiButton />
+                ) : (
+                  <CustomWalletButton />
+                )}
+              </section>
+            </div>
+          </main>
 
-            <section className="text-center mb-10">
-              <h2 className="text-2xl font-bold text-white mb-3">Ready to Join the Future of Community Investing?</h2>
-              <p className="text-gray-300 max-w-xl mx-auto mb-6">
-                Connect your wallet and dive into the world of decentralized fund management. It takes just a few seconds to get started.
+          <footer className="py-8 text-center text-gray-500 text-sm border-t border-gray-800">
+            <div className="max-w-6xl mx-auto px-4">
+              <p className="mb-2">Powered by Solana Blockchain</p>
+              <p className="text-xs">Building the future of decentralized finance, one fund at a time.</p>
+            </div>
+          </footer>
+        </>
+      )}
+      {showSignUpModal && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSignUpModal(false);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+          <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border border-purple-500/30 shadow-[0_0_10px_#8b5cf6aa] overflow-hidden">
+            
+            {/* Close button */}
+            <button
+              onClick={() => {
+                setShowSignUpModal(false);
+                setSignUpData({ username: '', email: '', image: null });
+                setImagePreview(null);
+                setErrors({});
+              }}
+              className="absolute top-6 right-6 w-8 h-8 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-colors duration-200 z-10"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="relative p-8">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-white mb-2">Join PeerFunds</h2>
+                <p className="text-gray-400">Create your account to get started</p>
+              </div>
+
+              {/* Form */}
+              <div className="space-y-6">
+                {/* Username */}
+                <div className="space-y-2">
+                  <label htmlFor='fundName' className="block text-sm font-medium text-gray-300">
+                    Username <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      // id="userName"
+                      value={signUpData.username}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('username', e.target.value)}
+                      // onChange={(e) => setUserName(e.target.value)}
+                      maxLength={16}
+                      className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
+                        errors.username ? 'border-red-500' : 'border-gray-600'
+                      } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
+                      placeholder="Choose your handle"
+                    />
+                  </div>
+                  {errors.username && (
+                    <p className="text-red-400 text-xs mt-1">{errors.username}</p>
+                  )}
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-300">
+                    Email <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={signUpData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="your@email.com"
+                      className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
+                        errors.email ? 'border-red-500' : 'border-gray-600'
+                      } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                {/* Image Upload */}
+                <div className="space-y-2 flex flex-col">
+                  <label className="block text-sm font-medium text-gray-300">
+                    Profile Image <span className="text-gray-500">(optional)</span>
+                  </label>
+                  
+                  {imagePreview ? (
+                    <div className="relative w-full max-w-xs">
+                      <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-gray-600 bg-gray-800">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          onClick={() => {
+                            setImagePreview(null);
+                            setSignUpData(prev => ({ ...prev, image: null }));
+                            setCroppedFileSize(null);
+                            setCroppedFileMBExceeded(false);
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs shadow-md transition duration-150"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="mt-2 text-xs text-gray-400 space-y-1">
+                        <div>
+                          <span className="font-medium text-white">Size:</span> {croppedFileSize}
+                        </div>
+                      </div>
+
+                      {croppedFileMBExceeded && (
+                        <div className="mt-1 text-xs text-red-400 border border-red-500 bg-red-500/10 rounded-md px-3 py-1">
+                          ⚠️ Image size exceeds 500KB. Consider cropping tighter or uploading a smaller image.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      className={`relative w-full h-32 border-2 border-dashed ${
+                        dragActive ? 'border-purple-500 bg-purple-500/10' : 'border-gray-600'
+                      } rounded-xl transition-all duration-200 hover:border-purple-500 hover:bg-purple-500/5 cursor-pointer group`}
+                    >
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileInputChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-purple-400 transition-colors duration-200">
+                        <Upload className="w-8 h-8 mb-2" />
+                        <p className="text-sm font-medium">Drop image here or click to upload</p>
+                        <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-4 space-y-3">
+                <button
+                  onClick={handleSignUp}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-[0_0_20px_#8b5cf6aa] transition-all duration-300 hover:scale-[1.02] border border-purple-500/30 group relative overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex items-center justify-center space-x-2">
+                    <Zap className="w-5 h-5" />
+                    <span>Create Account</span>
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                </button>
+              </div>
+
+              <p className="text-center text-xs text-gray-500 mt-6">
+                By signing up, you agree to our terms and embrace the decentralized future
               </p>
-              <WalletMultiButton />
-            </section>
+            </div>
           </div>
-        </main>
+        </div>
+      )}
+      {showWalletConnect && <WalletConnectModal />}
+      {cropModalVisible && tempImage && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-70 flex items-center justify-center">
+          <div className="bg-gray-900 p-4 rounded-xl w-[90vw] max-w-md relative">
+            <div className="relative w-full h-64">
+              <Cropper
+                image={tempImage}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, cropped) => setCroppedAreaPixels(cropped)}
+              />
+            </div>
+            <div className="flex justify-end space-x-3 mt-4">
+              <button
+                onClick={() => setCropModalVisible(false)}
+                className="px-4 py-2 text-sm bg-gray-700 text-white rounded-md hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const blob = await getCroppedImg(tempImage, croppedAreaPixels);
+                  const previewUrl = URL.createObjectURL(blob);
+                  const file = new File([blob], 'cropped.jpg');
 
-        <footer className="py-6 text-center text-gray-500 text-sm">
-          <p>Powered by Solana Blockchain</p>
-        </footer>
-      </>
-    )}
-  </div>
-);
+                  const sizeInKB = file.size / 1024;
+                  const sizeInMB = sizeInKB / 1024;
+                  const formattedSize = sizeInMB >= 1 ? `${sizeInMB.toFixed(2)} MB` : `${sizeInKB.toFixed(2)} KB`;
+
+
+                  setSignUpData(prev => ({ ...prev, image: new File([blob], 'cropped.jpg') }));
+                  setImagePreview(previewUrl);
+                  setCroppedFileSize(formattedSize);
+                  setCroppedFileMBExceeded(file.size > 512000);
+                  setCropModalVisible(false);
+                }}
+                className="px-4 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-500"
+              >
+                Crop & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -36,6 +36,8 @@ export default function Proposals({ fund, fundId }: ProposalsProps) {
   const [sortOption, setSortOption] = useState<'creationTime' | 'deadline'>('creationTime');
   const [filterOption, setFilterOption] = useState<'all' | 'executed' | 'nonExecuted' | 'by-you'>('all');
   const [isCreating, setIsCreating] = useState(false);
+  const [cid, setCid] = useState('');
+  const [hash, setHash] = useState('');
   const filteredAndSortedProposals = [...(proposals ?? [])]
     .filter((p) => {
       if (filterOption === 'executed') return p.executed;
