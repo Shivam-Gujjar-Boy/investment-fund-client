@@ -29,6 +29,7 @@ export default function Home() {
   const { connection } = useConnection();
   const { connected } = wallet;
   const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [signUpData, setSignUpData] = useState<SignUpData>({
     username: '',
@@ -282,15 +283,10 @@ export default function Home() {
       console.log('Request marne wali hai');
 
       try {
-        const res = await fetch('https://peerfunds.onrender.com/api/upload-user-data', {
+        const res = await fetch('https://peerfunds.onrender.com/api/upload/upload-user-data', {
           method: 'POST',
           body: formData
         });
-
-        // const res = await fetch('http://localhost:5000/api/upload/upload-user-data', {
-        //   method: 'POST',
-        //   body: formData
-        // });
 
         console.log('Request mar gai');
 
@@ -299,6 +295,7 @@ export default function Home() {
         if (!res.ok) {
           throw new Error(result?.error || 'Failed to upload user data');
         }
+        setModalLoading(false);
 
         console.log('✅ Upload success:', result);
         console.log('Success:', result.success);
@@ -306,9 +303,9 @@ export default function Home() {
         console.log('metadata url:', result.metadataUrl);
         console.log('image url:', result.imageUrl);
         console.log('cid object:', result.cidObject);
-        // const {cid, hash} = result;
       } catch (err) {
         console.error('❌ Upload failed:', err);
+        setModalLoading(false);
         throw err;
       }
       
@@ -574,168 +571,183 @@ export default function Home() {
         </>
       )}
       {showSignUpModal && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSignUpModal(false);
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-          <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border border-purple-500/30 shadow-[0_0_10px_#8b5cf6aa] overflow-hidden">
-            
-            {/* Close button */}
-            <button
-              onClick={() => {
-                setShowSignUpModal(false);
-                setSignUpData({ username: '', email: '', image: null });
-                setImagePreview(null);
-                setErrors({});
-              }}
-              className="absolute top-6 right-6 w-8 h-8 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-colors duration-200 z-10"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="relative p-8">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">Join PeerFunds</h2>
-                <p className="text-gray-400">Create your account to get started</p>
-              </div>
-
-              {/* Form */}
-              <div className="space-y-6">
-                {/* Username */}
-                <div className="space-y-2">
-                  <label htmlFor='fundName' className="block text-sm font-medium text-gray-300">
-                    Username <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="text"
-                      // id="userName"
-                      value={signUpData.username}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('username', e.target.value)}
-                      // onChange={(e) => setUserName(e.target.value)}
-                      maxLength={16}
-                      className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
-                        errors.username ? 'border-red-500' : 'border-gray-600'
-                      } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
-                      placeholder="Choose your handle"
-                    />
-                  </div>
-                  {errors.username && (
-                    <p className="text-red-400 text-xs mt-1">{errors.username}</p>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-300">
-                    Email <span className="text-red-400">*</span>
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="email"
-                      value={signUpData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="your@email.com"
-                      className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
-                        errors.email ? 'border-red-500' : 'border-gray-600'
-                      } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
-                    />
-                  </div>
-                  {errors.email && (
-                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
-                  )}
-                </div>
-
-                {/* Image Upload */}
-                <div className="space-y-2 flex flex-col">
-                  <label className="block text-sm font-medium text-gray-300">
-                    Profile Image <span className="text-gray-500">(optional)</span>
-                  </label>
-                  
-                  {imagePreview ? (
-                    <div className="relative w-full max-w-xs">
-                      <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-gray-600 bg-gray-800">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          onClick={() => {
-                            setImagePreview(null);
-                            setSignUpData(prev => ({ ...prev, image: null }));
-                            setCroppedFileSize(null);
-                            setCroppedFileMBExceeded(false);
-                          }}
-                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs shadow-md transition duration-150"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      <div className="mt-2 text-xs text-gray-400 space-y-1">
-                        <div>
-                          <span className="font-medium text-white">Size:</span> {croppedFileSize}
-                        </div>
-                      </div>
-
-                      {croppedFileMBExceeded && (
-                        <div className="mt-1 text-xs text-red-400 border border-red-500 bg-red-500/10 rounded-md px-3 py-1">
-                          ⚠️ Image size exceeds 500KB. Consider cropping tighter or uploading a smaller image.
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      onDragEnter={handleDrag}
-                      onDragLeave={handleDrag}
-                      onDragOver={handleDrag}
-                      onDrop={handleDrop}
-                      className={`relative w-full h-32 border-2 border-dashed ${
-                        dragActive ? 'border-purple-500 bg-purple-500/10' : 'border-gray-600'
-                      } rounded-xl transition-all duration-200 hover:border-purple-500 hover:bg-purple-500/5 cursor-pointer group`}
-                    >
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileInputChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      />
-                      <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-purple-400 transition-colors duration-200">
-                        <Upload className="w-8 h-8 mb-2" />
-                        <p className="text-sm font-medium">Drop image here or click to upload</p>
-                        <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-4 space-y-3">
-                <button
-                  onClick={handleSignUp}
-                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-[0_0_20px_#8b5cf6aa] transition-all duration-300 hover:scale-[1.02] border border-purple-500/30 group relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="relative flex items-center justify-center space-x-2">
-                    <Zap className="w-5 h-5" />
-                    <span>Create Account</span>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                </button>
-              </div>
-
-              <p className="text-center text-xs text-gray-500 mt-6">
-                By signing up, you agree to our terms and embrace the decentralized future
-              </p>
+        modalLoading ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className='relative w-full max-w-md bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border border-purple-500/30 shadow-[0_0_10px_#8b5cf6aa] overflow-hidden flex flex-col justify-center items-center h-[92%]'>
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 rounded-full border-4 border-t-transparent border-purple-500 animate-spin" />
+              <div className="absolute inset-2 rounded-full bg-gradient-to-br from-purple-500/20 via-purple-700/20 to-purple-500/20 blur-md" />
             </div>
+            <div className="mt-4 text-sm text-gray-400 tracking-wide">Uploading to IPFS...</div>
           </div>
         </div>
+        ) : (
+          <div
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowSignUpModal(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            >
+            <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-purple-900/30 to-gray-900 rounded-3xl border border-purple-500/30 shadow-[0_0_10px_#8b5cf6aa] overflow-hidden">
+              
+              {/* Close button */}
+              <button
+                onClick={() => {
+                  setShowSignUpModal(false);
+                  setSignUpData({ username: '', email: '', image: null });
+                  setImagePreview(null);
+                  setErrors({});
+                }}
+                className="absolute top-6 right-6 w-8 h-8 rounded-full bg-gray-800/50 hover:bg-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-colors duration-200 z-10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="relative p-8">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-2">Join PeerFunds</h2>
+                  <p className="text-gray-400">Create your account to get started</p>
+                </div>
+
+                {/* Form */}
+                <div className="space-y-6">
+                  {/* Username */}
+                  <div className="space-y-2">
+                    <label htmlFor='fundName' className="block text-sm font-medium text-gray-300">
+                      Username <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="text"
+                        // id="userName"
+                        value={signUpData.username}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange('username', e.target.value)}
+                        // onChange={(e) => setUserName(e.target.value)}
+                        maxLength={16}
+                        className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
+                          errors.username ? 'border-red-500' : 'border-gray-600'
+                        } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
+                        placeholder="Choose your handle"
+                      />
+                    </div>
+                    {errors.username && (
+                      <p className="text-red-400 text-xs mt-1">{errors.username}</p>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Email <span className="text-red-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="email"
+                        value={signUpData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="your@email.com"
+                        className={`w-full pl-12 pr-4 py-3 bg-gray-800/50 border ${
+                          errors.email ? 'border-red-500' : 'border-gray-600'
+                        } rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-200`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                    )}
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="space-y-2 flex flex-col">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Profile Image <span className="text-gray-500">(optional)</span>
+                    </label>
+                    
+                    {imagePreview ? (
+                      <div className="relative w-full max-w-xs">
+                        <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-gray-600 bg-gray-800">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={() => {
+                              setImagePreview(null);
+                              setSignUpData(prev => ({ ...prev, image: null }));
+                              setCroppedFileSize(null);
+                              setCroppedFileMBExceeded(false);
+                            }}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-xs shadow-md transition duration-150"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <div className="mt-2 text-xs text-gray-400 space-y-1">
+                          <div>
+                            <span className="font-medium text-white">Size:</span> {croppedFileSize}
+                          </div>
+                        </div>
+
+                        {croppedFileMBExceeded && (
+                          <div className="mt-1 text-xs text-red-400 border border-red-500 bg-red-500/10 rounded-md px-3 py-1">
+                            ⚠️ Image size exceeds 500KB. Consider cropping tighter or uploading a smaller image.
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                        className={`relative w-full h-32 border-2 border-dashed ${
+                          dragActive ? 'border-purple-500 bg-purple-500/10' : 'border-gray-600'
+                        } rounded-xl transition-all duration-200 hover:border-purple-500 hover:bg-purple-500/5 cursor-pointer group`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileInputChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-purple-400 transition-colors duration-200">
+                          <Upload className="w-8 h-8 mb-2" />
+                          <p className="text-sm font-medium">Drop image here or click to upload</p>
+                          <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-4 space-y-3">
+                  <button
+                    onClick={() => {
+                      setModalLoading(true);
+                      handleSignUp();
+                    }}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-[0_0_20px_#8b5cf6aa] transition-all duration-300 hover:scale-[1.02] border border-purple-500/30 group relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center justify-center space-x-2">
+                      <Zap className="w-5 h-5" />
+                      <span>Create Account</span>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                  </button>
+                </div>
+
+                <p className="text-center text-xs text-gray-500 mt-6">
+                  By signing up, you agree to our terms and embrace the decentralized future
+                </p>
+              </div>
+            </div>
+          </div>
+        )
       )}
       {showWalletConnect && <WalletConnectModal />}
       {cropModalVisible && tempImage && (
