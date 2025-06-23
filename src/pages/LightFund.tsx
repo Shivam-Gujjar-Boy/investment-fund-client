@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Wallet, Users, Tag, Zap, Shield, DollarSign, CheckCircle, AlertCircle, Sparkles, Plus, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { fundTags } from '../types/tags';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { isSigner, PublicKey } from '@metaplex-foundation/js';
+import { programId } from '../types';
+import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
+import toast from 'react-hot-toast';
+import { Transaction, TransactionInstruction } from '@solana/web3.js';
 
 interface FundTag {
   id: string;
@@ -11,7 +18,7 @@ interface FundTag {
 
 interface FormData {
   fundName: string;
-  memberCount: number;
+  maxMemberCount: number;
   memberAddresses: string[];
   addMembersLater: boolean;
   selectedTags: string[];
@@ -20,7 +27,7 @@ interface FormData {
 interface FormErrors {
   fundName?: string;
   members?: string;
-  memberCount?: string;
+  maxMemberCount?: string;
 }
 
 interface Step {
@@ -33,7 +40,7 @@ const LightFund = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [formData, setFormData] = useState<FormData>({
     fundName: '',
-    memberCount: 3,
+    maxMemberCount: 10,
     memberAddresses: [],
     addMembersLater: true,
     selectedTags: []
@@ -42,40 +49,8 @@ const LightFund = () => {
   const [memberCost, setMemberCost] = useState<number>(0);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const fundTags = [
-    { id: 'light-fund', name: 'Light Fund', auto: true, color: 'from-blue-500 to-cyan-500' },
-    { id: 'no-governance', name: 'No Governance', auto: true, color: 'from-purple-500 to-pink-500' },
-    { id: 'multisig', name: 'Multisig', auto: true, color: 'from-green-500 to-emerald-500' },
-    { id: 'instant-withdraw', name: 'Instant Withdraw', auto: false, color: 'from-orange-500 to-red-500' },
-    { id: 'time-locked', name: 'Time Locked', auto: false, color: 'from-indigo-500 to-purple-500' },
-    { id: 'democratic', name: 'Democratic', auto: false, color: 'from-pink-500 to-rose-500' },
-    { id: 'treasury', name: 'Treasury', auto: false, color: 'from-yellow-500 to-orange-500' },
-    { id: 'investment', name: 'Investment', auto: false, color: 'from-teal-500 to-blue-500' },
-    { id: 'dao', name: 'DAO', auto: false, color: 'from-violet-500 to-purple-500' },
-    { id: 'defi', name: 'DeFi', auto: false, color: 'from-cyan-500 to-blue-500' },
-    { id: 'yield-farming', name: 'Yield Farming', auto: false, color: 'from-lime-500 to-green-500' },
-    { id: 'staking', name: 'Staking', auto: false, color: 'from-emerald-500 to-teal-500' },
-    { id: 'nft', name: 'NFT', auto: false, color: 'from-rose-500 to-pink-500' },
-    { id: 'gaming', name: 'Gaming', auto: false, color: 'from-purple-500 to-indigo-500' },
-    { id: 'social', name: 'Social', auto: false, color: 'from-pink-500 to-purple-500' },
-    { id: 'charity', name: 'Charity', auto: false, color: 'from-green-500 to-lime-500' },
-    { id: 'research', name: 'Research', auto: false, color: 'from-blue-500 to-indigo-500' },
-    { id: 'education', name: 'Education', auto: false, color: 'from-indigo-500 to-blue-500' },
-    { id: 'privacy', name: 'Privacy', auto: false, color: 'from-gray-500 to-slate-500' },
-    { id: 'cross-chain', name: 'Cross Chain', auto: false, color: 'from-rainbow-500 to-rainbow-600' },
-    { id: 'layer2', name: 'Layer 2', auto: false, color: 'from-blue-500 to-purple-500' },
-    { id: 'experimental', name: 'Experimental', auto: false, color: 'from-red-500 to-orange-500' },
-    { id: 'stable', name: 'Stable', auto: false, color: 'from-green-500 to-blue-500' },
-    { id: 'high-risk', name: 'High Risk', auto: false, color: 'from-red-500 to-pink-500' },
-    { id: 'low-risk', name: 'Low Risk', auto: false, color: 'from-green-500 to-emerald-500' },
-    { id: 'long-term', name: 'Long Term', auto: false, color: 'from-blue-500 to-indigo-500' },
-    { id: 'short-term', name: 'Short Term', auto: false, color: 'from-orange-500 to-red-500' },
-    { id: 'automated', name: 'Automated', auto: false, color: 'from-purple-500 to-blue-500' },
-    { id: 'manual', name: 'Manual', auto: false, color: 'from-gray-500 to-blue-500' },
-    { id: 'transparent', name: 'Transparent', auto: false, color: 'from-cyan-500 to-teal-500' },
-    { id: 'private', name: 'Private', auto: false, color: 'from-slate-500 to-gray-500' },
-    { id: 'community', name: 'Community', auto: false, color: 'from-pink-500 to-purple-500' }
-  ];
+  const wallet = useWallet();
+  const {connection} = useConnection();
 
   const getMultisigType = (count: number): string => {
     if (count <= 3) return `${Math.ceil(count * 0.67)}/${count}`;
@@ -95,9 +70,9 @@ const LightFund = () => {
   useEffect(() => {
     // Calculate member cost
     const baseCost = 0.001;
-    const memberCount = formData.addMembersLater ? formData.memberCount : formData.memberAddresses.length;
-    setMemberCost(baseCost * memberCount);
-  }, [formData.memberCount, formData.memberAddresses, formData.addMembersLater]);
+    const maxMemberCount = formData.addMembersLater ? formData.maxMemberCount : formData.memberAddresses.length;
+    setMemberCost(baseCost * maxMemberCount);
+  }, [formData.maxMemberCount, formData.memberAddresses, formData.addMembersLater]);
 
   const validateStep = (step: number) => {
     const newErrors: FormErrors = {};
@@ -114,8 +89,8 @@ const LightFund = () => {
       if (!formData.addMembersLater && formData.memberAddresses.length === 0) {
         newErrors.members = 'At least one member address is required';
       }
-      if (formData.addMembersLater && formData.memberCount < 2) {
-        newErrors.memberCount = 'Minimum 2 members required';
+      if (formData.addMembersLater && formData.maxMemberCount < 2) {
+        newErrors.maxMemberCount = 'Minimum 2 members required';
       }
     }
     
@@ -165,6 +140,123 @@ const LightFund = () => {
         : [...prev.selectedTags, tagId]
     }));
   };
+
+  const handleCreate = async () => {
+
+    if (!formData) return;
+    if (!wallet || !wallet.publicKey || !wallet.signTransaction) return;
+
+    try {
+      console.log(formData);
+      const instructionTag = 18;
+      const nameBytes = Buffer.from(formData.fundName, 'utf8');
+      let tags = 0;
+
+      for (const id of formData.selectedTags) {
+        let tag = 0;
+        tag = tag << Number(id);
+        tags = tags | tag;
+      }
+
+      let x = 10;
+      if (formData.addMembersLater) {
+        x = formData.maxMemberCount;
+      } else {
+        x = formData.memberAddresses.length;
+      }
+
+      const buffer = Buffer.alloc(1 + 1 + 1 + 4 + nameBytes.length);
+      let offset = 0;
+
+      buffer.writeUint8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUInt8((formData.addMembersLater ? 1 : 0), offset);
+      offset += 1;
+      buffer.writeUint8(x, offset);
+      offset += 1;
+      buffer.writeUint32LE(tags, offset);
+      offset += 4;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+
+      const [userAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("user"), wallet.publicKey.toBuffer()],
+        programId
+      );
+
+      const [fundPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("light-fund"), Buffer.from(formData.fundName)],
+        programId,
+      );
+
+      const [vaultPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("vault"), fundPda.toBuffer()],
+        programId,
+      );
+
+      const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("proposal-aggregator"), Buffer.from([0]), fundPda.toBuffer()],
+        programId,
+      );
+
+      const keys = [
+        {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+        {pubkey: userAccountPda, isSigner: false, isWritable: true},
+        {pubkey: vaultPda, isSigner: false, isWritable: true},
+        {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+        {pubkey: fundPda, isSigner: false, isWritable: true},
+        {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+      ];
+      
+      if (!formData.addMembersLater) {
+        for (const address of formData.memberAddresses) {
+          keys.push({pubkey: new PublicKey(address), isSigner: false, isWritable: true});
+        }
+        for (const address of formData.memberAddresses) {
+          const member = new PublicKey(address);
+          const [memberPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("user"), member.toBuffer()],
+            programId,
+          );
+          const memberInfo = await connection.getAccountInfo(memberPda);
+          if (!memberInfo) {
+            toast.error("All invited members should have an account on PeerFunds");
+            return;
+          }
+          keys.push({pubkey: memberPda, isSigner: false, isWritable: true});
+        }
+      }
+
+      const instruction = new TransactionInstruction({
+        keys,
+        programId,
+        data: instructionData,
+      });
+
+      const transaction = new Transaction().add(instruction);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+    } catch (err) {
+      console.log(err);
+    }
+  }
   
 
   const steps = [
@@ -367,8 +459,8 @@ const LightFund = () => {
                           type="number"
                           min="2"
                           max="20"
-                          value={formData.memberCount}
-                          onChange={(e) => setFormData(prev => ({ ...prev, memberCount: parseInt(e.target.value) || 2 }))}
+                          value={formData.maxMemberCount}
+                          onChange={(e) => setFormData(prev => ({ ...prev, maxMemberCount: parseInt(e.target.value) || 2 }))}
                           className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                         />
                       </div>
@@ -378,10 +470,10 @@ const LightFund = () => {
                           <Shield className="w-5 h-5 text-blue-400" />
                           <div>
                             <p className="text-blue-300 font-medium">
-                              Multisig Type: {getMultisigType(formData.memberCount)}
+                              Multisig Type: {getMultisigType(formData.maxMemberCount)}
                             </p>
                             <p className="text-blue-400/70 text-sm">
-                              {Math.ceil(formData.memberCount * (formData.memberCount <= 3 ? 0.67 : formData.memberCount <= 7 ? 0.6 : 0.55))} signatures required out of {formData.memberCount} members
+                              {Math.ceil(formData.maxMemberCount * (formData.maxMemberCount <= 3 ? 0.67 : formData.maxMemberCount <= 7 ? 0.6 : 0.55))} signatures required out of {formData.maxMemberCount} members
                             </p>
                           </div>
                         </div>
@@ -529,14 +621,14 @@ const LightFund = () => {
                         <div className="flex justify-between">
                           <span className="text-gray-400">Members:</span>
                           <span className="text-white font-medium">
-                            {formData.addMembersLater ? formData.memberCount : formData.memberAddresses.length + 1}
+                            {formData.addMembersLater ? formData.maxMemberCount : formData.memberAddresses.length + 1}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Multisig Type:</span>
                           <span className="text-white font-medium">
                             {formData.addMembersLater 
-                              ? getMultisigType(formData.memberCount)
+                              ? getMultisigType(formData.maxMemberCount)
                               : getMultisigType(formData.memberAddresses.length + 1)
                             }
                           </span>
@@ -599,7 +691,7 @@ const LightFund = () => {
                   </button>
                 ) : (
                   <button
-                    onClick={() => console.log('Create Fund', formData)}
+                    onClick={() => handleCreate()}
                     className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105"
                   >
                     <Sparkles className="w-5 h-5" />

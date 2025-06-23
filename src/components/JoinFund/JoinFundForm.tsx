@@ -5,8 +5,10 @@ import toast from 'react-hot-toast';
 import { programId } from '../../types';
 import { extractFundData } from '../../functions/extractFundData';
 import { Buffer } from 'buffer';
+import { useNavigate } from 'react-router-dom';
 
 export default function JoinFundForm() {
+  const navigate = useNavigate();
   const [fundName, setFundName] = useState('');
   const [fundStatus, setFundStatus] = useState<{ exists: boolean; isPrivate: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -212,6 +214,7 @@ export default function JoinFundForm() {
         setShowPrivateJoinModal(false);
       }
       setIsConfirming(false);
+      navigate('/dashboard/funds');
     } catch (err) {
       console.error('Error joining fund:', err);
       setIsConfirming(false);
@@ -368,7 +371,7 @@ export default function JoinFundForm() {
                 Cancel
               </button>
               <button
-                onClick={() => {
+                onClick={ () => {
                   setIsConfirming(true);
                   handleJoinFund();
                 }}
