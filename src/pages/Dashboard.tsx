@@ -6,6 +6,7 @@ import YourFunds from './YourFunds';
 import Portfolio from './Portfolio';
 import Discover from './Discover';
 import FundDetails from './FundDetails';
+import LightFund from './LightFund';
 
 export default function Dashboard() {
   return (
@@ -18,6 +19,7 @@ export default function Dashboard() {
           <Route path='funds/:fundId' element={<FundDetails />}/>
           <Route path="portfolio" element={<Portfolio />} />
           <Route path="discover" element={<Discover />}/>
+          <Route path='/create/light-fund' element={<LightFund />}/>
           <Route path="*" element={<Navigate to="/dashboard/create" replace />} />
         </Routes>
       </Layout>

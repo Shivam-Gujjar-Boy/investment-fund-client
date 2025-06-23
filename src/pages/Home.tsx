@@ -1,5 +1,4 @@
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import React, { ChangeEvent, DragEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ import { Buffer } from 'buffer';
 import { Upload, X, User, Mail, Wallet, Sparkles, Shield, Zap } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../functions/cropImage';
+import { CustomWalletButton } from '../context/CustomWalletButton';
 
 interface SignUpData {
   username: string;
@@ -29,6 +29,7 @@ export default function Home() {
   const { connection } = useConnection();
   const { connected } = wallet;
   const [loading, setLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [signUpData, setSignUpData] = useState<SignUpData>({
@@ -36,6 +37,7 @@ export default function Home() {
     email: '',
     image: null
   });
+  const [cid, setCid] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -48,135 +50,103 @@ export default function Home() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [croppedFileSize, setCroppedFileSize] = useState<string | null>(null);
   const [croppedFileMBExceeded, setCroppedFileMBExceeded] = useState<boolean>(false);
-  
-  // Enhanced useEffect to handle wallet connection after sign-up
+
   useEffect(() => {
-    const handleUser = async () => {
-      // Only proceed if wallet is connected AND we have sign-up data (meaning they came from sign-up flow)
+    const checkUserPDA = async () => {
       if (!connected || !wallet || !wallet.publicKey) return;
-      
-      // If user connected wallet through the sign-up flow
-      if (showWalletConnect && signUpData.username && signUpData.email) {
-        const user = wallet.publicKey;
-        setLoading(true);
-        setShowWalletConnect(false); // Close the wallet connect modal
 
-        console.log('Creating user account for:', signUpData.username, user.toBase58());
+      const user = wallet.publicKey;
+      const [userAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('user'), user.toBuffer()],
+        programId,
+      );
 
-        const [userAccountPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from('user'), user.toBuffer()],
-          programId,
-        );
+      setLoading(true);
 
-        try {
-          const accountInfo = await connection.getAccountInfo(userAccountPda);
-          if (accountInfo !== null) {
-            console.log("User already exists");
-            toast.success(`Welcome back ${signUpData.username}! Account found and logged in.`);
-            // Reset form data after successful login
-            setSignUpData({ username: '', email: '', image: null });
-            setImagePreview(null);
-            setErrors({});
-            navigate('/dashboard/create');
-          } else {
-            if (!wallet.signTransaction || !wallet.publicKey) {
-              setLoading(false);
-              return;
-            }
-
-            try {
-              const instructionData = Buffer.from([6]);
-
-              const instruction = new TransactionInstruction({
-                keys: [
-                  { pubkey: user, isSigner: true, isWritable: true },
-                  { pubkey: userAccountPda, isSigner: false, isWritable: true },
-                  { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-                ],
-                programId,
-                data: instructionData,
-              });
-
-              const transaction = new Transaction().add(instruction);
-
-              console.log("User account key : ", userAccountPda.toBase58());
-
-              const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-              transaction.recentBlockhash = blockhash;
-              transaction.feePayer = user;
-
-              const signedTransaction = await wallet.signTransaction(transaction);
-              const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-
-              await connection.confirmTransaction({
-                signature,
-                blockhash,
-                lastValidBlockHeight
-              });
-
-              console.log("User PDA created");
-              toast.success(`Welcome to PeerFunds, ${signUpData.username}! Your account has been created successfully.`);
-              
-              // TODO: Here you would typically send the signUpData to your backend to store user details
-              console.log('User registration complete:', {
-                username: signUpData.username,
-                email: signUpData.email,
-                walletAddress: user.toBase58(),
-                image: signUpData.image
-              });
-              
-              // Reset form data after successful registration
-              setSignUpData({ username: '', email: '', image: null });
-              setImagePreview(null);
-              setErrors({});
-              navigate('/dashboard/create');
-
-            } catch (userCreationErr) {
-              console.log('Error creating User PDA : ', userCreationErr);
-              toast.error('Error creating User Account. Please try again.');
-            }
-          }
-        } catch (err) {
-          console.log("Error checking user PDA existence : ", err);
-          toast.error('Error fetching User Account!')
-        } finally {
-          setLoading(false);
+      try {
+        const accountInfo = await connection.getAccountInfo(userAccountPda);
+        if (accountInfo !== null) {
+          console.log("User already exists");
+          toast.success('Welcome back! Account found.');
+          navigate('/dashboard/create');
+        } else {
+          console.log("No user account found. Prompting sign-up.");
+          setShowSignUpModal(true); // first modal (name, email, image)
         }
-      }
-      // Handle direct wallet connection (without sign-up flow)
-      else if (connected && !showWalletConnect && !signUpData.username) {
-        const user = wallet.publicKey;
-        setLoading(true);
-
-        console.log('Direct wallet connection:', user.toBase58());
-
-        const [userAccountPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from('user'), user.toBuffer()],
-          programId,
-        );
-
-        try {
-          const accountInfo = await connection.getAccountInfo(userAccountPda);
-          if (accountInfo !== null) {
-            console.log("Existing user found");
-            toast.success('Welcome back! Account found and logged in.');
-            navigate('/dashboard/create');
-          } else {
-            // User doesn't exist, redirect to sign-up
-            toast.error('No account found. Please create an account first.');
-            setShowSignUpModal(true);
-          }
-        } catch (err) {
-          console.log("Error checking user PDA existence : ", err);
-          toast.error('Error fetching User Account!')
-        } finally {
-          setLoading(false);
-        }
+      } catch (err) {
+        console.error("Error checking user PDA:", err);
+        toast.error('Failed to fetch user account!');
+      } finally {
+        setLoading(false);
       }
     };
 
-    handleUser();
-  }, [connected, navigate, wallet, connection, showWalletConnect, signUpData]);
+    checkUserPDA();
+  }, [connected, wallet, connection, navigate]);
+
+  const handleUserAccountCreation = async () => {
+    if (!wallet || !wallet.publicKey || !wallet.signTransaction) return;
+
+    setIsCreating(true);
+    const user = wallet.publicKey;
+    const [userAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('user'), user.toBuffer()],
+      programId
+    );
+
+    try {
+      setLoading(true);
+
+      const instructionTag = 6;
+      const cidBytes = Buffer.from(cid, 'utf8');
+      const buffer = Buffer.alloc(1 + cidBytes.length);
+      let offset = 0;
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      cidBytes.copy(buffer, offset);
+      const instructionData = buffer;
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: user, isSigner: true, isWritable: true },
+          { pubkey: userAccountPda, isSigner: false, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        programId,
+        data: instructionData,
+      });
+
+      const transaction = new Transaction().add(instruction);
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = user;
+
+      const signedTx = await wallet.signTransaction(transaction);
+      const txSig = await connection.sendRawTransaction(signedTx.serialize());
+      await connection.confirmTransaction({ signature: txSig, blockhash, lastValidBlockHeight });
+
+      toast.success(`Welcome ${signUpData.username}! Account created successfully.`);
+
+      // You can now send signUpData to your backend
+      console.log('Sign-up completed:', {
+        username: signUpData.username,
+        email: signUpData.email,
+        walletAddress: user.toBase58(),
+        image: signUpData.image
+      });
+
+      // Reset everything and redirect
+      setSignUpData({ username: '', email: '', image: null });
+      setImagePreview(null);
+      setErrors({});
+      navigate('/dashboard/create');
+    } catch (err) {
+      console.error("Error creating user account:", err);
+      toast.error('Error creating account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+    setIsCreating(false);
+  };
 
   const handleInputChange = (field: keyof SignUpData, value: string): void => {
     setSignUpData(prev => ({ ...prev, [field]: value }));
@@ -259,6 +229,10 @@ export default function Home() {
     }
     
     setErrors(newErrors);
+    if (Object.keys(newErrors).length !== 0) {
+      setModalLoading(false);
+      toast.error('Some issues in form data');
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -288,8 +262,6 @@ export default function Home() {
           body: formData
         });
 
-        console.log('Request mar gai');
-
         const result = await res.json();
 
         if (!res.ok) {
@@ -303,6 +275,7 @@ export default function Home() {
         console.log('metadata url:', result.metadataUrl);
         console.log('image url:', result.imageUrl);
         console.log('cid object:', result.cidObject);
+        setCid(result.folderCid);
       } catch (err) {
         console.error('❌ Upload failed:', err);
         setModalLoading(false);
@@ -315,21 +288,6 @@ export default function Home() {
       toast.success('Account details saved! Now connect your wallet to complete registration.');
     }
   };
-
-  const CustomWalletButton = () => (
-    <button
-      onClick={() => setShowSignUpModal(true)}
-      className="group relative px-8 py-4 bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 text-white font-semibold rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_#8b5cf6aa] border border-purple-500/30"
-    >
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      <div className="relative flex items-center space-x-3">
-        <Wallet className="w-5 h-5" />
-        <span>Join PeerFunds</span>
-        <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-    </button>
-  );
 
   const WalletConnectModal: React.FC = () => (
     <div
@@ -386,7 +344,19 @@ export default function Home() {
             </div>
 
             <div className="text-center">
-              <WalletMultiButton className="!w-full !py-4 !bg-gradient-to-r !from-purple-600 !via-violet-600 !to-indigo-600 !border-purple-500/30 hover:!shadow-[0_0_20px_#8b5cf6aa] !transition-all !duration-300" />
+              <button
+                onClick={() => {
+                  setIsCreating(true);
+                  handleUserAccountCreation();
+                }}
+                disabled={isCreating}
+                className={`border px-3 py-2 rounded-xl w-full h-12 ${
+                  isCreating ?
+                  'bg-gray-800 hover:bg-gray-600 cursor-not-allowed' :
+                  'bg-indigo-800 hover:bg-indigo-600'
+                }`}>
+                {isCreating ? 'Creating...' : 'Create Account'}
+              </button>
             </div>
 
             <div className="flex items-center space-x-2 text-xs text-gray-500">
@@ -427,7 +397,7 @@ export default function Home() {
               <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
               {connected && (
                 <div className="hidden sm:block">
-                  <WalletMultiButton />
+                  <CustomWalletButton />
                 </div>
               )}
             </div>
@@ -446,11 +416,7 @@ export default function Home() {
                   Create and manage trustless investment funds on the Solana blockchain. Join forces with friends, colleagues or communities.
                 </p>
                 <div className="mt-8">
-                  {connected ? (
-                    <WalletMultiButton />
-                  ) : (
-                    <CustomWalletButton />
-                  )}
+                  {!connected && <CustomWalletButton />}
                 </div>
               </section>
 
@@ -553,11 +519,7 @@ export default function Home() {
                 <p className="text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
                   Connect your wallet and dive into the world of decentralized fund management. It takes just a few seconds to get started.
                 </p>
-                {connected ? (
-                  <WalletMultiButton />
-                ) : (
                   <CustomWalletButton />
-                )}
               </section>
             </div>
           </main>
