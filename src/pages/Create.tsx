@@ -104,7 +104,7 @@ export default function Create() {
               Create Your Fund
             </h1>
             
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Choose the perfect fund structure for your investment goals. From casual collaborations to enterprise-grade DAOs.
             </p>
           </div>

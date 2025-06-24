@@ -13,7 +13,6 @@ interface FundTag {
   id: string;
   name: string;
   auto: boolean;
-  color: string;
 }
 
 interface FormData {
@@ -45,17 +44,22 @@ const LightFund = () => {
     addMembersLater: true,
     selectedTags: []
   });
-  const [rentCost, setRentCost] = useState<number>(0.025);
+  const [rentCost, setRentCost] = useState<number>(0.00419);
   const [memberCost, setMemberCost] = useState<number>(0);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const [showCreationDetails, setShowCreationDetails] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const wallet = useWallet();
   const {connection} = useConnection();
 
   const getMultisigType = (count: number): string => {
-    if (count <= 3) return `${Math.ceil(count * 0.67)}/${count}`;
-    if (count <= 7) return `${Math.ceil(count * 0.6)}/${count}`;
-    return `${Math.ceil(count * 0.55)}/${count}`;
+    if (count&1) {
+      return `${(count + 1)/2}-of-${count}`;
+    } else {
+      return `${(count/2) + 1}-of-${count}`;
+    }
   };
 
   useEffect(() => {
@@ -69,7 +73,7 @@ const LightFund = () => {
 
   useEffect(() => {
     // Calculate member cost
-    const baseCost = 0.001;
+    const baseCost = 0.000355;
     const maxMemberCount = formData.addMembersLater ? formData.maxMemberCount : formData.memberAddresses.length;
     setMemberCost(baseCost * maxMemberCount);
   }, [formData.maxMemberCount, formData.memberAddresses, formData.addMembersLater]);
@@ -89,7 +93,21 @@ const LightFund = () => {
       if (!formData.addMembersLater && formData.memberAddresses.length === 0) {
         newErrors.members = 'At least one member address is required';
       }
-      if (formData.addMembersLater && formData.maxMemberCount < 2) {
+      if (!formData.addMembersLater) {
+        for (let i=0; i<formData.memberAddresses.length; i++) {
+          if (formData.memberAddresses[i].length === 0) {
+            newErrors.members = 'Addresses can not be empty';
+            break;
+          }
+          if (formData.memberAddresses[i] === wallet.publicKey?.toBase58()) {
+            newErrors.members = `Members Wallet should not be same as creator's`;
+          }
+        }
+        if (hasDuplicates(formData.memberAddresses)) {
+          newErrors.members = 'Members wallet should be all different';
+        }
+      }
+      if (formData.addMembersLater && formData.maxMemberCount < 1) {
         newErrors.maxMemberCount = 'Minimum 2 members required';
       }
     }
@@ -97,6 +115,8 @@ const LightFund = () => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+
+  const hasDuplicates = (arr: string[]) => new Set(arr).size !== arr.length;
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
@@ -109,6 +129,7 @@ const LightFund = () => {
   };
 
   const addMemberAddress = () => {
+    if (formData.memberAddresses.length >= 19) return;
     setFormData((prev: FormData) => ({
       ...prev,
       memberAddresses: [...prev.memberAddresses, '']
@@ -153,32 +174,28 @@ const LightFund = () => {
       let tags = 0;
 
       for (const id of formData.selectedTags) {
-        let tag = 0;
+        let tag = 1;
         tag = tag << Number(id);
         tags = tags | tag;
       }
 
-      let x = 10;
-      if (formData.addMembersLater) {
-        x = formData.maxMemberCount;
-      } else {
-        x = formData.memberAddresses.length;
-      }
-
-      const buffer = Buffer.alloc(1 + 1 + 1 + 4 + nameBytes.length);
+      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + 4 + nameBytes.length);
       let offset = 0;
 
       buffer.writeUint8(instructionTag, offset);
       offset += 1;
       buffer.writeUInt8((formData.addMembersLater ? 1 : 0), offset);
       offset += 1;
-      buffer.writeUint8(x, offset);
+      buffer.writeUint8(formData.memberAddresses.length, offset); // current number of members
+      offset += 1;
+      buffer.writeUint8((formData.addMembersLater ? formData.maxMemberCount : 20), offset); // max number of members
       offset += 1;
       buffer.writeUint32LE(tags, offset);
       offset += 4;
       nameBytes.copy(buffer, offset);
 
       const instructionData = buffer;
+      console.log(tags);
 
       const [userAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("user"), wallet.publicKey.toBuffer()],
@@ -253,8 +270,11 @@ const LightFund = () => {
         lastValidBlockHeight
       });
 
+      setIsCreating(false);
+
     } catch (err) {
       console.log(err);
+      setIsCreating(false);
     }
   }
   
@@ -266,12 +286,74 @@ const LightFund = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900 p-4 mt-2">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900 p-4 flex relative">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+      </div>
+
+      {/* Vertical Progress Steps */}
+      <div className="flex justify-center w-[15%] h-full fixed top-16">
+        <div className="relative flex flex-col items-start space-y-0 w-full pl-3">
+          <div className='flex pl-36'>
+            <div className={`h-24 transition-all duration-300 bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5`} />
+            <div className={`h-24 transition-all duration-300 bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5`} />
+          </div>
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = currentStep === step.number;
+            const isCompleted = currentStep > step.number;
+
+            return (
+              <div key={step.number} className="flex items-center justify-end pr-7 space-x-4 relative z-10 w-full">
+                {/* Step Text */}
+                <span className={`absolute -left-2 top-7 text-md font-medium w-28 text-right ${
+                  isActive ? 'text-purple-300' : 'text-gray-500'
+                }`}>
+                  {step.title}
+                </span>
+
+                {/* Circle + Line Container */}
+                <div className="flex flex-col items-center">
+                  {/* Circle */}
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                    isCompleted
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-lg shadow-violet-500/25'
+                      : isActive
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-purple-500 shadow-lg shadow-purple-500/25'
+                      : 'bg-slate-800 border-slate-600'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-6 h-6 text-white" />
+                    ) : (
+                      <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                    )}
+                  </div>
+
+                  {/* Vertical Line */}
+                  <div className={`flex ${isCompleted ? '' : 'gap-1'}`}>
+                    {index < steps.length - 1 && (
+                      <div className={`w-1 h-12 transition-all duration-300 ${
+                        isCompleted ? 'bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5' : 'bg-slate-700'
+                      }`} />
+                    )}
+                    {index < steps.length - 1 && (
+                      <div className={`w-1 h-12 transition-all duration-300 ${
+                        isCompleted ? 'bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5' : 'bg-slate-700'
+                      }`} />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div className='flex pl-36 gap-1'>
+            <div className={`h-60 transition-all duration-300 bg-slate-700 w-1`} />
+            <div className={`h-60 transition-all duration-300 bg-slate-700 w-1`} />
+          </div>
+        </div>
       </div>
 
       <div className="w-full mx-auto relative">
@@ -283,56 +365,10 @@ const LightFund = () => {
           <p className="text-gray-400">Build a decentralized multisig fund in minutes</p>
         </div>
 
-        <div className='flex w-full gap-10 items-start relative'>
-          {/* Vertical Progress Steps */}
-          <div className="flex justify-center w-[15%] h-full">
-            <div className="relative flex flex-col items-start space-y-0 pt-4">
+        <div className='flex w-full gap-10 justify-center relative pl-10'>
 
-              {steps.map((step, index) => {
-                const Icon = step.icon;
-                const isActive = currentStep === step.number;
-                const isCompleted = currentStep > step.number;
-
-                return (
-                  <div key={step.number} className="flex items-center space-x-4 relative z-10">
-                    {/* Step Text */}
-                    <span className={`text-md font-medium w-28 text-right ${
-                      isActive ? 'text-purple-300' : 'text-gray-500'
-                    }`}>
-                      {step.title}
-                    </span>
-
-                    {/* Circle + Line Container */}
-                    <div className="flex flex-col items-center">
-                      {/* Circle */}
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                        isCompleted
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 border-green-500 shadow-lg shadow-green-500/25'
-                          : isActive
-                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-purple-500 shadow-lg shadow-purple-500/25'
-                          : 'bg-slate-800 border-slate-600'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="w-6 h-6 text-white" />
-                        ) : (
-                          <Icon className={`w-6 h-6 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-                        )}
-                      </div>
-
-                      {/* Vertical Line */}
-                      {index < steps.length - 1 && (
-                        <div className={`w-0.5 h-12 transition-all duration-300 ${
-                          isCompleted ? 'bg-gradient-to-b from-green-500 to-emerald-500' : 'bg-slate-700'
-                        }`} />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
           {/* Main Form */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 w-[65%] border-indigo-900 shadow-[0_0_10px_#6d28d9aa]">
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-8 py-6 w-[65%] border-indigo-900 shadow-[0_0_10px_#6d28d9aa]">
             <AnimatePresence mode='wait'>
               <motion.div
                 key={currentStep}
@@ -396,7 +432,16 @@ const LightFund = () => {
                           <DollarSign className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-white">Creation Cost</h3>
+                          <div className='flex gap-3'>
+                            <h3 className="text-lg font-semibold text-white">Creation Cost</h3>
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => setShowCreationDetails(true)}
+                                className="text-sm font-medium text-purple-400 hover:text-pink-400 transition-colors">
+                                Details
+                              </button>
+                            </div>
+                          </div>
                           <p className="text-gray-400 text-sm">One-time fund creation fee</p>
                         </div>
                       </div>
@@ -404,7 +449,7 @@ const LightFund = () => {
                         <p className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                           {rentCost} SOL
                         </p>
-                        <p className="text-gray-400 text-sm">≈ $5.25</p>
+                        <p className="text-gray-400 text-sm">≈ ${(rentCost * 140).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
@@ -450,30 +495,35 @@ const LightFund = () => {
                   </div>
 
                   {formData.addMembersLater ? (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-3">
-                          Number of Members
-                        </label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-300">
+                        Maximum number of members <span className='text-xs text-indigo-400'>(including you)</span>
+                      </label>
+                      <div className='relative'>
                         <input
                           type="number"
-                          min="2"
+                          min="1"
                           max="20"
                           value={formData.maxMemberCount}
-                          onChange={(e) => setFormData(prev => ({ ...prev, maxMemberCount: parseInt(e.target.value) || 2 }))}
+                          onChange={(e) => setFormData(prev => ({ ...prev, maxMemberCount: parseInt(e.target.value)}))}
                           className="w-full px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                         />
+                      <span className={`absolute right-3 top-3 text-sm ${
+                        formData.maxMemberCount > 19 ? 'text-orange-400' : 'text-gray-500'
+                      }`}>
+                        Max 20
+                      </span>                        
                       </div>
                       
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2">
                         <div className="flex items-center space-x-3">
                           <Shield className="w-5 h-5 text-blue-400" />
                           <div>
                             <p className="text-blue-300 font-medium">
-                              Multisig Type: {getMultisigType(formData.maxMemberCount)}
+                              Multisig Type: <span className='font-semibold text-violet-300'>{getMultisigType(formData.maxMemberCount)}</span>
                             </p>
                             <p className="text-blue-400/70 text-sm">
-                              {Math.ceil(formData.maxMemberCount * (formData.maxMemberCount <= 3 ? 0.67 : formData.maxMemberCount <= 7 ? 0.6 : 0.55))} signatures required out of {formData.maxMemberCount} members
+                              {formData.maxMemberCount&1 ? (formData.maxMemberCount + 1)/2 : (formData.maxMemberCount / 2) + 1} signatures required out of {formData.maxMemberCount} members
                             </p>
                           </div>
                         </div>
@@ -482,7 +532,7 @@ const LightFund = () => {
                   ) : (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-gray-300">
+                        <label className="block text-md font-medium text-gray-300">
                           Member Wallet Addresses
                         </label>
                         <button
@@ -494,22 +544,27 @@ const LightFund = () => {
                         </button>
                       </div>
 
-                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                      <div className={`space-y-3 max-h-40 overflow-y-auto scrollbar-none ${
+                        formData.memberAddresses.length === 0 ?
+                        '' :
+                        'border-x p-2'
+                      }`}>
                         {formData.memberAddresses.map((address, index) => (
                           <div key={index} className="flex items-center space-x-3">
                             <div className="flex-1 relative">
                               <Wallet className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                               <input
+                                required={true}
                                 type="text"
                                 value={address}
                                 onChange={(e) => updateMemberAddress(index, e.target.value)}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                                className="w-full pl-12 pr-4 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                                 placeholder="Wallet address"
                               />
                             </div>
                             <button
                               onClick={() => removeMemberAddress(index)}
-                              className="p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all duration-300"
+                              className="p-1 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all duration-300"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -518,12 +573,12 @@ const LightFund = () => {
                       </div>
 
                       {formData.memberAddresses.length > 0 && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2">
                           <div className="flex items-center space-x-3">
                             <Shield className="w-5 h-5 text-blue-400" />
                             <div>
                               <p className="text-blue-300 font-medium">
-                                Multisig Type: {getMultisigType(formData.memberAddresses.length + 1)}
+                                Multisig Type: <span className='font-semibold text-violet-300'>{getMultisigType(formData.memberAddresses.length + 1)}</span>
                               </p>
                               <p className="text-blue-400/70 text-sm">
                                 {Math.ceil((formData.memberAddresses.length + 1) * ((formData.memberAddresses.length + 1) <= 3 ? 0.67 : (formData.memberAddresses.length + 1) <= 7 ? 0.6 : 0.55))} signatures required out of {formData.memberAddresses.length + 1} members
@@ -543,22 +598,33 @@ const LightFund = () => {
                   )}
 
                   {/* Member Cost Display */}
-                  <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-6">
+                  <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
                           <Users className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-white">Member Invitation Cost</h3>
+                          <div className='flex gap-3'>
+                            <h3 className="text-lg font-semibold text-white">Member Invitation Cost</h3>
+                            {!formData.addMembersLater && (
+                              <div className="flex justify-end">
+                                <button
+                                  onClick={() => setShowCreationDetails(true)}
+                                  className="text-sm font-medium text-purple-400 hover:text-pink-400 transition-colors">
+                                  Details
+                                </button>
+                              </div>
+                            )}
+                          </div>
                           <p className="text-gray-400 text-sm">Refunded when members join</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
-                          {memberCost.toFixed(3)} SOL
+                          {formData.addMembersLater ? '0.00' : (memberCost === 0 ? '0.00' : (memberCost.toFixed(6)))} SOL
                         </p>
-                        <p className="text-gray-400 text-sm">≈ ${(memberCost * 210).toFixed(2)}</p>
+                        <p className="text-gray-400 text-sm">≈ ${formData.addMembersLater ? '0.00' : (memberCost * 140).toFixed(2)}</p>
                       </div>
                     </div>
                   </div>
@@ -568,40 +634,36 @@ const LightFund = () => {
 
             {/* Step 3: Tags & Review */}
             {currentStep === 3 && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white mb-2">Fund Tags & Review</h2>
                   <p className="text-gray-400">Customize your fund's characteristics</p>
                 </div>
 
-                <div className="space-y-6">
-                  <div>
+                <div className="space-y-4 flex justify-between items-center">
+                  <div className='w-[40%] max-h-96 overflow-auto'>
                     <label className="block text-sm font-medium text-gray-300 mb-4">
                       Fund Tags
                       <span className="text-gray-500 ml-2">(Auto-selected tags cannot be removed)</span>
                     </label>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-80 overflow-y-auto">
+                    <div className="flex flex-wrap gap-2 overflow-y-auto px-1 py-1">
                       {fundTags.map((tag) => {
                         const isSelected = formData.selectedTags.includes(tag.id);
                         const isAuto = tag.auto;
-                        
+
                         return (
                           <button
                             key={tag.id}
                             onClick={() => toggleTag(tag.id)}
                             disabled={isAuto}
-                            className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 border ${
-                              isSelected
-                                ? `bg-gradient-to-r ${tag.color} text-white border-transparent shadow-lg`
-                                : 'bg-slate-700/50 border-slate-600 text-gray-300 hover:bg-slate-600/50'
-                            } ${isAuto ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
+                            className={`relative group px-3 py-1 rounded-full text-xs font-semibold transition-all duration-300 border
+                              ${isSelected
+                                ? 'text-violet-500 border-violet-500 shadow-md scale-[1.02]'
+                                : 'bg-[#1e293b] text-gray-300 border-slate-600 hover:bg-slate-600/50 hover:text-white'}
+                              ${isAuto ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-100'}
+                            `}
                           >
-                            {tag.name}
-                            {isAuto && (
-                              <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500 rounded-full flex items-center justify-center">
-                                <span className="text-xs text-white font-bold">!</span>
-                              </div>
-                            )}
+                            <span className="whitespace-nowrap">{tag.name}</span>
                           </button>
                         );
                       })}
@@ -609,11 +671,11 @@ const LightFund = () => {
                   </div>
 
                   {/* Final Review */}
-                  <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600 rounded-xl p-6 space-y-4">
+                  <div className="w-[55%] bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600 rounded-xl p-6 space-y-4">
                     <h3 className="text-xl font-bold text-white mb-4">Fund Summary</h3>
                     
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
+                    <div className="flex flex-col justify-between">
+                      <div className="space-y-1 h-[55%]">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Fund Name:</span>
                           <span className="text-white font-medium">{formData.fundName || 'Not set'}</span>
@@ -638,21 +700,23 @@ const LightFund = () => {
                           <span className="text-white font-medium">{formData.selectedTags.length}</span>
                         </div>
                       </div>
+
+                      <div className='border border-dashed my-4'></div>
                       
-                      <div className="space-y-3">
+                      <div className="space-y-2 h-[40%]">
                         <div className="flex justify-between">
                           <span className="text-gray-400">Creation Cost:</span>
-                          <span className="text-white font-medium">{rentCost} SOL</span>
+                          <span className="text-white font-medium">{rentCost.toFixed(5)} SOL</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Member Cost:</span>
-                          <span className="text-white font-medium">{memberCost.toFixed(3)} SOL</span>
+                          <span className="text-white font-medium">{(formData.addMembersLater ? 0 : memberCost).toFixed(5)} SOL</span>
                         </div>
                         <div className="border-t border-slate-600 pt-3">
                           <div className="flex justify-between">
                             <span className="text-gray-300 font-medium">Total:</span>
                             <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                              {(rentCost + memberCost).toFixed(3)} SOL
+                              {(rentCost + (formData.addMembersLater ? 0 : memberCost)).toFixed(5)} SOL
                             </span>
                           </div>
                         </div>
@@ -691,11 +755,19 @@ const LightFund = () => {
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleCreate()}
-                    className="flex items-center space-x-2 px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105"
+                    onClick={() => {
+                      setIsCreating(true);
+                      handleCreate();
+                    }}
+                    disabled={isCreating}
+                    className={`flex items-center space-x-2 px-8 py-3 ${
+                      isCreating ?
+                      'bg-gradient-to-r from-gray-500 to-gray-500 rounded-xl cursor-not-allowed' :
+                      'bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl'
+                    } text-white font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all duration-300 transform`}
                   >
                     <Sparkles className="w-5 h-5" />
-                    <span>Create Fund</span>
+                    <span>{isCreating ? 'Creating...' : 'Create Fund'}</span>
                   </button>
                 )}
               </div>
@@ -704,16 +776,119 @@ const LightFund = () => {
         </div>
 
         {/* Floating Cost Summary */}
-        <div className="fixed bottom-6 right-6 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-2xl">
+        <div className="fixed bottom-6 right-6 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-sm shadow-indigo-500">
           <div className="text-center">
             <p className="text-gray-400 text-sm mb-1">Total Cost</p>
             <p className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              {(rentCost + memberCost).toFixed(3)} SOL
+              {(rentCost + (formData.addMembersLater ? 0 : memberCost)).toFixed(5)} SOL
             </p>
-            <p className="text-gray-500 text-xs">≈ ${((rentCost + memberCost) * 210).toFixed(2)}</p>
+            <p className="text-gray-500 text-xs">≈ ${((rentCost + (formData.addMembersLater ? 0 : memberCost)) * 140).toFixed(2)}</p>
           </div>
         </div>
       </div>
+      {showCreationDetails && (
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowCreationDetails(false);
+        }} className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-md'>
+          <div className='bg-gradient-to-br from-[#1f1f2f] to-[#2b2b40] p-6 rounded-2xl w-[90%] max-w-xl border border-indigo-900/40 shadow-[0_0_25px_#7c3aed33] text-white space-y-6 animate-fadeIn'>
+
+            {currentStep === 1 ? (
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-indigo-300">Creating This Fund</h2>
+
+                {/* Info Text */}
+                <p className="text-sm text-indigo-100 leading-relaxed">
+                  You will need to pay a small amount of{" "}
+                  {rentCost === null ? (
+                    <span className="inline-block w-20 h-4 bg-indigo-700/30 rounded-md animate-pulse" />
+                  ) : (
+                    <span className="font-semibold text-indigo-400">
+                      {rentCost.toFixed(5)}
+                    </span>
+                  )}{" "}
+                  <span className='text-indigo-400'>SOL</span> to create this fund. <br />
+                  <span>A part of this cost will be refunded to the you when the invited members join and refund amount increase as more members are invited.</span>
+                  <div className='border border-dashed my-2'></div>
+                  <ul className="list-disc pl-5 space-y-3 text-indigo-100 text-sm">
+                    <li>A unique <strong>Fund Account (Multisig)</strong> is created to store general fund information. This is <em>not</em> user-specific.</li>
+                    <li>A <strong>Vault Account</strong> is initialized to securely hold all fund assets and tokens.</li>
+                    <li>View everything on the <a href="https://github.com/Shivam-Gujjar-Boy/investment-fund" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">official GitHub</a>.</li>
+                    <li>A <strong>Proposal Aggregator PDA Account</strong> is created which hold all the fund's proposals data.</li>
+                    <li>Fund creation costs ~<strong>{(rentCost - 0.000355).toFixed(5)} SOL</strong>. You'll get refund only from this cost.</li>
+                    <li>Extra ~<strong>0.000355 SOL</strong> is to increase size of your account to store this fund-specifc data.</li>
+                    <li>
+                      You must specify how many members you <strong>expect to join</strong> the fund in the future.
+                      This number directly affects your refund eligibility.
+                    </li>
+                    <li>
+                      When members join, a pre-calculated amount of SOL is deducted and immediately sent to your wallet address (fully on-chain).
+                    </li>
+                  </ul>
+                  <div className='border border-dashed my-2'></div>
+                </p>
+
+                {/* Total */}
+                <p className="pt-1">
+                  Required:&nbsp;
+                  {rentCost === null ? (
+                    <span className="inline-block w-24 h-5 bg-indigo-700/30 rounded-md animate-pulse" />
+                  ) : (
+                    <span className="text-green-400 font-medium">{(rentCost).toFixed(5)} SOL</span>
+                  )}
+                </p>
+              </div>
+            ): (
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-indigo-300">Inviting Members</h2>
+
+                {/* Info Text */}
+                <div className="text-sm text-indigo-100 leading-relaxed space-y-2">
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>
+                      Each invite costs <span className="font-semibold text-indigo-400">~0.000355 SOL</span> for member account upgrade.
+                    </li>
+                    <li>
+                      This invite cost is <span className="text-indigo-400 font-medium">fully refunded</span> to you when the member joins.
+                    </li>
+                    <li>
+                      Joining members also pay a small fund creation fee — instantly refunded to you.
+                    </li>
+                    <li>
+                      All refunds happen <span className="text-indigo-400 font-medium">on-chain, instantly</span>, no manual steps.
+                    </li>
+                    <li>
+                      The more members join, the more of your original creation cost gets refunded.
+                    </li>
+                  </ul>
+
+                  <p className="text-sm text-indigo-300">
+                    ⚠️ Refunds depend on expected member count — set it wisely to maximize your returns.
+                  </p>
+                </div>
+                {/* Total */}
+                <p className="pt-1">
+                  Required:&nbsp;
+                  {memberCost === null ? (
+                    <span className="inline-block w-24 h-5 bg-indigo-700/30 rounded-md animate-pulse" />
+                  ) : (
+                    <span className="text-green-400 font-medium">{(memberCost).toFixed(5)} SOL</span>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={() => setShowCreationDetails(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-all duration-200"
+              >
+                Ok
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

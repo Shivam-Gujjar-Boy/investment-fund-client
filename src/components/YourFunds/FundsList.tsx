@@ -31,9 +31,8 @@ export default function FundsList() {
         console.log(userAccountInfo);
         if (userAccountInfo !== null) {
           const buffer = userAccountInfo.data;
-          console.log(buffer);
 
-          const num_of_funds = buffer.readUInt32LE(32);
+          const num_of_funds = buffer.readUInt32LE(59);
           console.log("Number of funds: ", num_of_funds);
 
           const funds_pubkey: PublicKey[] = [];
@@ -42,41 +41,48 @@ export default function FundsList() {
 
           const isPendings: boolean[] = [];
           const isEligibles: boolean[] = [];
-          const votesYess: bigint[] = [];
-          const votesNos: bigint[] = [];
+          const votesYess: (bigint | null)[] = [];
+          const votesNos: (bigint | null)[] = [];
+          const fundTypes: number[] = [];
 
           for (let i=0; i<num_of_funds; i++) {
-            const fund_pubkey = new PublicKey(buffer.slice(36+i*50, 68+i*50));
-            const isPending = buffer.readUint8(76 + i*50) ? true : false;
-            const isEligible = buffer.readUint8(77 + i*50) ? true : false;
+            const fund_pubkey = new PublicKey(buffer.slice(63+i*51, 95+i*51));
+            const fundType = buffer.readUInt8(95);
+            const isPending = buffer.readUint8(104 + i*51) ? true : false;
+            const isEligible = buffer.readUint8(105 + i*51) ? true : false;
             console.log(fund_pubkey.toBase58());
             isPendings.push(isPending);
             isEligibles.push(isEligible);
-            if (isPending) {
-              const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
-                [Buffer.from('join-proposal-aggregator'), Buffer.from([0]), fund_pubkey.toBuffer()],
-                programId
-              );
-              const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
-              if (!joinAggregatorPdaInfo) {
-                votesYess.push(BigInt(0));
-                votesNos.push(BigInt(0));
-              } else {
-                const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
-                const numOfJoinProposals = joinBuffer.readUInt32LE(33);
-                for (let i=0; i<numOfJoinProposals; i++) {
-                  const joiner = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
-                  if (joiner.toBase58() == user_key.toBase58()) {
-                    votesYess.push(joinBuffer.readBigInt64LE(69 + i*57));
-                    votesNos.push(joinBuffer.readBigInt64LE(77 + i*57));
-                    break;
-                  }
-                }
-              }
-            } else {
-              votesYess.push(BigInt(0));
-              votesNos.push(BigInt(0));
+            fundTypes.push(fundType);
+            if (fundType === 0) {
+              votesYess.push(null);
+              votesNos.push(null);
             }
+            // if (isPending) {
+            //   const [joinAggregatorPda] = PublicKey.findProgramAddressSync(
+            //     [Buffer.from('join-proposal-aggregator'), Buffer.from([0]), fund_pubkey.toBuffer()],
+            //     programId
+            //   );
+            //   const joinAggregatorPdaInfo = await connection.getAccountInfo(joinAggregatorPda);
+            //   if (!joinAggregatorPdaInfo) {
+            //     votesYess.push(BigInt(0));
+            //     votesNos.push(BigInt(0));
+            //   } else {
+            //     const joinBuffer = Buffer.from(joinAggregatorPdaInfo.data);
+            //     const numOfJoinProposals = joinBuffer.readUInt32LE(33);
+            //     for (let i=0; i<numOfJoinProposals; i++) {
+            //       const joiner = new PublicKey(joinBuffer.slice(37 + i*57, 69 + i*57));
+            //       if (joiner.toBase58() == user_key.toBase58()) {
+            //         votesYess.push(joinBuffer.readBigInt64LE(69 + i*57));
+            //         votesNos.push(joinBuffer.readBigInt64LE(77 + i*57));
+            //         break;
+            //       }
+            //     }
+            //   }
+            // } else {
+            //   votesYess.push(BigInt(0));
+            //   votesNos.push(BigInt(0));
+            // }
             funds_pubkey.push(fund_pubkey)
           }
 
@@ -86,7 +92,6 @@ export default function FundsList() {
           console.log(fundAccountInfos);
 
           if (!fundAccountInfos) {
-
             return;
           }
 
@@ -96,7 +101,7 @@ export default function FundsList() {
             const acc_buffer = Buffer.from(acc?.data);
             console.log("Length of account data is : ", acc_buffer.length);
             console.log('Account data is : ', acc_buffer);
-            const name_dummy = acc_buffer.slice(0, 26).toString();
+            const name_dummy = acc_buffer.slice(0, 32).toString();
             let name = '';
             for (const c of name_dummy) {
                 if (c === '\x00') break;
@@ -104,39 +109,47 @@ export default function FundsList() {
             }
             console.log(name);
 
-            const expectedMembers = acc_buffer.readUInt32LE(26);
-            const creatorExists = acc_buffer.readUInt8(31) ? true : false;
-            const totalDeposit = acc_buffer.readBigInt64LE(32);
+            const creatorExists = acc_buffer.readUInt8(32) ? true : false;
+            const totalDeposit = acc_buffer.readBigInt64LE(33);
+            let governanceMint;
             console.log(totalDeposit);
-            const governanceMint = new PublicKey(acc_buffer.slice(40, 72));
-            console.log(governanceMint.toBase58());
-            const vault = new PublicKey(acc_buffer.slice(72, 104));
+            if (fundTypes[i] !== 0) {
+              governanceMint = new PublicKey(acc_buffer.slice(40, 72));
+              console.log(governanceMint.toBase58());
+            } else {
+              governanceMint = null;
+            }
+
+            const vault = new PublicKey(acc_buffer.slice(41, 73));
             console.log(vault.toBase58());
-            const currentIndex = acc_buffer.readUInt8(104);
+            const currentIndex = acc_buffer.readUInt8(73);
             console.log(currentIndex);
-            const created_at = acc_buffer.readBigInt64LE(105);
+            const created_at = acc_buffer.readBigInt64LE(74);
             console.log(created_at);
-            const is_private = acc_buffer.readUInt8(113);
-            console.log(is_private);
+            // const is_private = acc_buffer.readUInt8(113);
+            // console.log(is_private);
+            const tags = acc_buffer.readUInt32LE(82);
+            const maxMembers = acc_buffer.readUInt8(86);
             const members: PublicKey[] = [];
             console.log(members);
-            const numOfMembers = acc_buffer.readUInt32LE(114);
+            const numOfMembers = acc_buffer.readUInt32LE(87);
             console.log(numOfMembers);
-            const creator = new PublicKey(acc_buffer.slice(118, 150));
+            const creator = new PublicKey(acc_buffer.slice(91, 123));
             console.log(creator.toBase58());
             for (let i=0; i<numOfMembers; i++) {
-              members.push(new PublicKey(acc_buffer.slice(118+(i*32), 150+(i*32))));
+              members.push(new PublicKey(acc_buffer.slice(91+(i*32), 123+(i*32))));
               console.log(members);
             }
 
             return {
               fundPubkey: funds_pubkey[i],
+              fundType: fundTypes[i],
               isPending: isPendings[i],
               isEligible: isEligibles[i],
               votesYes: votesYess[i],
               votesNo: votesNos[i],
               name,
-              expectedMembers,
+              expectedMembers: maxMembers,
               creatorExists,
               creator,
               numOfMembers,
@@ -146,7 +159,8 @@ export default function FundsList() {
               vault,
               currentIndex,
               created_at,
-              is_private,
+              is_private: 1,
+              tags
             };
           }).filter((f): f is UserFund => f !== null);
 
@@ -154,7 +168,7 @@ export default function FundsList() {
 
           setFunds(fundDataArray);
         } else {
-          toast.error(" User Info khali hai jiiiii");
+          toast.error("Error Extracting User funds");
           setFunds([]);
         }
       } catch (error) {

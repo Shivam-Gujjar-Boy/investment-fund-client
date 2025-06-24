@@ -2,6 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export interface Fund {
   fund_address: PublicKey,
+  fundType: number,
   name: string,
   expectedMembers: number,
   creatorExists: boolean,
@@ -9,7 +10,7 @@ export interface Fund {
   numOfMembers: number,
   members: PublicKey[],
   totalDeposit: bigint,
-  governanceMint: PublicKey,
+  governanceMint: PublicKey | null,
   vault: PublicKey,
   currentIndex: number,
   created_at: bigint,
@@ -21,10 +22,11 @@ export interface Fund {
 
 export interface UserFund {
   fundPubkey: PublicKey,
+  fundType: number,
   isPending: boolean,
   isEligible: boolean,
-  votesYes: bigint,
-  votesNo: bigint,
+  votesYes: bigint | null,
+  votesNo: bigint | null,
   name: string,
   expectedMembers: number,
   creatorExists: boolean,
@@ -32,11 +34,12 @@ export interface UserFund {
   numOfMembers: number,
   members: PublicKey[],
   totalDeposit: bigint,
-  governanceMint: PublicKey,
+  governanceMint: PublicKey | null,
   vault: PublicKey,
   currentIndex: number,
   created_at: bigint,
   is_private: number,
+  tags: number,
 }
 
 export interface Token {
