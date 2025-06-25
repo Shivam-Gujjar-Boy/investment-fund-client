@@ -249,10 +249,10 @@ export default function FundCard({ fund, status }: FundCardProps) {
     }
   }
 
-  const getPercentage = (value: bigint, total: bigint) => {
-    if (total === 0n) return 0;
-    return Number((value*10000n) / total) / 100;
-  }
+  // const getPercentage = (value: bigint, total: bigint) => {
+  //   if (total === 0n) return 0;
+  //   return Number((value*10000n) / total) / 100;
+  // }
   
   const openJoinModal = async () => {
     setShowJoinModal(true);
@@ -292,7 +292,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
               Inactive
             </span>
           )}
-          {status === 'pending' && (
+          {/* {status === 'pending' && (
             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
               fund.isEligible ?
               'bg-green-500/20 text-green-300 border border-green-300/30' :
@@ -302,7 +302,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
             } shadow-sm`}>
               {fund.isEligible ? 'Eligible' : (BigInt(2)*fund.votesNo > fund.totalDeposit) ? 'Rejected' : 'Under Voting'}
             </span>
-          )}
+          )} */}
         </div>
 
         {/* Info Section */}
@@ -365,7 +365,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
             {status === "pending" && (
               <>
                 {/* Progress Bar */}
-                <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden w-full">
+                {/* <div className="relative h-3 rounded-full bg-gray-700 overflow-hidden w-full">
                   {(() => {
                     const green = fund.votesYes;
                     const red = fund.votesNo;
@@ -396,7 +396,7 @@ export default function FundCard({ fund, status }: FundCardProps) {
                       </>
                     );
                   })()}
-                </div>
+                </div> */}
               </>
             )}
 

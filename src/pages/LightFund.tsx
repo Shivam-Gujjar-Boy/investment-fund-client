@@ -350,8 +350,8 @@ const LightFund = () => {
             );
           })}
           <div className='flex pl-36 gap-1'>
-            <div className={`h-60 transition-all duration-300 bg-slate-700 w-1`} />
-            <div className={`h-60 transition-all duration-300 bg-slate-700 w-1`} />
+            <div className={`h-96 transition-all duration-300 bg-slate-700 w-1`} />
+            <div className={`h-96 transition-all duration-300 bg-slate-700 w-1`} />
           </div>
         </div>
       </div>
