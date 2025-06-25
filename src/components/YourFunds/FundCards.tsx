@@ -5,8 +5,12 @@ import {
   Timer, Users, UserPlus2,
   ArrowDownLeft
 } from 'lucide-react';
-import { UserFund } from '../../types';
+import { programId, UserFund } from '../../types';
 import { useNavigate } from 'react-router-dom';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
+import toast from 'react-hot-toast';
 
 interface FundCardProps {
     fund: UserFund;
@@ -16,6 +20,73 @@ interface FundCardProps {
 export const FundCard = ({ fund, status }: FundCardProps) => {
     console.log(status);
     const navigate = useNavigate();
+
+    const wallet = useWallet();
+    const {connection} = useConnection();
+
+    const handleInvitations = async (response: number) => {
+
+        if(!fund) return;
+        if(!wallet.publicKey || !wallet.signTransaction) return;
+
+        try {
+            const instructionTag = 19;
+            const nameBytes = Buffer.from(fund.name);
+
+            const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
+            let offset = 0;
+            buffer.writeUint8(instructionTag, offset);
+            offset += 1;
+            buffer.writeUInt8(response, offset);
+            offset += 1;
+            nameBytes.copy(buffer, offset);
+
+            const instructionData = buffer;
+
+            const [userPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("user"), wallet.publicKey.toBuffer()],
+                programId,
+            );
+
+            const instruction = new TransactionInstruction({
+                keys: [
+                    {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+                    {pubkey: userPda, isSigner: false, isWritable: true},
+                    {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
+                    {pubkey: fund.creator, isSigner: false, isWritable: true},
+                    {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+                ],
+                programId,
+                data: instructionData,
+            });
+
+            const transaction = new Transaction().add(instruction);
+
+            // Get recent blockhash
+            const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = wallet.publicKey;
+
+            // Sign the transaction
+            // transaction.partialSign(governanceMint);
+            const signedTransaction = await wallet.signTransaction(transaction);
+            
+            // Send and confirm transaction
+            const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+            
+            // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+            await connection.confirmTransaction({
+            signature,
+            blockhash,
+            lastValidBlockHeight
+            });
+
+        } catch (err) {
+            console.log(err);
+            toast.error(`Couldn't ${response ? "accept" : "reject"} the invitation.`);
+        }
+    } 
+    
     return (
     <motion.div
         layout
@@ -97,7 +168,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             {fund.fundType === 0 && fund.isPending && (
                 <motion.button
                     onClick={() => {
-                        navigate('/dashboard/fund-details');
+                        handleInvitations(1);
                     }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -110,7 +181,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             {fund.fundType === 0 && fund.isPending && (
                 <motion.button
                     onClick={() => {
-                        navigate('/dashboard/fund-details');
+                        handleInvitations(0);
                     }}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}

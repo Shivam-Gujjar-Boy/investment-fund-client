@@ -84,6 +84,7 @@ export default function FundsList() {
           const tags = acc_buffer.readUInt32LE(82);
           const maxMembers = acc_buffer.readUInt8(86);
           const numOfMembers = acc_buffer.readUInt32LE(87);
+          const creator = new PublicKey(acc_buffer.slice(91, 123));
 
           let num = 2;
           let secondaryTagId: number;
@@ -111,6 +112,7 @@ export default function FundsList() {
             created_at,
             is_private: 1,
             secondaryTag: secondaryTag?.name,
+            creator,
           };
         }).filter((f): f is UserFund => f !== null);
 

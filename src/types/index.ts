@@ -30,7 +30,7 @@ export interface UserFund {
   name: string,
   expectedMembers: number,
   // creatorExists: boolean,
-  // creator: PublicKey,
+  creator: PublicKey,
   numOfMembers: number,
   // members: PublicKey[],
   totalDeposit: bigint,
