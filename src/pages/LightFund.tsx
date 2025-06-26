@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Wallet, Users, Tag, Zap, Shield, DollarSign,
 import { AnimatePresence, motion } from 'framer-motion';
 import { fundTags } from '../types/tags';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { isSigner, PublicKey } from '@metaplex-foundation/js';
+import { PublicKey } from '@metaplex-foundation/js';
 import { programId } from '../types';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import toast from 'react-hot-toast';
