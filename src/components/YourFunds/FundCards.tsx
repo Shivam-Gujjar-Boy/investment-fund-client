@@ -82,8 +82,8 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
 
             let inviter: string = '';
 
-            const numOfmembers = fundBuffer.readUInt32LE(87);
-            for (let i=0; i<numOfmembers; i++) {
+            const numOfMembers = fundBuffer.readUInt32LE(87);
+            for (let i=0; i<numOfMembers; i++) {
                 const member = new PublicKey(fundBuffer.slice(91 + i*32, 123 + i*32));
                 const encoder = new TextEncoder();
                 const data = encoder.encode(member.toBase58());
