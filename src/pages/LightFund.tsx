@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, Wallet, Users, Tag, Zap, Shield, DollarSign, CheckCircle, AlertCircle, Sparkles, Plus, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { fundTags } from '../types/tags';
@@ -29,11 +29,11 @@ interface FormErrors {
   maxMemberCount?: string;
 }
 
-interface Step {
-  number: number;
-  title: string;
-  icon: React.ComponentType<any>;
-}
+// interface Step {
+//   number: number;
+//   title: string;
+//   icon: React.ComponentType<any>;
+// }
 
 const LightFund = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -70,6 +70,18 @@ const LightFund = () => {
       selectedTags: [...new Set([...prev.selectedTags, ...autoTags])]
     }));
   }, []);
+
+  const encode = (num: string) => {
+    if (num >= '0' && num <= '1') {
+        return '0';
+    } else if (num > '1' && num <= '4') {
+        return '1';
+    } else if (num > '4' && num <= '7') {
+        return '2';
+    } else {
+        return '3';
+    }
+  }
 
   useEffect(() => {
     // Calculate member cost
@@ -166,6 +178,7 @@ const LightFund = () => {
 
     if (!formData) return;
     if (!wallet || !wallet.publicKey || !wallet.signTransaction) return;
+    const user = wallet.publicKey;
 
     try {
       console.log(formData);
@@ -179,10 +192,51 @@ const LightFund = () => {
         tags = tags | tag;
       }
 
-      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + 4 + nameBytes.length);
-      let offset = 0;
+      const encoder = new TextEncoder();
+      const data = encoder.encode(user.toBase58());
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
+      let count = 0;
+      let numbers = '';
+      for (const c of hash) {
+          if (c >= '0' && c <= '9') {
+            numbers += encode(c);
+            count ++;
+          }
+          if (count == 7) break;
+      }
+
+      if (count != 7) {
+          for (let i=count; i<7; i++) {
+              numbers += '0';
+          }
+      }
+
+      const a = numbers.slice(0, 3);
+      const b = numbers.slice(3, 7);
+      console.log(a, b);
+      console.log(hash);
+
+      let firstByte = 0;
+      for (let i=0; i<a.length; i++) {
+        firstByte += parseInt(a[i])*(4**(3-i));
+      }
+
+      let secondByte = 0;
+      for (let i=0; i<b.length; i++) {
+        secondByte += parseInt(b[i])*(4**(3-i));
+      }
+
+      console.log(firstByte, secondByte);
+
+      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + 1 + 1 + 4 + nameBytes.length);
+      let offset = 0;
       buffer.writeUint8(instructionTag, offset);
+      offset += 1;
+      buffer.writeUint8(firstByte, offset);
+      offset += 1;
+      buffer.writeUInt8(secondByte, offset);
       offset += 1;
       buffer.writeUInt8((formData.addMembersLater ? 1 : 0), offset);
       offset += 1;
@@ -195,7 +249,7 @@ const LightFund = () => {
       nameBytes.copy(buffer, offset);
 
       const instructionData = buffer;
-      console.log(tags);
+      console.log(instructionData);
 
       const [userAccountPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("user"), wallet.publicKey.toBuffer()],

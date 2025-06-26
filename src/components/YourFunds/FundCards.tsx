@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { 
-  TrendingUp, TrendingDown, DollarSign, Shield,
+  DollarSign, Shield,
   ArrowUpRight,
   Timer, Users, UserPlus2,
   ArrowDownLeft
@@ -23,6 +23,18 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
 
     const wallet = useWallet();
     const {connection} = useConnection();
+
+    const encode = (num: string) => {
+        if (num >= '0' && num <= '1') {
+            return '0';
+        } else if (num > '1' && num <= '4') {
+            return '1';
+        } else if (num > '4' && num <= '7') {
+            return '2';
+        } else {
+            return '3';
+        }
+    }
 
     const handleInvitations = async (response: number) => {
 
@@ -48,12 +60,78 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                 programId,
             );
 
+            const userInfo = await connection.getAccountInfo(userPda);
+            if (!userInfo) return;
+            const userBuffer = Buffer.from(userInfo.data);
+
+            let firstBytee = 0;
+            let secondBytee = 0;
+            const numOfFunds = userBuffer.readUInt32LE(59);
+            for (let i=0; i<numOfFunds; i++) {
+                const fundPublickey = new PublicKey(userBuffer.slice(63 + i*51, 95 + i*51));
+                if (fundPublickey.toBase58() !== fund.fundPubkey.toBase58()) {
+                    firstBytee = userBuffer.readUInt8(95 + i*51);
+                    secondBytee = userBuffer.readUInt8(105 + i*51);
+                    break;
+                }
+            }
+
+            const fundInfo = await connection.getAccountInfo(fund.fundPubkey);
+            if (!fundInfo) return;
+            const fundBuffer = Buffer.from(fundInfo.data);
+
+            let inviter: string = '';
+
+            const numOfmembers = fundBuffer.readUInt32LE(87);
+            for (let i=0; i<numOfmembers; i++) {
+                const member = new PublicKey(fundBuffer.slice(91 + i*32, 123 + i*32));
+                const encoder = new TextEncoder();
+                const data = encoder.encode(member.toBase58());
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                let count = 0;
+                let numbers = '';
+                for (const c of hash) {
+                    if (c >= '0' && c <= '9') {
+                        numbers += encode(c);
+                        count ++;
+                    }
+                    if (count == 7) break;
+                }
+
+                if (count != 7) {
+                    for (let i=count; i<7; i++) {
+                        numbers += '0';
+                    }
+                }
+
+                const a = numbers.slice(0, 3);
+                const b = numbers.slice(3, 7);
+                console.log(a, b);
+                console.log(hash);
+
+                let firstByte = 0;
+                for (let i=0; i<a.length; i++) {
+                    firstByte += parseInt(a[i])*(4**(3-i));
+                }
+
+                let secondByte = 0;
+                for (let i=0; i<b.length; i++) {
+                    secondByte += parseInt(b[i])*(4**(3-i));
+                }
+
+                if (firstByte === firstBytee && secondByte === secondBytee) {
+                    inviter = member.toBase58();
+                }
+            }
+
             const instruction = new TransactionInstruction({
                 keys: [
                     {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
                     {pubkey: userPda, isSigner: false, isWritable: true},
                     {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
-                    {pubkey: fund.creator, isSigner: false, isWritable: true},
+                    {pubkey: new PublicKey(inviter), isSigner: false, isWritable: true},
                     {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
                 ],
                 programId,
