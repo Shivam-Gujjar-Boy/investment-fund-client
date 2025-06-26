@@ -54,7 +54,17 @@ export default function FundsList() {
 
         for (let i = 0; i < num_of_funds; i++) {
           const fund_pubkey = new PublicKey(buffer.slice(63 + i * 51, 95 + i * 51));
-          const fundType = buffer.readUInt8(95);
+          const fundTypeByte = buffer.readUInt8(95);
+          const binaryType = fundTypeByte.toString(2);
+          const bits = binaryType.slice(binaryType.length - 2, binaryType.length);
+          let fundType = 0;
+          if (bits === '01') {
+            fundType = 1;
+          } else if (bits === '11') {
+            fundType = 3;
+          } else if (bits === '10') {
+            fundType = 2;
+          }
           const isPending = buffer.readUint8(104 + i * 51) ? true : false;
           const isEligible = buffer.readUint8(105 + i * 51) ? true : false;
           isPendings.push(isPending);
