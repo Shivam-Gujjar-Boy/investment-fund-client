@@ -17,11 +17,11 @@ export default function Dashboard() {
           <Route path="create" element={<Create />} />
           <Route path="join" element={<Join />} />
           <Route path="funds" element={<YourFunds />} />
-          {/* <Route path='funds/:fundId' element={<FundDetails />}/> */}
+          <Route path='funds/:fundId' element={<FundDetails />}/>
           <Route path="portfolio" element={<Portfolio />} />
           <Route path="discover" element={<Discover />}/>
           <Route path='/create/light-fund' element={<LightFund />}/>
-          <Route path='/fund-details' element={<FundDetails />} />
+          {/* <Route path='/fund-details' element={<FundDetails />} /> */}
           <Route path="*" element={<Navigate to="/dashboard/create" replace />} />
         </Routes>
       </Layout>

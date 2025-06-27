@@ -443,7 +443,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                 {!fund.isPending && (
                     <motion.button
                         onClick={() => {
-                            navigate('/dashboard/fund-details');
+                            navigate(`/dashboard/funds/${fund.fundPubkey.toBase58()}`);
                         }}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

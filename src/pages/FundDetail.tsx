@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, CartesianGrid } from 'recharts';
 
+// Dummy Data for Fund Graph for now
 const dummyPerformanceData = [
   { time: 'Jan 01', value: 2400 },
   { time: 'Jan 05', value: 2550 },
@@ -61,10 +62,7 @@ export default function FundsList() {
   const [showBalance, setShowBalance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [activeTimeframe, setActiveTimeframe] = useState('1M');
-  // const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-// const leftSegment = hoverIndex !== null ? [{ startIndex: 0, endIndex: hoverIndex }] : [{ startIndex: 0, endIndex: dummyPerformanceData.length - 1 }];
-// const rightSegment = hoverIndex !== null ? [{ startIndex: hoverIndex, endIndex: dummyPerformanceData.length - 1 }] : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 relative overflow-hidden">
