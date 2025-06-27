@@ -20,6 +20,21 @@ export interface Fund {
   isRefunded: boolean,
 }
 
+export interface LightFund {
+  fundPubkey: PublicKey,
+  fundType: number,
+  name: string,
+  expectedMembers: number,
+  creatorExists: boolean,
+  creator: PublicKey,
+  numOfMembers: number,
+  members: PublicKey[],
+  totalDeposit: bigint,
+  vault: PublicKey,
+  currentIndex: number,
+  created_at: bigint,
+}
+
 export interface UserFund {
   fundPubkey: PublicKey,
   fundType: number,

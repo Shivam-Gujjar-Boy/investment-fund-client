@@ -50,30 +50,13 @@ export default function FundsList() {
         const isEligibles: boolean[] = [];
         const votesYess: (bigint | null)[] = [];
         const votesNos: (bigint | null)[] = [];
-        const fundTypes: number[] = [];
 
         for (let i = 0; i < num_of_funds; i++) {
           const fund_pubkey = new PublicKey(buffer.slice(63 + i * 51, 95 + i * 51));
-          const fundTypeByte = buffer.readUInt8(95);
-          const binaryType = fundTypeByte.toString(2);
-          const bits = binaryType.slice(binaryType.length - 2, binaryType.length);
-          let fundType = 0;
-          if (bits === '01') {
-            fundType = 1;
-          } else if (bits === '11') {
-            fundType = 3;
-          } else if (bits === '10') {
-            fundType = 2;
-          }
           const isPending = buffer.readUint8(104 + i * 51) ? true : false;
           const isEligible = buffer.readUint8(105 + i * 51) ? true : false;
           isPendings.push(isPending);
           isEligibles.push(isEligible);
-          fundTypes.push(fundType);
-          if (fundType === 0) {
-            votesYess.push(null);
-            votesNos.push(null);
-          }
           funds_pubkey.push(fund_pubkey);
         }
 
@@ -83,12 +66,13 @@ export default function FundsList() {
         const fundDataArray: UserFund[] = fundAccountInfos.map((acc, i) => {
           if (!acc || !acc.data) return null;
           const acc_buffer = Buffer.from(acc?.data);
-          const name_dummy = acc_buffer.slice(0, 32).toString();
+          const name_dummy = acc_buffer.slice(0, 31).toString();
           let name = '';
           for (const c of name_dummy) {
             if (c === '\x00') break;
             name += c;
           }
+          const fundType = acc_buffer.readUint8(31);
           const totalDeposit = acc_buffer.readBigInt64LE(33);
           const created_at = acc_buffer.readBigInt64LE(74);
           const tags = acc_buffer.readUInt32LE(82);
@@ -109,7 +93,7 @@ export default function FundsList() {
 
           return {
             fundPubkey: funds_pubkey[i],
-            fundType: fundTypes[i],
+            fundType: fundType,
             isPending: isPendings[i],
             isEligible: isEligibles[i],
             votesYes: votesYess[i],

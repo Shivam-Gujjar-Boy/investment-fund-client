@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect} from 'react';
+import { LightFund } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useParams } from 'react-router-dom';
+import { PublicKey, Transaction } from '@solana/web3.js';
 import {
   Plus, Users,
   Search, Settings, Wallet,
@@ -9,6 +12,10 @@ import {
   List, DollarSign
 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, CartesianGrid } from 'recharts';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAccount, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import toast from 'react-hot-toast';
+import { programId } from '../types';
 
 // Dummy Data for Fund Graph for now
 const dummyPerformanceData = [
@@ -56,12 +63,173 @@ const dummyHoldingsData = [
 const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
 
 export default function FundsList() {
+  const [fund, setFund] = useState<LightFund | null>(null);
   const [activeTab, setActiveTab] = useState('performance');
   const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [showBalance, setShowBalance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [contribution, setContribution] = useState<number | null>();
+  const [loading, setLoading] = useState(false);
   const [activeTimeframe, setActiveTimeframe] = useState('1M');
+
+  const wallet = useWallet();
+  const {connection} = useConnection();
+  const { fundId } = useParams();
+
+  const fetchFundData = useCallback(async () => {
+    if (!wallet.publicKey) {
+      return;
+    }
+
+    if (!fundId) {
+      toast.error("Fund ID not found!");
+      return;
+    }
+    const fundAccountPda = new PublicKey(fundId);
+
+    try {
+      const accountInfo = await connection.getAccountInfo(fundAccountPda);
+      if (!accountInfo) {
+        toast.error('Fund Id not found');
+        return;
+      }
+      const buffer = Buffer.from(accountInfo?.data);
+      const name_dummy = buffer.slice(0, 31).toString();
+      let name = '';
+      for (const c of name_dummy) {
+        if (c === '\x00') break;
+        name += c;
+      }
+      const fundType = buffer.readUInt8(31);
+      if (fundType === 0) {
+        const members: PublicKey[] = [];
+        const numOfMembers = buffer.readUInt32LE(87);
+        for (let i = 0; i < numOfMembers; i++) {
+          members.push(new PublicKey(buffer.slice(91 + 32 * i, 123 + 32 * i)));
+        }
+        const expectedMembers = buffer.readUint32LE(86);
+        const creatorExists = buffer.readUInt8(32) ? true : false;
+        const creator = new PublicKey(buffer.slice(91, 123));
+        const totalDeposit = buffer.readBigInt64LE(33);
+        const vault = new PublicKey(buffer.slice(41, 73));
+        const currentIndex = buffer.readUInt8(73);
+        const created_at = buffer.readBigInt64LE(74);
+
+        const [userPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("user"), wallet.publicKey.toBuffer()],
+          programId,
+        )
+
+        const userAccountInfo = await connection.getAccountInfo(userPda);
+        if (!userAccountInfo) return;
+
+        const userBuffer = Buffer.from(userAccountInfo.data);
+        const noOfFunds = userBuffer.readUint32LE(59);
+        let contribution: bigint;
+
+        for (let i = 0; i < noOfFunds; i++) {
+          const fundId = new PublicKey(buffer.slice(63 + i*51 , 95 + i*52));
+          if (fundId === fund?.fundPubkey) {
+            contribution = buffer.readBigUint64LE(96 + i*51);
+            break;
+          }
+        }
+  
+        setFund({
+          fundPubkey: fundAccountPda,
+          fundType,
+          name,
+          expectedMembers,
+          creatorExists,
+          creator,
+          numOfMembers,
+          members,
+          totalDeposit,
+          vault,
+          currentIndex,
+          created_at,
+        });
+      }
+    } catch (err) {
+      toast.error('Error fetching fund data');
+      console.log(err);
+    }
+  }, [fundId, connection, wallet.publicKey]);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchFundData();
+      setLoading(false);
+    };
+
+    load();
+  }, [fetchFundData]);
+
+
+  const handleDeposit = async (amount: bigint) => {
+
+    if (!wallet.publicKey || !wallet.signTransaction) return;
+    if (!fund) return;
+
+    try {
+      const instructionTag = 21;
+      const nameBytes = Buffer.from(fund.name);
+
+      const buffer = Buffer.alloc(1 + 8 + nameBytes.length);
+      let offset = 0;
+      buffer.writeUint8(instructionTag, offset);
+      offset += 1;
+      buffer.writeBigInt64LE(amount, offset);
+      offset += 8;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+
+      const memberAta = await getAssociatedTokenAddress(
+        ,
+        wallet.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      );
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+
+        ],
+        programId,
+        data: instructionData,
+      })
+
+      const transaction = new Transaction().add(instruction);
+
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+      signature,
+      blockhash,
+      lastValidBlockHeight
+      });
+
+    } catch (err) {
+      console.log(err);
+      toast.error("Couldn't deposit");
+    }
+  }
 
 
   return (
