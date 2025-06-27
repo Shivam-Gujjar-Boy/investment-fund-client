@@ -86,7 +86,7 @@ export default function FundsList() {
         animate={{ x: 0 }}
         exit={{ x: -328 }}
         transition={{ type: '', stiffness: 300 }}
-        className="fixed top-16 left-0 bottom-0 w-[23%] bg-slate-900/95 backdrop-blur-xl border-r border-t border-indigo-800 z-50 overflow-hidden"
+        className="fixed top-16 left-0 bottom-0 w-[21%] bg-slate-900/95 backdrop-blur-xl border-r border-t border-indigo-800 z-50 overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-blue-900/20" />
 
@@ -256,8 +256,8 @@ export default function FundsList() {
       </motion.div>
 
       {/* Top Bar and Main Content */}
-      <div className={`transition-all duration-300 ml-[23%]`}>
-        <div className={`fixed z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50 w-[77%] top-16`}>
+      <div className={`transition-all duration-300 ml-[21%]`}>
+        <div className={`fixed z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50 w-[79%] top-16`}>
           <div className="flex items-center justify-between p-6">
             <div>
               <h2 className="text-2xl font-bold text-white">
@@ -310,7 +310,7 @@ export default function FundsList() {
         <div className="pt-28 px-2 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 h-screen">
           <div className="flex flex-col xl:flex-row gap-3 h-full">
             {/* Left - Holdings Pie Chart */}
-            <div className="w-full xl:w-[41%] bg-slate-800/40 rounded-lg p-6 border border-slate-700/40 shadow-xl h-[60%]">
+            <div className="w-full xl:w-[42%] bg-slate-800/40 rounded-lg p-6 border border-slate-700/40 shadow-xl h-[60%]">
               <h3 className="text-lg font-semibold mb-4">Fund Holdings Distribution</h3>
               <ResponsiveContainer width="100%" height={280}>
                 <PieChart>

@@ -101,7 +101,6 @@ export default function FundsList() {
           for (let i=1; i<32; i++) {
             if (tags & num) {
               secondaryTagId = i;
-              console.log(name, secondaryTagId);
             }
             num *= 2;
           }
