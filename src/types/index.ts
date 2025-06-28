@@ -92,6 +92,14 @@ export interface JoinProposal {
   proposalIndex: number,
 }
 
+export interface Member {
+  name: string,
+  profilePic: string,
+  address: PublicKey,
+  contributionPercent: number,
+  joined: bigint,
+}
+
 
 export const programId = new PublicKey('CFdRopkCcbqxhQ46vNbw4jNZ3eQEmWZhmq5V467py9nG');
 export const TOKEN_METADATA_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");

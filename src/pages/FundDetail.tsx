@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect} from 'react';
-import { LightFund } from '../types';
+import { LightFund, Token } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'react-router-dom';
-import { PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import {
   Plus, Users,
   Search, Settings, Wallet,
@@ -11,11 +11,17 @@ import {
   ChevronRight, Grid3X3,
   List, DollarSign
 } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAccount, getAssociatedTokenAddress, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import toast from 'react-hot-toast';
 import { programId } from '../types';
+import VaultHoldings from '../components/FundInformation/VaultHoldings';
+import { Metaplex } from '@metaplex-foundation/js';
+import { fetchUserTokens } from '../functions/fetchuserTokens';
+import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
+import axios from 'axios';
+import FundMembersFancy from '../components/FundInformation/FundMembers';
 
 // Dummy Data for Fund Graph for now
 const dummyPerformanceData = [
@@ -53,15 +59,6 @@ const dummyPerformanceData = [
   { time: 'Jun 05', value: 4600 },
 ];
 
-const dummyHoldingsData = [
-  { name: 'SOL', value: 400 },
-  { name: 'USDC', value: 300 },
-  { name: 'BTC', value: 200 },
-  { name: 'ETH', value: 100 },
-];
-
-const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
-
 export default function FundsList() {
   const [fund, setFund] = useState<LightFund | null>(null);
   const [activeTab, setActiveTab] = useState('performance');
@@ -69,13 +66,33 @@ export default function FundsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showBalance, setShowBalance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [contribution, setContribution] = useState<number | null>();
+  const [contribution, setContribution] = useState<bigint>(BigInt(0));
   const [loading, setLoading] = useState(false);
+  const [isDepositing, setisDepositing] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+  const [amount, setAmount] = useState('');
+  const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [activeTimeframe, setActiveTimeframe] = useState('1M');
+  if (loading) {console.log()}
 
   const wallet = useWallet();
   const {connection} = useConnection();
   const { fundId } = useParams();
+  const metaplex = Metaplex.make(connection);
+
+  const openDepositModal = async () => {
+    setShowDepositModal(true);
+    const tokens = await fetchUserTokens(wallet, connection, metaplex);
+    if (!wallet.publicKey) {
+      return;
+    }
+
+    console.log(tokens);
+    if (!tokens) return;
+    setUserTokens(tokens);
+    if (tokens.length > 0) setSelectedToken(tokens[0]);
+  };
 
   const fetchFundData = useCallback(async () => {
     if (!wallet.publicKey) {
@@ -108,7 +125,7 @@ export default function FundsList() {
         for (let i = 0; i < numOfMembers; i++) {
           members.push(new PublicKey(buffer.slice(91 + 32 * i, 123 + 32 * i)));
         }
-        const expectedMembers = buffer.readUint32LE(86);
+        const expectedMembers = buffer.readUint8(86);
         const creatorExists = buffer.readUInt8(32) ? true : false;
         const creator = new PublicKey(buffer.slice(91, 123));
         const totalDeposit = buffer.readBigInt64LE(33);
@@ -126,15 +143,17 @@ export default function FundsList() {
 
         const userBuffer = Buffer.from(userAccountInfo.data);
         const noOfFunds = userBuffer.readUint32LE(59);
-        let contribution: bigint;
+        let contribution: bigint = BigInt(0);
 
         for (let i = 0; i < noOfFunds; i++) {
-          const fundId = new PublicKey(buffer.slice(63 + i*51 , 95 + i*52));
-          if (fundId === fund?.fundPubkey) {
-            contribution = buffer.readBigUint64LE(96 + i*51);
+          const fundId = new PublicKey(userBuffer.slice(63 + i*51 , 95 + i*51));
+          if (fundId.toBase58() === fundAccountPda.toBase58()) {
+            contribution = userBuffer.readBigInt64LE(96 + i*51);
             break;
           }
         }
+
+        setContribution(contribution);
   
         setFund({
           fundPubkey: fundAccountPda,
@@ -168,68 +187,169 @@ export default function FundsList() {
   }, [fetchFundData]);
 
 
-  const handleDeposit = async (amount: bigint) => {
-
-    if (!wallet.publicKey || !wallet.signTransaction) return;
-    if (!fund) return;
+  const handleDeposit = async () => {
+    console.log(`Deposit ${amount} ${selectedToken?.symbol}`);
 
     try {
-      const instructionTag = 21;
-      const nameBytes = Buffer.from(fund.name);
+      if (!wallet.publicKey || !wallet.signTransaction) {
+        setisDepositing(false);
+        toast.error('Wallet is not connected');
+        return;
+      }
 
-      const buffer = Buffer.alloc(1 + 8 + nameBytes.length);
-      let offset = 0;
-      buffer.writeUint8(instructionTag, offset);
-      offset += 1;
-      buffer.writeBigInt64LE(amount, offset);
-      offset += 8;
-      nameBytes.copy(buffer, offset);
+      const user = wallet.publicKey;
+      if (!selectedToken || !fund) {
+        setisDepositing(false);
+        toast.error('Token or fund not selected');
+        return;
+      }
 
-      const instructionData = buffer;
+      const mint = new PublicKey(selectedToken?.mint);
+      // console.log(mint.toBase58(), '---------');
 
-      const memberAta = await getAssociatedTokenAddress(
-        ,
-        wallet.publicKey,
-        false,
-        TOKEN_2022_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID,
+      const vaultATA = await getAssociatedTokenAddress(
+        mint,
+        fund.vault,
+        true,
+        TOKEN_PROGRAM_ID,
+        ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-      const instruction = new TransactionInstruction({
-        keys: [
-          {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+      // console.log('Vault ATA', vaultATA.toBase58());
 
-        ],
+      if (!fund.fundPubkey) {
+        toast.error('No fund pda found');
+        return;
+      }
+
+      const [userAccountPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('user'), user.toBuffer()],
+        programId
+      );
+
+      const keyp = Keypair.generate();
+
+      const keys = [
+        { pubkey: user, isSigner: true, isWritable: true },
+        {
+          pubkey: selectedToken?.mint === 'So11111111111111111111111111111111111111112'
+            ? keyp.publicKey
+            : selectedToken?.pubkey,
+          isSigner: selectedToken?.mint === 'So11111111111111111111111111111111111111112'
+            ? true
+            : false,
+          isWritable: true
+        },
+        { pubkey: fund?.vault, isSigner: false, isWritable: true },
+        { pubkey: vaultATA, isSigner: false, isWritable: true },
+        { pubkey: mint, isSigner: false, isWritable: true },
+        { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: fund.fundPubkey, isSigner: false, isWritable: true },
+        { pubkey: userAccountPda, isSigner: false, isWritable: true },
+        { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+        { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+
+      ];
+      // console.log("user wallet", user.toBase58());
+      // console.log("member ata", keyp.publicKey.toBase58(), " ", selectedToken.pubkey.toBase58());
+      // console.log("vault", fund.vault.toBase58());
+      // console.log("vault ata", vaultATA.toBase58());
+      // console.log("mint account", mint.toBase58());
+      // console.log("token program", TOKEN_PROGRAM_ID.toBase58());
+      // console.log("ata program", ASSOCIATED_TOKEN_PROGRAM_ID.toBase58());
+      // console.log("fund account", fund.fundPubkey.toBase58());
+      // console.log("user pda", userAccountPda.toBase58());
+      // console.log("system program", SYSTEM_PROGRAM_ID.toBase58());
+      // console.log("rentsysvar", SYSVAR_RENT_PUBKEY.toBase58());
+
+      let transferAmount: bigint = BigInt(0);
+      if (!amount.includes('.')) {
+        transferAmount = BigInt(amount + '0'.repeat(selectedToken.decimals));
+      } else {
+        const [inPart, fracPart = ''] = amount.split('.');
+        const paddedFrac = fracPart.slice(0, selectedToken.decimals).padEnd(selectedToken.decimals, '0');
+        const fullStr = inPart + paddedFrac;
+        transferAmount = BigInt(fullStr);
+      }
+      const instructionTag = Buffer.from([7]);
+      const amountBuffer = Buffer.alloc(8);
+      amountBuffer.writeBigInt64LE(transferAmount);
+
+      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=${transferAmount}&slippageBps=50`);
+      if (!response) {
+        toast.error('Failed to fetch token price');
+        return;
+      }
+      let mint_amount = transferAmount;
+      if (selectedToken.mint !== 'So11111111111111111111111111111111111111112') {
+        mint_amount = BigInt(response.data.outAmount);
+      }
+      console.log(mint_amount);
+
+      const minTAmountBuffer = Buffer.alloc(8);
+      minTAmountBuffer.writeBigInt64LE(mint_amount);
+
+      console.log(amountBuffer, minTAmountBuffer);
+
+      const nameBytes = new TextEncoder().encode(fund.name);
+      const fundType = Buffer.from([0]);
+
+      const instructionData = Buffer.concat([instructionTag, fundType, amountBuffer, minTAmountBuffer, nameBytes]);
+      console.log(instructionData.length);
+
+      const instruction = new TransactionInstruction({
+        keys,
         programId,
-        data: instructionData,
-      })
+        data: instructionData
+      });
 
       const transaction = new Transaction().add(instruction);
-
-      // Get recent blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = wallet.publicKey;
 
-      // Sign the transaction
-      // transaction.partialSign(governanceMint);
+      if (selectedToken?.mint === 'So11111111111111111111111111111111111111112') {
+        transaction.partialSign(keyp);
+      }
       const signedTransaction = await wallet.signTransaction(transaction);
-      
-      // Send and confirm transaction
       const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-      
-      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
       await connection.confirmTransaction({
-      signature,
-      blockhash,
-      lastValidBlockHeight
+        signature,
+        blockhash,
+        lastValidBlockHeight
       });
 
+      setisDepositing(false);
+      setShowDepositModal(false);
+      toast.success('Successfully deposited assets to fund');
     } catch (err) {
+      toast.error('Error depositing assets');
       console.log(err);
-      toast.error("Couldn't deposit");
+      setisDepositing(false);
     }
+  };
+
+  if (!fund) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#0e1117] to-[#1b1f27] min-h-screen">
+        <div className="flex flex-col items-center space-y-6">
+          {/* Glowing Spinner */}
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-purple-600 opacity-30 animate-ping"></div>
+            <div className="w-full h-full border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+
+          {/* Text with glow */}
+          <p className="text-purple-400 text-xl font-semibold animate-pulse drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]">
+            Fetching fund data...
+          </p>
+        </div>
+      </div>
+    );
   }
+
+  const fundValue = Number(fund.totalDeposit) / 1e9;
 
 
   return (
@@ -265,7 +385,7 @@ export default function FundsList() {
                 <Wallet className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                Arbitrage Hunters
+                {fund.name}
               </h1>
             </div>
             <button
@@ -295,12 +415,15 @@ export default function FundsList() {
                 <div className="mb-8 space-y-4">
                   <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-2xl p-4 border border-slate-600/30">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-400 text-sm">Total Portfolio</span>
+                      <span className="text-slate-400 text-sm">Fund Portfolio</span>
                       <button onClick={() => setShowBalance(!showBalance)}>
                         {showBalance
                           ? <Eye className="w-4 h-4 text-slate-400" />
                           : <EyeOff className="w-4 h-4 text-slate-400" />}
                       </button>
+                    </div>
+                    <div className="text-2xl font-bold text-white">
+                      {showBalance ? `${fundValue.toFixed(2)} SOL` : '****'}
                     </div>
                   </div>
 
@@ -310,12 +433,14 @@ export default function FundsList() {
                         <Users className="w-4 h-4 text-blue-400" />
                         <span className="text-slate-400 text-xs">Members</span>
                       </div>
+                      <div className="text-lg font-bold text-white">{fund.numOfMembers}/{fund.expectedMembers}</div>
                     </div>
                     <div className="bg-slate-800/30 rounded-xl p-3 border border-slate-700/30">
                       <div className="flex items-center gap-2 mb-1">
                         <Activity className="w-4 h-4 text-emerald-400" />
-                        <span className="text-slate-400 text-xs">Active</span>
+                        <span className="text-slate-400 text-xs">Contribution</span>
                       </div>
+                      <div className="text-lg font-bold text-white">{Number(fund.totalDeposit) === 0 ? '0%' : `${Number(contribution /fund.totalDeposit)*100}%`}</div>
                     </div>
                   </div>
                 </div>
@@ -355,6 +480,7 @@ export default function FundsList() {
                   <h3 className="text-slate-400 text-sm font-medium mb-3">Quick Actions</h3>
                   <div className="space-y-2">
                     <motion.button
+                      onClick={openDepositModal}
                       whileHover={{ x: 4 }}
                       className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-purple-600/10 to-blue-600/10 hover:from-purple-600/20 hover:to-blue-600/20 rounded-xl transition-all duration-300 text-slate-300 hover:text-white border border-purple-500/20"
                     >
@@ -438,7 +564,7 @@ export default function FundsList() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search funds..."
+                  placeholder='Search Funds...'
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
@@ -472,114 +598,197 @@ export default function FundsList() {
         </div>
 
         {/* Content */}
-        {/* <div className="pt-40 px-6 text-white">Your content goes here</div> */}
-        <div className="pt-28 px-2 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 h-screen">
-          <div className="flex flex-col xl:flex-row gap-3 h-full">
-            {/* Left - Holdings Pie Chart */}
-            <div className="w-full xl:w-[42%] bg-slate-800/40 rounded-lg p-6 border border-slate-700/40 shadow-xl h-[60%]">
-              <h3 className="text-lg font-semibold mb-4">Fund Holdings Distribution</h3>
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={dummyHoldingsData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    fill="#8884d8"
-                    label
-                  >
-                    {dummyHoldingsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+        {activeTab === 'performance' && (
+          <div className="pt-28 px-2 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 h-screen">
+            <div className="flex gap-3 h-full">
+              {/* Left - Performance Line Chart */}
+              <div className="w-[60%] bg-gradient-to-br from-purple-900/5 via-slate-800/50 to-blue-900/30 backdrop-blur-lg border border-purple-600/20 shadow-[0_0_5px_#7c3aed33] rounded-lg p-6 h-[85%] flex flex-col">
+                <div className="flex items-center justify-between mb-4 h-[10%]">
+                  <h3 className="text-lg font-semibold">Fund Value Over Time</h3>
+                  <div className="flex gap-2">
+                    {["1D", "1W", "1M", "3M", "6M", "1Y", "ALL"].map((label) => (
+                      <button
+                        key={label}
+                        onClick={() => setActiveTimeframe(label)}
+                        className={`px-3 py-1 rounded-lg text-sm transition-all duration-300 border ${
+                          activeTimeframe === label
+                            ? 'bg-purple-600 text-white border-purple-500'
+                            : 'bg-slate-700/30 text-slate-300 border-slate-600 hover:bg-slate-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
                     ))}
-                  </Pie>
-                  <Legend verticalAlign="bottom" height={36} />
-                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#4b5563', color: 'white' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height="90%">
+                  <LineChart
+                    data={dummyPerformanceData}
+                    margin={{ top: 40, right: 40, left: 0, bottom: 20 }}
+                  >
+                    <defs>
+                      <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
 
-            {/* Right - Performance Line Chart */}
-            <div className="w-[680px] bg-gradient-to-br from-purple-900/5 via-slate-800/50 to-blue-900/30 backdrop-blur-lg border border-purple-600/20 shadow-[0_0_5px_#7c3aed33] rounded-lg p-6 fixed right-2 top-44">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Fund Value Over Time</h3>
+                    <CartesianGrid stroke="#475569" strokeDasharray="4 4" opacity={0.3} />
+                    <XAxis dataKey="time" stroke="#cbd5e1" />
+                    <YAxis stroke="#cbd5e1" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#0f172a",
+                        borderColor: "#7c3aed",
+                        color: "white",
+                        borderRadius: 10,
+                      }}
+                      cursor={{ stroke: "#7c3aed", strokeWidth: 2, opacity: 0.2 }}
+                    />
+
+                    {/* Left highlighted segment */}
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="url(#lineGradient)"
+                      strokeWidth={4}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+
+                    {/* Right faded segment */}
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#8b5cf6"
+                      strokeWidth={4}
+                      strokeDasharray="6 6"
+                      opacity={0.2}
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Right - Holdings Pie Chart */}
+              <div className='w-[39%] h-[85%]'>
+                <VaultHoldings vault={fund?.vault} connection={connection} metaplex={metaplex}/>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'members' && <FundMembersFancy fund={fund} />}
+      </div>
+      {showDepositModal && (
+        <div onClick={(e) => {
+          if (e.target === e.currentTarget) setShowDepositModal(false);
+        }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-xl text-white transition-all duration-300 scale-100 relative animate-fadeIn">
+            <h2 className="text-2xl font-bold mb-6 tracking-wide">💰 Deposit Tokens</h2>
+            {selectedToken && (
+              <div className="flex justify-between text-xs text-white mb-2 px-1">
+                <div className="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  {selectedToken.symbol} balance: {selectedToken.balance}
+                </div>
                 <div className="flex gap-2">
-                  {["1D", "1W", "1M", "3M", "6M", "1Y", "ALL"].map((label) => (
-                    <button
-                      key={label}
-                      onClick={() => setActiveTimeframe(label)}
-                      className={`px-3 py-1 rounded-lg text-sm transition-all duration-300 border ${
-                        activeTimeframe === label
-                          ? 'bg-purple-600 text-white border-purple-500'
-                          : 'bg-slate-700/30 text-slate-300 border-slate-600 hover:bg-slate-700'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setAmount(selectedToken.balance.toString())}
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                  >
+                    Max
+                  </button>
+                  <button
+                    onClick={() => setAmount((selectedToken.balance * 0.5).toFixed(6))}
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                  >
+                    50%
+                  </button>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={440}>
-                <LineChart
-                  data={dummyPerformanceData}
-                  margin={{ top: 40, right: 40, left: 0, bottom: 20 }}
-                  // onMouseMove={(e) => {
-                  //   if (e && e.activeTooltipIndex != null) {
-                  //     setHoverIndex(e.activeTooltipIndex);
-                  //   }
-                  // }}
-                  // onMouseLeave={() => setHoverIndex(null)}
+            )}
+            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-hidden text-white">
+              <div className="flex items-center gap-1 px-4 py-3 min-w-[140px] bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer">
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-600 border border-gray-600">
+                  {selectedToken?.image ? (
+                    <img src={selectedToken.image} alt="token" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-600 rounded-full" />
+                  )}
+                </div>
+                <select
+                  value={selectedToken?.mint || ''}
+                  onChange={(e) =>
+                    setSelectedToken(userTokens.find((t) => t.mint === e.target.value) || null)
+                  }
+                  className="bg-transparent text-white text-xl outline-none cursor-pointer py-0"
                 >
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
-                    </linearGradient>
-                  </defs>
+                  {userTokens.map((token) => (
+                    <option key={token.mint} value={token.mint} className="text-black">
+                      {token.symbol}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  const decimals = selectedToken?.decimals ?? 0;
 
-                  <CartesianGrid stroke="#475569" strokeDasharray="4 4" opacity={0.3} />
-                  <XAxis dataKey="time" stroke="#cbd5e1" />
-                  <YAxis stroke="#cbd5e1" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderColor: "#7c3aed",
-                      color: "white",
-                      borderRadius: 10,
-                    }}
-                    cursor={{ stroke: "#7c3aed", strokeWidth: 2, opacity: 0.2 }}
-                  />
+                  if (val.includes('.')) {
+                    const [inPart, decimalPart] = val.split('.');
+                    if (decimalPart.length > decimals) {
+                      val = `${inPart}.${decimalPart.slice(0, decimals)}`
+                    }
+                  }
 
-                  {/* Left highlighted segment */}
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="url(#lineGradient)"
-                    strokeWidth={4}
-                    dot={false}
-                    // segments={leftSegment}
-                    isAnimationActive={false}
-                  />
-
-                  {/* Right faded segment */}
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#8b5cf6"
-                    strokeWidth={4}
-                    strokeDasharray="6 6"
-                    opacity={0.2}
-                    dot={false}
-                    // segments={rightSegment}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+                  setAmount(val);
+                }}
+                className="flex-1 text-right px-4 py-3 text-2xl bg-transparent outline-none placeholder-white"
+              />
+            </div>
+            {amount && selectedToken && parseFloat(amount) > selectedToken.balance && (
+              <p className="text-red-500 text-sm mt-3">🚫 Insufficient balance</p>
+            )}
+            <div className="flex justify-end mt-8 gap-4">
+              <button
+                className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 transition-all"
+                onClick={() => {
+                  const modal = document.querySelector('.animate-fadeIn');
+                  if (modal) {
+                    modal.classList.remove('animate-fadeIn');
+                    modal.classList.add('animate-fadeOut');
+                    setTimeout(() => setShowDepositModal(false), 200);
+                  } else {
+                    setShowDepositModal(false);
+                  }
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setisDepositing(true);
+                  handleDeposit();
+                }}
+                className={`px-5 py-2 rounded-xl ${
+                  isDepositing ?
+                  'bg-gray-600 hover:bg-gray-500' :
+                  'bg-green-600 hover:bg-green-500'
+                } transition-all disabled:opacity-40 disabled:cursor-not-allowed`}
+                disabled={!selectedToken || !amount || parseFloat(amount) > selectedToken.balance || isDepositing}
+              >
+                {isDepositing ? 'Depositing...' : 'Deposit'}
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

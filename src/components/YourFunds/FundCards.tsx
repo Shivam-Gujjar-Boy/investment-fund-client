@@ -19,7 +19,7 @@ interface FundCardProps {
 }
 
 export const FundCard = ({ fund, status }: FundCardProps) => {
-    console.log(status);
+    // console.log(status);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [isInviting, setIsInviting] = useState(false);
     const [inviteePubkey, setInviteePubkey] = useState('');
@@ -473,8 +473,8 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
 
                     {/* Heading */}
                     <div className="">
-                        <h2 className="text-2xl font-bold text-indigo-300">Inviting To This Fund</h2>
-                        <div className="space-y-1 text-sm text-slate-300">
+                        {/* <h2 className="text-2xl font-bold text-indigo-300">Inviting To This Fund</h2> */}
+                        <div className="space-y-4 text-sm text-slate-300">
                             <div className="bg-slate-800/60 border-indigo-700/40 rounded-xl p-4 shadow-inner shadow-indigo-900/20">
                                 <p>
                                 <span className="text-indigo-400 font-semibold">Invite Cost:</span>{' '}
@@ -487,7 +487,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                             </div>
 
                             <div>
-                                <label htmlFor="inviteePubkey" className="block mb-2 text-indigo-300 font-medium">
+                                <label htmlFor="inviteePubkey" className="block mb-3 text-indigo-300 font-medium">
                                 Invitee's Wallet Address
                                 </label>
                                 <input
@@ -496,7 +496,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                                 placeholder="Enter wallet public key..."
                                 value={inviteePubkey}
                                 onChange={(e) => setInviteePubkey(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl bg-[#0f172a] border border-indigo-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-[0_0_12px_#7c3aed22]"
+                                className="w-full mb-2 px-4 py-3 rounded-xl bg-[#0f172a] border border-indigo-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 shadow-[0_0_12px_#7c3aed22]"
                                 />
                             </div>
                         </div>
@@ -519,7 +519,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                             isInviting ?
                             'bg-gray-600 cursor-not-allowed' :
                             'bg-indigo-500 hover:bg-indigo-400'
-                            } text-white transition-all duration-200 shadow-[0_0_10px_#6366f1aa]`}
+                            } text-white transition-all duration-200 shadow-[0_0_3px_#6366f1aa]`}
                         >
                             {isInviting ? 'Inviting...' : 'Invite'}
                         </button>
