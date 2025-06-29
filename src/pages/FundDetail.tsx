@@ -8,61 +8,22 @@ import {
   Search, Settings, Wallet,
   BarChart3, Activity,
   Eye, EyeOff, RefreshCw,
-  ChevronRight, Grid3X3,
-  List, DollarSign
+  ChevronRight, DollarSign
 } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import toast from 'react-hot-toast';
 import { programId } from '../types';
-import VaultHoldings from '../components/FundInformation/VaultHoldings';
 import { Metaplex } from '@metaplex-foundation/js';
 import { fetchUserTokens } from '../functions/fetchuserTokens';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
-import FundMembersFancy from '../components/FundInformation/FundMembers';
-
-// Dummy Data for Fund Graph for now
-const dummyPerformanceData = [
-  { time: 'Jan 01', value: 2400 },
-  { time: 'Jan 05', value: 2550 },
-  { time: 'Jan 10', value: 2620 },
-  { time: 'Jan 15', value: 2500 },
-  { time: 'Jan 20', value: 2680 },
-  { time: 'Jan 25', value: 2750 },
-  { time: 'Feb 01', value: 2700 },
-  { time: 'Feb 05', value: 2890 },
-  { time: 'Feb 10', value: 2920 },
-  { time: 'Feb 15', value: 2780 },
-  { time: 'Feb 20', value: 2840 },
-  { time: 'Feb 25', value: 2970 },
-  { time: 'Mar 01', value: 3100 },
-  { time: 'Mar 05', value: 3240 },
-  { time: 'Mar 10', value: 3170 },
-  { time: 'Mar 15', value: 3300 },
-  { time: 'Mar 20', value: 3430 },
-  { time: 'Mar 25', value: 3390 },
-  { time: 'Apr 01', value: 3500 },
-  { time: 'Apr 05', value: 3620 },
-  { time: 'Apr 10', value: 3570 },
-  { time: 'Apr 15', value: 3700 },
-  { time: 'Apr 20', value: 3840 },
-  { time: 'Apr 25', value: 3920 },
-  { time: 'May 01', value: 3890 },
-  { time: 'May 05', value: 4050 },
-  { time: 'May 10', value: 4100 },
-  { time: 'May 15', value: 4220 },
-  { time: 'May 20', value: 4300 },
-  { time: 'May 25', value: 4390 },
-  { time: 'Jun 01', value: 4520 },
-  { time: 'Jun 05', value: 4600 },
-];
+import FundMembers from '../components/FundInformation/FundMembers';
+import FundPerformance from '../components/FundInformation/FundPerformance';
 
 export default function FundsList() {
   const [fund, setFund] = useState<LightFund | null>(null);
   const [activeTab, setActiveTab] = useState('performance');
-  const [viewMode, setViewMode] = useState('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [showBalance, setShowBalance] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -73,7 +34,8 @@ export default function FundsList() {
   const [selectedToken, setSelectedToken] = useState<Token | null>(null);
   const [amount, setAmount] = useState('');
   const [userTokens, setUserTokens] = useState<Token[]>([]);
-  const [activeTimeframe, setActiveTimeframe] = useState('1M');
+  const [inviteAddress, setInviteAddress] = useState('');
+  const [showInviteInput, setShowInviteInput] = useState(false);
   if (loading) {console.log()}
 
   const wallet = useWallet();
@@ -205,7 +167,6 @@ export default function FundsList() {
       }
 
       const mint = new PublicKey(selectedToken?.mint);
-      // console.log(mint.toBase58(), '---------');
 
       const vaultATA = await getAssociatedTokenAddress(
         mint,
@@ -215,7 +176,6 @@ export default function FundsList() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-      // console.log('Vault ATA', vaultATA.toBase58());
 
       if (!fund.fundPubkey) {
         toast.error('No fund pda found');
@@ -251,17 +211,6 @@ export default function FundsList() {
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
 
       ];
-      // console.log("user wallet", user.toBase58());
-      // console.log("member ata", keyp.publicKey.toBase58(), " ", selectedToken.pubkey.toBase58());
-      // console.log("vault", fund.vault.toBase58());
-      // console.log("vault ata", vaultATA.toBase58());
-      // console.log("mint account", mint.toBase58());
-      // console.log("token program", TOKEN_PROGRAM_ID.toBase58());
-      // console.log("ata program", ASSOCIATED_TOKEN_PROGRAM_ID.toBase58());
-      // console.log("fund account", fund.fundPubkey.toBase58());
-      // console.log("user pda", userAccountPda.toBase58());
-      // console.log("system program", SYSTEM_PROGRAM_ID.toBase58());
-      // console.log("rentsysvar", SYSVAR_RENT_PUBKEY.toBase58());
 
       let transferAmount: bigint = BigInt(0);
       if (!amount.includes('.')) {
@@ -433,14 +382,20 @@ export default function FundsList() {
                         <Users className="w-4 h-4 text-blue-400" />
                         <span className="text-slate-400 text-xs">Members</span>
                       </div>
-                      <div className="text-lg font-bold text-white">{fund.numOfMembers}/{fund.expectedMembers}</div>
+                      <div className='flex justify-between items-center'>
+                        <div className="text-lg font-bold text-white">{fund.numOfMembers}/{fund.expectedMembers}</div>
+                        <button className='border w-5 h-5 rounded-full hover:bg-slate-700 flex justify-center items-center'>+</button>
+                      </div>
                     </div>
                     <div className="bg-slate-800/30 rounded-xl p-3 border border-slate-700/30">
                       <div className="flex items-center gap-2 mb-1">
                         <Activity className="w-4 h-4 text-emerald-400" />
                         <span className="text-slate-400 text-xs">Contribution</span>
                       </div>
-                      <div className="text-lg font-bold text-white">{Number(fund.totalDeposit) === 0 ? '0%' : `${Number(contribution /fund.totalDeposit)*100}%`}</div>
+                      <div className='flex justify-between items-center'>
+                        <div className="text-lg font-bold text-white">{Number(fund.totalDeposit) === 0 ? '0%' : `${(Number(contribution) /Number(fund.totalDeposit)*100).toFixed(2)}%`}</div>
+                        <button className='border w-5 h-5 rounded-full hover:bg-slate-700 flex justify-center items-center'>+</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -488,6 +443,7 @@ export default function FundsList() {
                       Deposit
                     </motion.button>
                     <motion.button
+                      onClick={() => setActiveTab('performance')}
                       whileHover={{ x: 4 }}
                       className="w-full flex items-center gap-3 p-3 bg-slate-800/30 hover:bg-slate-700/50 rounded-xl transition-all duration-300 text-slate-300 hover:text-white border border-slate-700/30"
                     >
@@ -556,129 +512,78 @@ export default function FundsList() {
                 {activeTab === 'performance' ? 'Fund Performance & Holdings' :
                   activeTab === 'members' ? 'Fund Members' : 'Proposals'}
               </h2>
-              <p className="text-slate-400">Manage your decentralized investment portfolio</p>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder='Search Funds...'
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-                />
-              </div>
-
-              <div className="flex bg-slate-800/50 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}
+            <div className='flex gap-2'>
+              {activeTab === 'members' && (
+                <>
+                  <div className="relative">
+                    {showInviteInput ? (
+                      <motion.div
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 50 }}
+                        className="flex items-center gap-3 bg-slate-800/50 border border-slate-700/50 px-4 py-2 rounded-xl"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Enter wallet address..."
+                          value={inviteAddress}
+                          onChange={(e) => setInviteAddress(e.target.value)}
+                          className="bg-transparent outline-none text-white placeholder-slate-400 w-48"
+                        />
+                        <button
+                          className="bg-gradient-to-br from-purple-600 to-indigo-600 text-white px-3 py-1 rounded-lg text-sm font-semibold hover:brightness-110 transition"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowInviteInput(false);
+                            setInviteAddress('');
+                          }}
+                          className="text-slate-400 hover:text-red-400 text-sm font-medium transition"
+                        >
+                          Cancel
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowInviteInput(true)}
+                        className="bg-gradient-to-br from-purple-700 to-indigo-700 text-white px-4 py-2 rounded-xl font-semibold text-sm border border-purple-600 shadow-[0_0_6px_#7c3aed50] hover:shadow-[0_0_10px_#7c3aed80] transition-all"
+                      >
+                        Invite
+                      </motion.button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder='Search Members...'
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-400 focus:border-purple-500/50 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-4 p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl transition-all">
+                <motion.button
+                  whileTap={{ scale: 0.95, rotate: 90 }}
                 >
-                  <Grid3X3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
+                  <RefreshCw className="w-5 h-5 text-slate-400" />
+                </motion.button>
               </div>
-
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 180 }}
-                whileTap={{ scale: 0.95 }}
-                className="p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl transition-all"
-              >
-                <RefreshCw className="w-5 h-5 text-slate-400" />
-              </motion.button>
             </div>
           </div>
         </div>
 
         {/* Content */}
         {activeTab === 'performance' && (
-          <div className="pt-28 px-2 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 h-screen">
-            <div className="flex gap-3 h-full">
-              {/* Left - Performance Line Chart */}
-              <div className="w-[60%] bg-gradient-to-br from-purple-900/5 via-slate-800/50 to-blue-900/30 backdrop-blur-lg border border-purple-600/20 shadow-[0_0_5px_#7c3aed33] rounded-lg p-6 h-[85%] flex flex-col">
-                <div className="flex items-center justify-between mb-4 h-[10%]">
-                  <h3 className="text-lg font-semibold">Fund Value Over Time</h3>
-                  <div className="flex gap-2">
-                    {["1D", "1W", "1M", "3M", "6M", "1Y", "ALL"].map((label) => (
-                      <button
-                        key={label}
-                        onClick={() => setActiveTimeframe(label)}
-                        className={`px-3 py-1 rounded-lg text-sm transition-all duration-300 border ${
-                          activeTimeframe === label
-                            ? 'bg-purple-600 text-white border-purple-500'
-                            : 'bg-slate-700/30 text-slate-300 border-slate-600 hover:bg-slate-700'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <ResponsiveContainer width="100%" height="90%">
-                  <LineChart
-                    data={dummyPerformanceData}
-                    margin={{ top: 40, right: 40, left: 0, bottom: 20 }}
-                  >
-                    <defs>
-                      <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
-                      </linearGradient>
-                    </defs>
-
-                    <CartesianGrid stroke="#475569" strokeDasharray="4 4" opacity={0.3} />
-                    <XAxis dataKey="time" stroke="#cbd5e1" />
-                    <YAxis stroke="#cbd5e1" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderColor: "#7c3aed",
-                        color: "white",
-                        borderRadius: 10,
-                      }}
-                      cursor={{ stroke: "#7c3aed", strokeWidth: 2, opacity: 0.2 }}
-                    />
-
-                    {/* Left highlighted segment */}
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="url(#lineGradient)"
-                      strokeWidth={4}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-
-                    {/* Right faded segment */}
-                    <Line
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#8b5cf6"
-                      strokeWidth={4}
-                      strokeDasharray="6 6"
-                      opacity={0.2}
-                      dot={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Right - Holdings Pie Chart */}
-              <div className='w-[39%] h-[85%]'>
-                <VaultHoldings vault={fund?.vault} connection={connection} metaplex={metaplex}/>
-              </div>
-            </div>
-          </div>
+          <FundPerformance fund={fund} connection={connection} metaplex={metaplex} userStakePercent={Number(contribution)/Number(fund.totalDeposit) * 100} setShowDepositModal={setShowDepositModal}/>
         )}
-        {activeTab === 'members' && <FundMembersFancy fund={fund} />}
+        {activeTab === 'members' && <FundMembers fund={fund} searchTerm={searchTerm} />}
       </div>
       {showDepositModal && (
         <div onClick={(e) => {

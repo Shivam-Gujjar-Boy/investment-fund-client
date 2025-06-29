@@ -1,10 +1,4 @@
-import { Metaplex } from "@metaplex-foundation/js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { fetchMintMetadata } from "../../functions/fetchuserTokens";
 import { Token } from "../../types";
-import { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import {
   PieChart,
   Pie,
@@ -14,7 +8,7 @@ import {
   Sector,
   Legend,
 } from 'recharts';
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const COLORS = [
   '#6366F1', '#14B8A6', '#F59E0B', '#093cd6', '#10B981',
@@ -22,77 +16,11 @@ const COLORS = [
 ];
 
 interface VaultHoldingsProps {
-  vault: PublicKey | undefined,
-  connection: Connection,
-  metaplex: Metaplex
+  tokens: Token[] | null,
 }
 
-export default function VaultHoldings({ vault, connection, metaplex }: VaultHoldingsProps) {
-  const [tokens, setTokens] = useState<Token[] | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function VaultHoldings({ tokens }: VaultHoldingsProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-
-  const fetchVaultTokens = useCallback(async () => {
-    try {
-      if (!vault) return;
-
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        vault,
-        { programId: TOKEN_PROGRAM_ID }
-      );
-
-      const tokens = tokenAccounts.value
-        .map((acc) => {
-          const info = acc.account.data.parsed.info;
-          const mint = info.mint;
-          const balance = info.tokenAmount.uiAmount;
-          const decimals = info.decimals;
-          return {
-            pubkey: acc.pubkey,
-            mint,
-            symbol: 'Unknown',
-            image: '',
-            balance,
-            decimals
-          };
-        })
-        .filter((token) => token.balance > 0);
-
-      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=50`);
-      const price = response.data.outAmount;
-
-      const tokensWithMetadata = await Promise.all(
-        tokens.map(async (token) => {
-          const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
-          if (token.mint !== 'So11111111111111111111111111111111111111112') {
-            token.balance = (token.balance) * (price / 1_000_000_000);
-          }
-          console.log(`${token.symbol}'s balance:`, token.balance);
-          return {
-            ...token,
-            symbol: metadata?.symbol || token.symbol,
-            image: metadata?.image || token.image,
-          };
-        })
-      );
-
-      setTokens(tokensWithMetadata);
-    } catch (err) {
-      console.error('Error fetching fund tokens:', err);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [connection, metaplex, vault]);
-
-  const fetchedRef = useRef(false);
-
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    fetchVaultTokens();
-  }, [fetchVaultTokens]);
-
   const totalBalance = tokens?.reduce((sum, token) => sum + (token.balance || 0), 0) || 0;
 
   const chartData = tokens?.map((token) => ({
@@ -129,18 +57,14 @@ export default function VaultHoldings({ vault, connection, metaplex }: VaultHold
   };
 
   return (
-    <div className="relative p-6 h-full w-full rounded-lg overflow-hidden bg-[#151A33] group transition-transform border border-indigo-500/20 shadow-[0_0_5px_#6366F140] backdrop-blur-lg">
+    <div className="relative p-6 h-full w-full rounded-lg overflow-hidden bg-[#151A33] group transition-transform border border-indigo-500/20 shadow-[0_0_5px_#6366F140] backdrop-blur-lg flex flex-col">
       <div className="absolute inset-0 bg-gradient-to-br from-teal-900/20 via-purple-800/10 to-indigo-900/20 opacity-40 blur-3xl group-hover:opacity-60 transition duration-1000 ease-in-out pointer-events-none" />
 
       <h2 className="text-xl font-bold text-center mb-4 text-white tracking-wide relative z-10">
         Vault Holdings
       </h2>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64 relative z-10">
-          <Loader2 className="animate-spin w-8 h-8 text-gray-400" />
-        </div>
-      ) : tokens && tokens.length > 0 ? (
+      {tokens && tokens.length > 0 ? (
         <ResponsiveContainer width="100%" height="90%">
           <PieChart>
             <defs>

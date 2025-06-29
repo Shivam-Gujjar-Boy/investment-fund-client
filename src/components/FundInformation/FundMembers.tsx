@@ -6,10 +6,11 @@ import { useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 
 interface MembersProps {
-  fund: LightFund
+  fund: LightFund,
+  searchTerm: string
 }
 
-export default function FuturisticFundMembers({fund} : MembersProps) {
+export default function FundMembers({fund, searchTerm} : MembersProps) {
   const [members, setMembers] = useState<Member[] | null>(null);
 
   const {connection} = useConnection();
@@ -52,6 +53,8 @@ export default function FuturisticFundMembers({fund} : MembersProps) {
               break;
             }
           }
+          console.log(balance);
+          console.log(fund.totalDeposit);
 
           const metadataUrl = `https://${userCid}.ipfs.w3s.link/metadata.json`;
           const imageUrl = `https://${userCid}.ipfs.w3s.link/profile.jpg`;
@@ -69,7 +72,7 @@ export default function FuturisticFundMembers({fund} : MembersProps) {
             name: metadata.username,
             profilePic: profileImageUrl,
             address: fund.members[i],
-            contributionPercent: fund.totalDeposit === BigInt(0) ? 0 : Number(balance/fund.totalDeposit) * 100,
+            contributionPercent: fund.totalDeposit === BigInt(0) ? 0 : Number(balance)/Number(fund.totalDeposit) * 100,
             joined
           } as Member;
         })
@@ -78,8 +81,6 @@ export default function FuturisticFundMembers({fund} : MembersProps) {
       // Filter out any nulls (just in case)
       const filtered = membersArray.filter((m): m is Member => m !== null);
       setMembers(filtered);
-
-      console.log(members);
 
     } catch (err) {
       console.log(err);
@@ -96,7 +97,7 @@ export default function FuturisticFundMembers({fund} : MembersProps) {
   }, [fetchMembers]);
 
   return (
-    <div className="min-h-screen bg-slate-900/5 backdrop-blur-xl relative overflow-hidden mt-24 px-4">
+    <div className="min-h-screen bg-slate-900/5 backdrop-blur-xl relative overflow-hidden mt-20 px-4">
       {members === null ? (
         <div className="flex justify-center items-center h-[40vh]">
           <Loader2 className="w-8 h-8 text-white animate-spin" />
@@ -109,7 +110,7 @@ export default function FuturisticFundMembers({fund} : MembersProps) {
         </div>
       ) : (
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 p-8 max-w-7xl mx-auto">
-          {members.map((member, index) => (
+          {members.filter(member => member.name.toLowerCase().includes(searchTerm.toLowerCase())).map((member, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 50 }}
