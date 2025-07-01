@@ -184,9 +184,9 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
     return (
         <>
           <div className="flex flex-col px-2 pt-3 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 min-h-screen mt-20">
-            <div className="flex gap-3 mb-3 h-[75vh]">
+            <div className="flex flex-col lg:flex-row gap-3 mb-3 h-[75vh]">
                 {/* Left - Performance Line Chart */}
-                  <FundGraph />
+                <FundGraph />
 
                 {/* Right - Holdings Pie Chart */}
                 <div className='w-[39%] h-[100%]'>
@@ -465,34 +465,3 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
         </>
     );
 }
-
-
-// !tokens ? (
-//             <div className="flex flex-col items-center justify-center mt-28 text-white space-y-4 h-screen pb-52">
-//               <div className="flex space-x-2">
-//                 {[0, 1, 2].map((i) => (
-//                   <motion.span
-//                     key={i}
-//                     className="w-4 h-4 rounded-full bg-gradient-to-r from-purple-400 to-cyan-400"
-//                     animate={{
-//                       scale: [1, 1.4, 1],
-//                       opacity: [0.7, 1, 0.7],
-//                     }}
-//                     transition={{
-//                       duration: 1,
-//                       repeat: Infinity,
-//                       delay: i * 0.2,
-//                       ease: "easeInOut",
-//                     }}
-//                   />
-//                 ))}
-//               </div>
-//               <motion.div
-//                 className="text-sm text-gray-300 tracking-wide"
-//                 animate={{ opacity: [0.6, 1, 0.6] }}
-//                 transition={{ duration: 2, repeat: Infinity }}
-//               >
-//                 Loading Performance...
-//               </motion.div>
-//             </div>
-//           ) : 

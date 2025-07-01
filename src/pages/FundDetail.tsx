@@ -302,7 +302,7 @@ export default function FundsList() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 relative overflow-hidden flex flex-col lg:flex-row">
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -321,7 +321,7 @@ export default function FundsList() {
         animate={{ x: 0 }}
         exit={{ x: -328 }}
         transition={{ type: '', stiffness: 300 }}
-        className="fixed top-16 left-0 bottom-0 w-[21%] bg-slate-900/95 backdrop-blur-xl border-r border-t border-indigo-800 z-50 overflow-hidden"
+        className="lg:fixed lg:top-16 top-0 left-0 bottom-0 lg:w-[21%] w-full z-40 lg:h-auto h-screen bg-slate-900/95 backdrop-blur-xl border-r border-t border-indigo-800 overflow-hidden"
       >
         <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-blue-900/20" />
 
@@ -504,7 +504,7 @@ export default function FundsList() {
       </motion.div>
 
       {/* Top Bar and Main Content */}
-      <div className={`transition-all duration-300 ml-[21%]`}>
+      <div className="flex-1 flex flex-col lg:ml-[21%] w-full">
         <div className={`fixed z-40 bg-slate-900/90 backdrop-blur-xl border-b border-slate-700/50 w-[79%] top-16`}>
           <div className="flex items-center justify-between p-6">
             <div>

@@ -29,12 +29,6 @@ interface FormErrors {
   maxMemberCount?: string;
 }
 
-// interface Step {
-//   number: number;
-//   title: string;
-//   icon: React.ComponentType<any>;
-// }
-
 const LightFund = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [formData, setFormData] = useState<FormData>({
@@ -340,7 +334,7 @@ const LightFund = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900 p-4 flex relative">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/10 to-gray-900 p-2 sm:p-4 flex relative">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
@@ -348,10 +342,65 @@ const LightFund = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
       </div>
 
-      {/* Vertical Progress Steps */}
-      <div className="flex justify-center w-[15%] h-full fixed top-16">
-        <div className="relative flex flex-col items-start space-y-0 w-full pl-3">
-          <div className='flex pl-36'>
+      {/* Mobile Cost Summary - Top */}
+      {/* <div className="lg:hidden fixed top-4 right-4 z-30 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-3 shadow-sm shadow-indigo-500">
+        <div className="text-center">
+          <p className="text-gray-400 text-xs mb-1">Total Cost</p>
+          <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            {(rentCost + (formData.addMembersLater ? 0 : memberCost)).toFixed(5)} SOL
+          </p>
+          <p className="text-gray-500 text-xs">≈ ${((rentCost + (formData.addMembersLater ? 0 : memberCost)) * 140).toFixed(2)}</p>
+        </div>
+      </div> */}
+
+      {/* Mobile Horizontal Progress Steps */}
+      <div className="lg:hidden fixed top-16 left-0 right-0 z-20 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50 px-4 py-3">
+        <div className="flex items-center justify-between max-w-md mx-auto">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = currentStep === step.number;
+            const isCompleted = currentStep > step.number;
+
+            return (
+              <div key={step.number} className="flex items-center">
+                {/* Circle */}
+                <div className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                    isCompleted
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-lg shadow-violet-500/25'
+                      : isActive
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 border-purple-500 shadow-lg shadow-purple-500/25'
+                      : 'bg-slate-800 border-slate-600'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    ) : (
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                    )}
+                  </div>
+                  <span className={`text-xs mt-1 ${
+                    isActive ? 'text-purple-300' : 'text-gray-500'
+                  }`}>
+                    {step.title}
+                  </span>
+                </div>
+
+                {/* Horizontal Line */}
+                {index < steps.length - 1 && (
+                  <div className={`w-16 h-0.5 mx-2 transition-all duration-300 ${
+                    isCompleted ? 'bg-gradient-to-r from-purple-600 to-indigo-600' : 'bg-slate-700'
+                  }`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop Vertical Progress Steps */}
+      <div className="hidden lg:flex justify-center w-[15%] xl:w-[12%] h-full fixed top-16 left-5">
+        <div className="relative flex flex-col items-start space-y-0 w-full">
+          <div className='flex w-full justify-center pl-24'>
             <div className={`h-24 transition-all duration-300 bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5`} />
             <div className={`h-24 transition-all duration-300 bg-gradient-to-r from-purple-600 to-indigo-600 w-1.5`} />
           </div>
@@ -361,9 +410,9 @@ const LightFund = () => {
             const isCompleted = currentStep > step.number;
 
             return (
-              <div key={step.number} className="flex items-center justify-end pr-7 space-x-4 relative z-10 w-full">
+              <div key={step.number} className="flex items-center justify-center relative z-10 w-full pl-24">
                 {/* Step Text */}
-                <span className={`absolute -left-2 top-7 text-md font-medium w-28 text-right ${
+                <span className={`absolute -left-2 top-7 text-md font-medium w-20 text-right ${
                   isActive ? 'text-purple-300' : 'text-gray-500'
                 }`}>
                   {step.title}
@@ -403,26 +452,26 @@ const LightFund = () => {
               </div>
             );
           })}
-          <div className='flex pl-36 gap-1'>
+          <div className='flex w-full justify-center gap-1 pl-24'>
             <div className={`h-96 transition-all duration-300 bg-slate-700 w-1`} />
             <div className={`h-96 transition-all duration-300 bg-slate-700 w-1`} />
           </div>
         </div>
       </div>
 
-      <div className="w-full mx-auto relative">
+      <div className="w-full mx-auto relative lg:ml-[15%] xl:ml-[12%] mt-24 lg:mt-0">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent mb-2">
+        <div className="text-center mb-3 lg:mb-8 px-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-white to-purple-300 bg-clip-text text-transparent mb-2">
             Create Your Fund
           </h1>
-          <p className="text-gray-400">Build a decentralized multisig fund in minutes</p>
+          <p className="text-gray-400 text-sm lg:text-base">Build a decentralized multisig fund in minutes</p>
         </div>
 
-        <div className='flex w-full gap-10 justify-center relative pl-10'>
+        <div className='flex w-full gap-4 lg:gap-10 justify-center relative px-2 lg:px-10'>
 
           {/* Main Form */}
-          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-8 py-6 w-[65%] border-indigo-900 shadow-[0_0_10px_#6d28d9aa]">
+          <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl px-4 sm:px-6 lg:px-8 py-6 w-full max-w-6xl border-indigo-900 shadow-[0_0_10px_#6d28d9aa]">
             <AnimatePresence mode='wait'>
               <motion.div
                 key={currentStep}
@@ -434,14 +483,14 @@ const LightFund = () => {
             {/* Step 1: Fund Details */}
             {currentStep === 1 && (
               <div className="space-y-6">
-                <div className='flex justify-between'>
+                <div className='flex flex-col lg:flex-row lg:justify-between gap-4'>
                   <div className="text-start">
-                    <h2 className="text-2xl font-bold text-white mb-2">Fund Details</h2>
-                    <p className="text-gray-400">Let's start with the basics</p>
+                    <h2 className="text-xl lg:text-2xl font-bold text-white mb-2">Fund Details</h2>
+                    <p className="text-gray-400 text-sm lg:text-base">Let's start with the basics</p>
                   </div>
-                  <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border-purple-500/30 rounded-full px-6 py-3 mb-4">
-                    <Sparkles className="w-5 h-5 text-purple-400" />
-                    <span className="text-purple-300 font-semibold">Light Fund Creation</span>
+                  <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border-purple-500/30 rounded-full px-4 lg:px-6 py-2 lg:py-3 mb-4">
+                    <Sparkles className="w-4 lg:w-5 h-4 lg:h-5 text-purple-400" />
+                    <span className="text-purple-300 font-semibold text-sm lg:text-base">Light Fund Creation</span>
                   </div>
                 </div>
 
@@ -479,16 +528,16 @@ const LightFund = () => {
                   </div>
 
                   {/* Rent Cost Display */}
-                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-2 px-4">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-3 lg:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                           <DollarSign className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <div className='flex gap-3'>
-                            <h3 className="text-lg font-semibold text-white">Creation Cost</h3>
-                            <div className="flex justify-end">
+                          <div className='flex flex-col sm:flex-row gap-1 sm:gap-3'>
+                            <h3 className="text-base lg:text-lg font-semibold text-white">Creation Cost</h3>
+                            <div className="flex justify-start sm:justify-end">
                               <button
                                 onClick={() => setShowCreationDetails(true)}
                                 className="text-sm font-medium text-purple-400 hover:text-pink-400 transition-colors">
@@ -499,8 +548,8 @@ const LightFund = () => {
                           <p className="text-gray-400 text-sm">One-time fund creation fee</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      <div className="text-left sm:text-right">
+                        <p className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                           {rentCost} SOL
                         </p>
                         <p className="text-gray-400 text-sm">≈ ${(rentCost * 140).toFixed(2)}</p>
@@ -513,18 +562,18 @@ const LightFund = () => {
 
             {/* Step 2: Members */}
             {currentStep === 2 && (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white mb-2">Fund Members</h2>
-                  <p className="text-gray-400">Add members to your multisig fund</p>
+                  <h2 className="text-xl lg:text-2xl font-bold text-white mb-2">Fund Members</h2>
+                  <p className="text-gray-400 text-sm lg:text-base">Add members to your multisig fund</p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {/* Add Members Toggle */}
                   <div className="w-fit mx-auto bg-slate-800 rounded-full p-1 flex gap-1 relative border">
                     {/* Active background indicator */}
                     <div
-                      className={`absolute top-1 h-10 w-[48.5%] rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ${
+                      className={`absolute top-1 h-8 lg:h-10 w-[48.5%] rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300 ${
                         formData.addMembersLater ? 'translate-x-full' : ''
                       }`}
                     />
@@ -532,7 +581,7 @@ const LightFund = () => {
                     {/* Toggle options */}
                     <button
                       onClick={() => setFormData(prev => ({ ...prev, addMembersLater: false }))}
-                      className={`z-10 w-32 text-sm font-semibold h-10 rounded-full transition-all duration-200 ${
+                      className={`z-10 w-24 lg:w-32 text-sm font-semibold h-8 lg:h-10 rounded-full transition-all duration-200 ${
                         !formData.addMembersLater ? 'text-white' : 'text-gray-300 hover:bg-slate-700'
                       }`}
                     >
@@ -540,7 +589,7 @@ const LightFund = () => {
                     </button>
                     <button
                       onClick={() => setFormData(prev => ({ ...prev, addMembersLater: true }))}
-                      className={`z-10 w-32 text-sm font-semibold h-10 rounded-full transition-all duration-200 ${
+                      className={`z-10 w-24 lg:w-32 text-sm font-semibold h-8 lg:h-10 rounded-full transition-all duration-200 ${
                         formData.addMembersLater ? 'text-white' : 'text-gray-300 hover:bg-slate-700'
                       }`}
                     >
@@ -549,7 +598,7 @@ const LightFund = () => {
                   </div>
 
                   {formData.addMembersLater ? (
-                    <div className="space-y-2">
+                    <div className="space-y-4">
                       <label className="block text-sm font-medium text-gray-300">
                         Maximum number of members <span className='text-xs text-indigo-400'>(including you)</span>
                       </label>
@@ -569,14 +618,14 @@ const LightFund = () => {
                       </span>                        
                       </div>
                       
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2">
+                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
                         <div className="flex items-center space-x-3">
-                          <Shield className="w-5 h-5 text-blue-400" />
+                          <Shield className="w-5 h-5 text-blue-400 flex-shrink-0" />
                           <div>
-                            <p className="text-blue-300 font-medium">
+                            <p className="text-blue-300 font-medium text-sm lg:text-base">
                               Multisig Type: <span className='font-semibold text-violet-300'>{getMultisigType(formData.maxMemberCount)}</span>
                             </p>
-                            <p className="text-blue-400/70 text-sm">
+                            <p className="text-blue-400/70 text-xs lg:text-sm">
                               {formData.maxMemberCount&1 ? (formData.maxMemberCount + 1)/2 : (formData.maxMemberCount / 2) + 1} signatures required out of {formData.maxMemberCount} members
                             </p>
                           </div>
@@ -585,13 +634,13 @@ const LightFund = () => {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-md font-medium text-gray-300">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <label className="block text-sm lg:text-md font-medium text-gray-300">
                           Member Wallet Addresses
                         </label>
                         <button
                           onClick={addMemberAddress}
-                          className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
+                          className="flex items-center justify-center space-x-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300"
                         >
                           <Plus className="w-4 h-4" />
                           <span>Add Member</span>
@@ -612,13 +661,13 @@ const LightFund = () => {
                                 type="text"
                                 value={address}
                                 onChange={(e) => updateMemberAddress(index, e.target.value)}
-                                className="w-full pl-12 pr-4 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                                className="w-full pl-12 pr-4 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 text-sm"
                                 placeholder="Wallet address"
                               />
                             </div>
                             <button
                               onClick={() => removeMemberAddress(index)}
-                              className="p-1 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all duration-300"
+                              className="p-1 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all duration-300 flex-shrink-0"
                             >
                               <X className="w-5 h-5" />
                             </button>
@@ -627,14 +676,14 @@ const LightFund = () => {
                       </div>
 
                       {formData.memberAddresses.length > 0 && (
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-2">
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
                           <div className="flex items-center space-x-3">
-                            <Shield className="w-5 h-5 text-blue-400" />
+                            <Shield className="w-5 h-5 text-blue-400 flex-shrink-0" />
                             <div>
-                              <p className="text-blue-300 font-medium">
+                              <p className="text-blue-300 font-medium text-sm lg:text-base">
                                 Multisig Type: <span className='font-semibold text-violet-300'>{getMultisigType(formData.memberAddresses.length + 1)}</span>
                               </p>
-                              <p className="text-blue-400/70 text-sm">
+                              <p className="text-blue-400/70 text-xs lg:text-sm">
                                 {Math.ceil((formData.memberAddresses.length + 1) * ((formData.memberAddresses.length + 1) <= 3 ? 0.67 : (formData.memberAddresses.length + 1) <= 7 ? 0.6 : 0.55))} signatures required out of {formData.memberAddresses.length + 1} members
                               </p>
                             </div>
@@ -652,17 +701,17 @@ const LightFund = () => {
                   )}
 
                   {/* Member Cost Display */}
-                  <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-2">
-                    <div className="flex items-center justify-between">
+                  <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-xl p-3 lg:p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                        <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Users className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <div className='flex gap-3'>
-                            <h3 className="text-lg font-semibold text-white">Member Invitation Cost</h3>
+                          <div className='flex flex-col sm:flex-row gap-1 sm:gap-3'>
+                            <h3 className="text-base lg:text-lg font-semibold text-white">Member Invitation Cost</h3>
                             {!formData.addMembersLater && (
-                              <div className="flex justify-end">
+                              <div className="flex justify-start sm:justify-end">
                                 <button
                                   onClick={() => setShowCreationDetails(true)}
                                   className="text-sm font-medium text-purple-400 hover:text-pink-400 transition-colors">
@@ -674,8 +723,8 @@ const LightFund = () => {
                           <p className="text-gray-400 text-sm">Refunded when members join</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
+                      <div className="text-left sm:text-right">
+                        <p className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">
                           {formData.addMembersLater ? '0.00' : (memberCost === 0 ? '0.00' : (memberCost.toFixed(6)))} SOL
                         </p>
                         <p className="text-gray-400 text-sm">≈ ${formData.addMembersLater ? '0.00' : (memberCost * 140).toFixed(2)}</p>
@@ -690,15 +739,15 @@ const LightFund = () => {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold text-white mb-2">Fund Tags & Review</h2>
-                  <p className="text-gray-400">Customize your fund's characteristics</p>
+                  <h2 className="text-xl lg:text-2xl font-bold text-white mb-2">Fund Tags & Review</h2>
+                  <p className="text-gray-400 text-sm lg:text-base">Customize your fund's characteristics</p>
                 </div>
 
-                <div className="space-y-4 flex justify-between items-center">
-                  <div className='w-[40%] max-h-96 overflow-auto'>
+                <div className="space-y-6 flex flex-col xl:flex-row xl:justify-between xl:items-start gap-6">
+                  <div className='w-full xl:w-[40%] max-h-96 overflow-auto'>
                     <label className="block text-sm font-medium text-gray-300 mb-4">
                       Fund Tags
-                      <span className="text-gray-500 ml-2">(Auto-selected tags cannot be removed)</span>
+                      <span className="text-gray-500 ml-2 text-xs">(Auto-selected tags cannot be removed)</span>
                     </label>
                     <div className="flex flex-wrap gap-2 overflow-y-auto px-1 py-1">
                       {fundTags.map((tag) => {
@@ -725,22 +774,22 @@ const LightFund = () => {
                   </div>
 
                   {/* Final Review */}
-                  <div className="w-[55%] bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600 rounded-xl p-6 space-y-4">
-                    <h3 className="text-xl font-bold text-white mb-4">Fund Summary</h3>
+                  <div className="w-full xl:w-[55%] bg-gradient-to-r from-slate-800/50 to-slate-700/50 border border-slate-600 rounded-xl p-4 lg:p-6 space-y-4">
+                    <h3 className="text-lg lg:text-xl font-bold text-white mb-4">Fund Summary</h3>
                     
                     <div className="flex flex-col justify-between">
-                      <div className="space-y-1 h-[55%]">
-                        <div className="flex justify-between">
+                      <div className="space-y-2 h-[55%]">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Fund Name:</span>
-                          <span className="text-white font-medium">{formData.fundName || 'Not set'}</span>
+                          <span className="text-white font-medium truncate ml-2">{formData.fundName || 'Not set'}</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Members:</span>
                           <span className="text-white font-medium">
                             {formData.addMembersLater ? formData.maxMemberCount : formData.memberAddresses.length + 1}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Multisig Type:</span>
                           <span className="text-white font-medium">
                             {formData.addMembersLater 
@@ -749,7 +798,7 @@ const LightFund = () => {
                             }
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Tags:</span>
                           <span className="text-white font-medium">{formData.selectedTags.length}</span>
                         </div>
@@ -758,18 +807,18 @@ const LightFund = () => {
                       <div className='border border-dashed my-4'></div>
                       
                       <div className="space-y-2 h-[40%]">
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Creation Cost:</span>
                           <span className="text-white font-medium">{rentCost.toFixed(5)} SOL</span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm lg:text-base">
                           <span className="text-gray-400">Member Cost:</span>
                           <span className="text-white font-medium">{(formData.addMembersLater ? 0 : memberCost).toFixed(5)} SOL</span>
                         </div>
                         <div className="border-t border-slate-600 pt-3">
                           <div className="flex justify-between">
                             <span className="text-gray-300 font-medium">Total:</span>
-                            <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            <span className="text-lg lg:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                               {(rentCost + (formData.addMembersLater ? 0 : memberCost)).toFixed(5)} SOL
                             </span>
                           </div>
@@ -830,7 +879,7 @@ const LightFund = () => {
         </div>
 
         {/* Floating Cost Summary */}
-        <div className="fixed bottom-6 right-6 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-sm shadow-indigo-500">
+        {/* <div className="sm:hidden fixed bottom-6 right-6 bg-slate-800/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-sm shadow-indigo-500">
           <div className="text-center">
             <p className="text-gray-400 text-sm mb-1">Total Cost</p>
             <p className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -838,7 +887,7 @@ const LightFund = () => {
             </p>
             <p className="text-gray-500 text-xs">≈ ${((rentCost + (formData.addMembersLater ? 0 : memberCost)) * 140).toFixed(2)}</p>
           </div>
-        </div>
+        </div> */}
       </div>
       {showCreationDetails && (
         <div onClick={(e) => {

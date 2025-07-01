@@ -22,8 +22,7 @@ export default function Navbar() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const navigate = useNavigate();
   const wallet = useWallet();
-
-  const {connection} = useConnection();
+  const { connection } = useConnection();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleProfileModal = () => setIsProfileModalOpen(!isProfileModalOpen);
@@ -50,18 +49,18 @@ export default function Navbar() {
           setUserProfile(null);
           return;
         }
-        
+
         const userBuffer = Buffer.from(userAccountInfo.data);
         const cid = userBuffer.slice(0, 59).toString();
         const metadataUrl = `https://${cid}.ipfs.w3s.link/metadata.json`;
         const imageUrl = `https://${cid}.ipfs.w3s.link/profile.jpg`;
-        
+
         const metadataResponse = await fetch(metadataUrl);
         if (!metadataResponse.ok) {
           throw new Error(`Failed to fetch metadata: ${metadataResponse.status}`);
         }
         const metadata = await metadataResponse.json();
-        
+
         const profileResponse = await fetch(imageUrl);
         if (!profileResponse.ok) {
           throw new Error(`Failed to fetch profile image: ${profileResponse.status}`);
@@ -77,7 +76,6 @@ export default function Navbar() {
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load profile');
         console.error('Error fetching user profile:', err);
-        console.log(error);
       } finally {
         setLoading(false);
       }
@@ -85,7 +83,6 @@ export default function Navbar() {
 
     fetchUserCredentials();
 
-    // Cleanup function
     return () => {
       if (userProfile?.profileImageUrl) {
         URL.revokeObjectURL(userProfile.profileImageUrl);
@@ -93,7 +90,6 @@ export default function Navbar() {
     };
   }, [wallet?.publicKey, wallet, connection]);
 
-  // Close modal when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isProfileModalOpen && !(event.target as Element).closest('.profile-modal')) {
@@ -116,18 +112,18 @@ export default function Navbar() {
     <>
       <nav className="bg-[#151a2d]/70 backdrop-blur-xl border-b border-indigo-800 shadow-md fixed w-full z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between min-h-16">
             {/* Left: Brand & Desktop Nav */}
-            <div className="flex items-center space-x-10">
+            <div className="flex items-center space-x-6 sm:space-x-10">
               <div onClick={(e) => {
                 e.preventDefault();
                 navigate('/dashboard');
               }} className='flex justify-center items-center gap-2 cursor-pointer'>
-                <img src="/peerfunds.png" alt=":)" className='w-12 rounded-full'/>
-                <h1 className="text-white text-2xl font-bold tracking"> PeerFunds</h1>
+                <img src="/peerfunds.png" alt="PeerFunds" className='w-10 sm:w-12 rounded-full' />
+                <h1 className="text-white text-xl sm:text-2xl font-bold tracking-tight">PeerFunds</h1>
               </div>
 
-              <div className="hidden md:flex space-x-2">
+              <div className="hidden md:flex space-x-3">
                 <NavLink to="/dashboard/discover" className={navItemStyle}>
                   <Compass className="w-4 h-4 mr-2" /> Discover
                 </NavLink>
@@ -148,8 +144,6 @@ export default function Navbar() {
 
             {/* Right: Profile Image & Wallet */}
             <div className="hidden md:flex items-center gap-3">
-              {/* Profile Image */}
-              
               {loading ? (
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 animate-pulse"></div>
               ) : (
@@ -174,7 +168,6 @@ export default function Navbar() {
                   </div>
                 )
               )}
-
               <CustomWalletButton />
             </div>
 
@@ -204,7 +197,7 @@ export default function Navbar() {
 
         {/* Mobile Dropdown */}
         {isMenuOpen && (
-          <div className="md:hidden bg-[#1e2440]/90 backdrop-blur-md px-4 pb-4 pt-2 space-y-2 shadow-inner border-t border-indigo-700">
+          <div className="md:hidden bg-[#1e2440]/90 backdrop-blur-md px-4 pb-4 pt-2 space-y-1 shadow-inner border-t border-indigo-700 z-50">
             <NavLink to="/dashboard/discover" className={navItemStyle} onClick={toggleMenu}>
               <Compass className="w-4 h-4 mr-2" /> Discover
             </NavLink>
@@ -229,12 +222,12 @@ export default function Navbar() {
 
       {/* Profile Modal */}
       {isProfileModalOpen && userProfile && (
-        <div className="fixed inset-0 z-[60] flex items-start justify-end pt-20 pr-4">
-          <div className="profile-modal bg-[#1e2440]/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl shadow-purple-500/10 p-6 min-w-[300px] animate-in slide-in-from-top-2 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-start justify-end pt-16 sm:pt-20 pr-2 sm:pr-4">
+          <div className="profile-modal bg-[#1e2440]/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl shadow-purple-500/10 p-4 sm:p-6 w-full max-w-[300px] sm:max-w-[320px] animate-in slide-in-from-top-2 duration-200">
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full overflow-hidden border-3 border-gradient-to-r from-purple-500 to-indigo-500 p-0.5">
+                <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full overflow-hidden border-3 border-gradient-to-r from-purple-500 to-indigo-500 p-0.5">
                   <div className="w-full h-full rounded-full overflow-hidden bg-[#1e2440]">
                     <img
                       src={userProfile.profileImageUrl}
@@ -243,37 +236,36 @@ export default function Navbar() {
                     />
                   </div>
                 </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-400 border-2 border-[#1e2440] rounded-full"></div>
+                <div className="absolute -bottom-1 -right-1 w-4 sm:w-5 h-4 sm:h-5 bg-green-400 border-2 border-[#1e2440] rounded-full"></div>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white mb-1">Profile</h3>
-                <p className="text-sm text-gray-400">Account Details</p>
+                <h3 className="text-lg sm:text-xl font-bold text-white mb-1">Profile</h3>
+                <p className="text-xs sm:text-sm text-gray-400">Account Details</p>
               </div>
             </div>
 
             {/* Profile Info */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-900/20 border border-purple-500/20">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-purple-900/20 border border-purple-500/20">
+                <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Username</p>
-                  <p className="text-white font-semibold">{userProfile.username}</p>
+                  <p className="text-white font-semibold text-sm sm:text-base">{userProfile.username}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-indigo-900/20 border border-indigo-500/20">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center">
+              <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-indigo-900/20 border border-indigo-500/20">
+                <div className="w-7 sm:w-8 h-7 sm:h-8 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center">
                   <Mail className="w-4 h-4 text-white" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Email</p>
-                  <p className="text-white font-semibold break-all">{userProfile.email}</p>
+                  <p className="text-white font-semibold text-sm sm:text-base break-all">{userProfile.email}</p>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       )}
