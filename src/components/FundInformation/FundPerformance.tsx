@@ -1,7 +1,7 @@
 import VaultHoldings from './VaultHoldings';
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { LightFund, programId, Token } from '../../types';
-import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { Metaplex } from '@metaplex-foundation/js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import axios from 'axios';
@@ -10,7 +10,7 @@ import FundGraph from './FundGraph';
 import { TrendingUp, TrendingDown, DollarSign, ArrowDownLeft, LogOut, Info, Wallet, Target, Search } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import toast from 'react-hot-toast';
-// import {motion} from 'framer-motion'
+import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 
 interface PerformanceProps {
   fund: LightFund,
@@ -31,7 +31,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
 
     const wallet = useWallet();
 
-    const handleWithdraw = async () => {
+    const handleWithdraw = async (task: number) => {
       if (!fund || !connection || !wallet || !wallet.publicKey || !wallet.signTransaction || !tokens) return;
       const user = wallet.publicKey;
 
@@ -40,12 +40,14 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
         const stake_percent: bigint = BigInt(parseInt(withdrawPercent)) * BigInt(1e9);
         const nameBytes = Buffer.from(fund.name, 'utf8');
         
-        const buffer = Buffer.alloc(1 + 1 + 8 + nameBytes.length);
+        const buffer = Buffer.alloc(1 + 1 + 1 + 8 + nameBytes.length);
         let offset = 0;
 
         buffer.writeUInt8(instructionTag, offset);
         offset += 1;
         buffer.writeUInt8(tokens?.length, offset);
+        offset += 1;
+        buffer.writeUint8(task, offset);
         offset += 1;
         buffer.writeBigInt64LE(stake_percent, offset);
         offset += 8;
@@ -64,6 +66,9 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
           {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
           {pubkey: fund.vault, isSigner: false, isWritable: true},
           {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false}
         ];
 
         for (const token of tokens) {
@@ -109,15 +114,10 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
         setShowWithdrawModal(false);
       } catch (err) {
         console.log(err);
+        toast.error('Error withdraw stake');
       } finally {
         setWithdrawPercent('');
       }
-    };
-
-    const handleLeave = () => {
-      // Handle leave fund logic here
-      console.log('Leaving fund');
-      setShowLeaveModal(false);
     };
 
     const fetchVaultTokens = useCallback(async () => {
@@ -135,6 +135,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
             const decimals = info.decimals;
+            console.log(mint);
             return {
               pubkey: acc.pubkey,
               mint,
@@ -152,6 +153,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
         const tokensWithMetadata = await Promise.all(
           tokens.map(async (token) => {
             const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
+            console.log("Metadata = ", metadata)
             if (token.mint !== 'So11111111111111111111111111111111111111112') {
               token.balance = (token.balance) * (price / 1_000_000_000);
             }
@@ -399,7 +401,9 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                       Cancel
                     </button>
                     <button
-                      onClick={handleWithdraw}
+                      onClick={() => {
+                        handleWithdraw(0);
+                      }}
                       disabled={!withdrawPercent || parseInt(withdrawPercent) <= 0 || parseInt(withdrawPercent) > 100}
                       className="flex-1 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-all"
                     >
@@ -452,7 +456,9 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                       Cancel
                     </button>
                     <button
-                      onClick={handleLeave}
+                      onClick={() => {
+                        handleWithdraw(1);
+                      }}
                       className="flex-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 px-4 py-2 rounded-lg transition-all"
                     >
                       Leave Fund

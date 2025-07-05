@@ -151,6 +151,7 @@ export default function FundsList() {
 
   const handleDeposit = async () => {
     console.log(`Deposit ${amount} ${selectedToken?.symbol}`);
+    if (!selectedToken) return;
 
     try {
       if (!wallet.publicKey || !wallet.signTransaction) {
@@ -169,7 +170,7 @@ export default function FundsList() {
       const mint = new PublicKey(selectedToken?.mint);
 
       const vaultATA = await getAssociatedTokenAddress(
-        mint,
+        selectedToken.mint === 'So11111111111111111111111111111111111111111' ? new PublicKey('So11111111111111111111111111111111111111112') : mint,
         fund.vault,
         true,
         TOKEN_PROGRAM_ID,
@@ -192,17 +193,23 @@ export default function FundsList() {
       const keys = [
         { pubkey: user, isSigner: true, isWritable: true },
         {
-          pubkey: selectedToken?.mint === 'So11111111111111111111111111111111111111112'
+          pubkey: selectedToken?.mint === 'So11111111111111111111111111111111111111111'
             ? keyp.publicKey
             : selectedToken?.pubkey,
-          isSigner: selectedToken?.mint === 'So11111111111111111111111111111111111111112'
+          isSigner: selectedToken?.mint === 'So11111111111111111111111111111111111111111'
             ? true
             : false,
           isWritable: true
         },
         { pubkey: fund?.vault, isSigner: false, isWritable: true },
         { pubkey: vaultATA, isSigner: false, isWritable: true },
-        { pubkey: mint, isSigner: false, isWritable: true },
+        {
+          pubkey: selectedToken.mint === 'So11111111111111111111111111111111111111111'
+            ? new PublicKey('So11111111111111111111111111111111111111112')
+            : mint,
+          isSigner: false,
+          isWritable: true
+        },
         { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
         { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
         { pubkey: fund.fundPubkey, isSigner: false, isWritable: true },
@@ -231,7 +238,7 @@ export default function FundsList() {
         return;
       }
       let mint_amount = transferAmount;
-      if (selectedToken.mint !== 'So11111111111111111111111111111111111111112') {
+      if (selectedToken.mint !== 'So11111111111111111111111111111111111111111') {
         mint_amount = BigInt(response.data.outAmount);
       }
       console.log(mint_amount);
@@ -242,9 +249,14 @@ export default function FundsList() {
       console.log(amountBuffer, minTAmountBuffer);
 
       const nameBytes = new TextEncoder().encode(fund.name);
+      let tag = 0;
+      if (selectedToken.pubkey.toBase58() === 'So11111111111111111111111111111111111111111') {
+        tag = 1;
+      }
+      const isUnwrapped = Buffer.from([tag]);
       const fundType = Buffer.from([0]);
 
-      const instructionData = Buffer.concat([instructionTag, fundType, amountBuffer, minTAmountBuffer, nameBytes]);
+      const instructionData = Buffer.concat([instructionTag, isUnwrapped, fundType, amountBuffer, minTAmountBuffer, nameBytes]);
       console.log(instructionData.length);
 
       const instruction = new TransactionInstruction({
@@ -258,7 +270,7 @@ export default function FundsList() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = wallet.publicKey;
 
-      if (selectedToken?.mint === 'So11111111111111111111111111111111111111112') {
+      if (selectedToken?.mint === 'So11111111111111111111111111111111111111111') {
         transaction.partialSign(keyp);
       }
       const signedTransaction = await wallet.signTransaction(transaction);

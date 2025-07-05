@@ -25,26 +25,26 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
             const info = acc.account.data?.parsed.info;
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
-            const decimals = info.decimals;
+            const decimals = info.tokenAmount.decimals;
             return {
-            pubkey: acc.pubkey,
-            mint,
-            symbol: 'Unknown',
-            image: '',
-            balance,
-            decimals
+                pubkey: acc.pubkey,
+                mint,
+                symbol: 'Unknown',
+                image: '',
+                balance,
+                decimals
             };
         })
         .filter((token) => token.balance > 0);
 
         const balance = await connection.getBalance(wallet.publicKey);
         tokens?.unshift({
-        pubkey: new PublicKey('So11111111111111111111111111111111111111112'),
-        mint: 'So11111111111111111111111111111111111111112',
-        symbol: 'SOL',
-        image: '',
-        balance: balance/Math.pow(10, 9),
-        decimals: 9,
+            pubkey: new PublicKey('So11111111111111111111111111111111111111111'),
+            mint: 'So11111111111111111111111111111111111111111',
+            symbol: 'uwSOL',
+            image: '',
+            balance: balance/Math.pow(10, 9),
+            decimals: 9,
         });
 
         const tokensWithMetadata = await Promise.all(
