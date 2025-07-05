@@ -61,6 +61,7 @@ export interface UserFund {
 export interface Token {
   pubkey: PublicKey,
   mint: string,
+  name: string,
   symbol: string,
   image: string,
   balance: number,

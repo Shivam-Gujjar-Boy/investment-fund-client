@@ -627,11 +627,11 @@ export default function FundsList() {
                 </div>
               </div>
             )}
-            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-hidden text-white">
-              <div className="flex items-center gap-1 px-4 py-3 min-w-[140px] bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer">
-                <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-600 border border-gray-600">
+            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-x-auto text-white pr-2">
+              <div className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer w-[30%]">
+                <div className="w-10 h-10 bg-gray-600 rounded-full">
                   {selectedToken?.image ? (
-                    <img src={selectedToken.image} alt="token" className="w-full h-full object-cover" />
+                    <img src={selectedToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <div className="w-full h-full bg-gray-600 rounded-full" />
                   )}
@@ -641,7 +641,7 @@ export default function FundsList() {
                   onChange={(e) =>
                     setSelectedToken(userTokens.find((t) => t.mint === e.target.value) || null)
                   }
-                  className="bg-transparent text-white text-xl outline-none cursor-pointer py-0"
+                  className="bg-transparent text-white text-xl outline-none cursor-pointer w-[60%]"
                 >
                   {userTokens.map((token) => (
                     <option key={token.mint} value={token.mint} className="text-black">

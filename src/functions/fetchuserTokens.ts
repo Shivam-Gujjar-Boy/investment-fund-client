@@ -4,6 +4,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { toast } from "react-hot-toast";
 import { TOKEN_METADATA_PROGRAM_ID } from "../types";
 import { Metaplex } from "@metaplex-foundation/js";
+import axios from "axios";
 
 export const fetchUserTokens = async (wallet: WalletContextState, connection: Connection, metaplex: Metaplex) => {
 
@@ -29,7 +30,8 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
             return {
                 pubkey: acc.pubkey,
                 mint,
-                symbol: 'Unknown',
+                name: 'Unknown',
+                symbol: 'UNKNOWN',
                 image: '',
                 balance,
                 decimals
@@ -41,6 +43,7 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
         tokens?.unshift({
             pubkey: new PublicKey('So11111111111111111111111111111111111111111'),
             mint: 'So11111111111111111111111111111111111111111',
+            name: 'uwSOL',
             symbol: 'uwSOL',
             image: '',
             balance: balance/Math.pow(10, 9),
@@ -54,7 +57,8 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
                 return {
                     ...token,
                     symbol: metadata?.symbol || token.symbol,
-                    image: metadata?.image || token.image
+                    image: metadata?.image || token.image,
+                    name: metadata?.name || token.name
                 };
             })
         )
@@ -84,12 +88,13 @@ export const fetchVaultTokens = async (vault: PublicKey | undefined, connection:
             const balance = info.tokenAmount.uiAmount;
             const decimals = info.decimals;
             return {
-            pubkey: acc.pubkey,
-            mint,
-            symbol: 'Unknown',
-            image: '',
-            balance,
-            decimals,
+                pubkey: acc.pubkey,
+                mint,
+                name: 'Unknown',
+                symbol: 'UNKNOWN',
+                image: '',
+                balance,
+                decimals,
             };
         })
         .filter((token) => token.balance > 0);
@@ -97,14 +102,16 @@ export const fetchVaultTokens = async (vault: PublicKey | undefined, connection:
         const tokensWithMetadata = await Promise.all(
             tokens.map(async (token) => {
                 const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
-                console.log(metadata?.symbol);
                 return {
                     ...token,
                     symbol: metadata?.symbol || token.symbol,
-                    image: metadata?.image || token.image
+                    image: metadata?.image || token.image,
+                    name: metadata?.name || token.name
                 };
             })
-        )
+        );
+
+        console.log(tokens);
 
         return tokensWithMetadata;
     } catch (err) {
@@ -125,17 +132,30 @@ export const getMetadataPDA = (mintPubkey: PublicKey) => {
 export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => {
     try {
         const [metadataPDA] = getMetadataPDA(mint);
+        console.log("Metadata PDA: ", metadataPDA.toBase58());
         const metadataAccountInfo = await metaplex
         .nfts()
         .findByMetadata({metadata: metadataPDA});
 
+        // console.log("Metadata INFO: ", metadataAccountInfo);
+
         // console.log('metadata: ', metadataAccountInfo);
         const symbol = metadataAccountInfo.symbol;
-        const imageUri = metadataAccountInfo.json?.image || '';
+        const uri = metadataAccountInfo.uri;
+        const name = metadataAccountInfo.name;
+        // console.log(name);
+        let imageUri = '';
+        if (uri !== '') {
+            const response = await axios.get(uri);
+            if (response) {
+                imageUri = response.data.image;
+            }
+        }
 
         return {
-        symbol,
-        image: imageUri,
+            name,
+            symbol,
+            image: imageUri,
         };
     } catch (err) {
         console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);

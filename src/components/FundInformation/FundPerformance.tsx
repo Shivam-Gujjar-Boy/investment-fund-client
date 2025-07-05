@@ -37,7 +37,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
 
       try {
         const instructionTag = 21;
-        const stake_percent: bigint = BigInt(parseInt(withdrawPercent)) * BigInt(1e9);
+        const stake_percent: bigint = BigInt(parseInt(task ? "100" : withdrawPercent)) * BigInt(1e9);
         const nameBytes = Buffer.from(fund.name, 'utf8');
         
         const buffer = Buffer.alloc(1 + 1 + 1 + 8 + nameBytes.length);
@@ -134,12 +134,13 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
             const info = acc.account.data.parsed.info;
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
-            const decimals = info.decimals;
+            const decimals = info.tokenAmount.decimals;
             console.log(mint);
             return {
               pubkey: acc.pubkey,
               mint,
-              symbol: 'Unknown',
+              name: 'Unknown',
+              symbol: 'UNKNOWN',
               image: '',
               balance,
               decimals
@@ -153,18 +154,20 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
         const tokensWithMetadata = await Promise.all(
           tokens.map(async (token) => {
             const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
-            console.log("Metadata = ", metadata)
+            // console.log("Metadata = ", metadata);
             if (token.mint !== 'So11111111111111111111111111111111111111112') {
               token.balance = (token.balance) * (price / 1_000_000_000);
             }
-            console.log(`${token.symbol}'s balance:`, token.balance);
             return {
               ...token,
+              name: metadata?.name || token.name,
               symbol: metadata?.symbol || token.symbol,
               image: metadata?.image || token.image,
             };
           })
         );
+
+        console.log(tokens);
 
         setTokens(tokensWithMetadata);
       } catch (err) {
@@ -313,12 +316,16 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                       <tr key={token.symbol} className="border-b border-slate-700/20 hover:bg-slate-800/30 transition duration-150">
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white shadow-[0_0_5px_#8b5cf660]">
-                              {token.symbol.charAt(0)}
-                            </div>
+                            {token?.image ? (
+                              <img src={token.image} alt="token" className="w-9 h-9 rounded-full object-cover" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-semibold text-white shadow-[0_0_5px_#8b5cf660]">
+                                {token.symbol.charAt(0)}
+                              </div>
+                            )}
                             <div>
-                              <p className="font-semibold text-white">{token.symbol}</p>
-                              <p className="text-xs text-slate-400 uppercase tracking-wider">{token.symbol}</p>
+                              <p className="font-semibold text-white">{token.name}</p>
+                              <p className="text-xs text-slate-400 tracking-wider">{token.symbol}</p>
                             </div>
                           </div>
                         </td>
