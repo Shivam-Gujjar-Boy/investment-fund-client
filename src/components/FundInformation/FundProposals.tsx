@@ -106,161 +106,163 @@ const Proposals = () => {
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'passed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'failed': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'swap': return 'bg-purple-500/20 text-purple-400';
-      case 'diversification': return 'bg-blue-500/20 text-blue-400';
-      case 'profit-taking': return 'bg-green-500/20 text-green-400';
-      case 'emergency': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
-  };
-
-  const getTimeLeft = (deadline: number) => {
-    const now = new Date();
-    const end = new Date(deadline);
-    const diff = end - now;
-    
-    if (diff <= 0) return 'Expired';
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h`;
-  };
-
-  const getVotePercentage = (votes) => {
-    if (votes.total === 0) return { yes: 0, no: 0 };
-    return {
-      yes: (votes.yes / votes.total) * 100,
-      no: (votes.no / votes.total) * 100
+    const getStatusColor = (status: string) => {
+        switch (status) {
+        case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
+        case 'passed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+        case 'failed': return 'bg-red-500/20 text-red-400 border-red-500/30';
+        default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+        }
     };
-  };
 
-  const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
-  };
+    const getCategoryColor = (category: string) => {
+        switch (category) {
+        case 'swap': return 'bg-purple-500/20 text-purple-400';
+        case 'diversification': return 'bg-blue-500/20 text-blue-400';
+        case 'profit-taking': return 'bg-green-500/20 text-green-400';
+        case 'emergency': return 'bg-red-500/20 text-red-400';
+        default: return 'bg-gray-500/20 text-gray-400';
+        }
+    };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-  };
+    const getTimeLeft = (deadline: number) => {
+        const now = new Date();
+        const end = new Date(deadline);
+        const diff = end - now;
+        
+        if (diff <= 0) return 'Expired';
+        
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        if (days > 0) return `${days}d ${hours}h`;
+        return `${hours}h`;
+    };
 
-const ProposalCard = ({ proposal }) => {
-  const votePercentage = getVotePercentage(proposal.votes);
-  const timeLeft = getTimeLeft(proposal.deadline);
+    const getVotePercentage = (votes) => {
+        if (votes.total === 0) return { yes: 0, no: 0 };
+        return {
+        yes: (votes.yes / votes.total) * 100,
+        no: (votes.no / votes.total) * 100
+        };
+    };
 
-  return (
-    <div className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 group space-y-6">
-      {/* Title + Status */}
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-lg font-semibold text-white group-hover:text-purple-400 transition">
-              {proposal.title}
-            </h3>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${getCategoryColor(proposal.category)}`}>
-              {proposal.category.replace("-", " ")}
+    const formatNumber = (num) => {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+    };
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+    };
+
+    const ProposalCard = ({ proposal }) => {
+    const votePercentage = getVotePercentage(proposal.votes);
+    const timeLeft = getTimeLeft(proposal.deadline);
+
+    return (
+        <div className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 group space-y-6">
+        {/* Title + Status */}
+        <div className="flex justify-between items-start">
+            <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-lg font-semibold text-white group-hover:text-purple-400 transition">
+                {proposal.title}
+                </h3>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getCategoryColor(proposal.category)}`}>
+                {proposal.category.replace("-", " ")}
+                </span>
+            </div>
+            <p className="text-sm text-slate-400 leading-relaxed line-clamp-2">{proposal.description}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+            <span className={`text-xs font-medium px-3 py-1 border rounded-full ${getStatusColor(proposal.status)}`}>
+                {proposal.status}
             </span>
-          </div>
-          <p className="text-sm text-slate-400 leading-relaxed line-clamp-2">{proposal.description}</p>
+            <button onClick={() => setSelectedProposal(proposal)} className="text-slate-500 hover:text-white transition">
+                <MoreHorizontal className="w-5 h-5" />
+            </button>
+            </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className={`text-xs font-medium px-3 py-1 border rounded-full ${getStatusColor(proposal.status)}`}>
-            {proposal.status}
-          </span>
-          <button onClick={() => setSelectedProposal(proposal)} className="text-slate-500 hover:text-white transition">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
 
-      {/* Proposer Info */}
-      <div className="flex items-center gap-3 text-sm text-slate-300">
-        <img
-          src={proposal.proposer.image}
-          alt={proposal.proposer.name}
-          className="w-7 h-7 rounded-full border-2 border-purple-500/30 shadow-md"
-        />
-        <span>{proposal.proposer.name}</span>
-        <button
-          onClick={() => copyToClipboard(proposal.proposer.address)}
-          className="font-mono text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
-        >
-          {proposal.proposer.address.slice(0, 6)}...{proposal.proposer.address.slice(-4)}
-          <Copy className="w-3 h-3" />
-        </button>
-      </div>
+        {/* Proposer Info */}
+        <div className="flex items-center gap-3 text-sm text-slate-300 mb-4">
+            <img
+            src={proposal.proposer.image}
+            alt={proposal.proposer.name}
+            className="w-8 h-8 rounded-full border-2 border-purple-500/30 shadow-md"
+            />
+            <div className="flex flex-col">
+            <span>{proposal.proposer.name}</span>
+            <button
+                onClick={() => copyToClipboard(proposal.proposer.address)}
+                className="font-mono text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
+            >
+                {proposal.proposer.address.slice(0, 6)}...{proposal.proposer.address.slice(-4)}
+                <Copy className="w-3 h-3" />
+            </button>
+            </div>
+        </div>
 
-      {/* Swap Section */}
-      <div className="bg-[#1C1F36] border border-[#2A2D4A] rounded-xl px-5 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-5">
-          <TokenCard token={proposal.swap.from} />
-          <ArrowRight className="w-5 h-5 text-purple-400" />
-          <TokenCard token={proposal.swap.to} />
+        {/* Swap Section */}
+        <div className="bg-[#1C1F36] border border-[#2A2D4A] rounded-xl px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-5">
+            <TokenCard token={proposal.swap.from} />
+            <ArrowRight className="w-5 h-5 text-purple-400" />
+            <TokenCard token={proposal.swap.to} />
+            </div>
+            <div className="text-right text-xs text-slate-400">
+            <div className="mb-1">Slippage</div>
+            <div className="text-sm font-medium text-white">{proposal.slippage}%</div>
+            </div>
         </div>
-        <div className="text-right text-xs text-slate-400">
-          <div className="mb-1">Slippage</div>
-          <div className="text-sm font-medium text-white">{proposal.slippage}%</div>
-        </div>
-      </div>
 
-      {/* Voting Progress */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-slate-400">
-          <span>Votes: {proposal.votes.total}</span>
-          <span>Time left: {timeLeft}</span>
+        {/* Voting Progress */}
+        <div className="space-y-2">
+            <div className="flex justify-between text-sm text-slate-400">
+            <span>Votes: {proposal.votes.total}</span>
+            <span>Time left: {timeLeft}</span>
+            </div>
+            <div className="relative h-3 bg-[#1C1F36] rounded-full overflow-hidden border border-slate-700/40">
+            <div className="absolute top-0 left-0 h-full bg-green-500/80" style={{ width: `${votePercentage.yes}%` }} />
+            <div className="absolute top-0 right-0 h-full bg-red-500/70" style={{ width: `${votePercentage.no}%` }} />
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+            <span className="text-green-400">Yes: {proposal.votes.yes} ({votePercentage.yes.toFixed(1)}%)</span>
+            <span className="text-red-400">No: {proposal.votes.no} ({votePercentage.no.toFixed(1)}%)</span>
+            </div>
         </div>
-        <div className="relative h-3 bg-[#1C1F36] rounded-full overflow-hidden border border-slate-700/40">
-          <div className="absolute top-0 left-0 h-full bg-green-500/80" style={{ width: `${votePercentage.yes}%` }} />
-          <div className="absolute top-0 right-0 h-full bg-red-500/70" style={{ width: `${votePercentage.no}%` }} />
-        </div>
-        <div className="flex justify-between text-xs mt-1">
-          <span className="text-green-400">Yes: {proposal.votes.yes} ({votePercentage.yes.toFixed(1)}%)</span>
-          <span className="text-red-400">No: {proposal.votes.no} ({votePercentage.no.toFixed(1)}%)</span>
-        </div>
-      </div>
 
-      {/* CTA Buttons */}
-      <div className="grid grid-cols-3 gap-3">
-        <button className="group bg-green-500/10 hover:bg-green-500/20 border border-green-600/30 rounded-lg py-2 px-3 text-sm font-medium text-green-400 flex items-center justify-center gap-2 transition-all">
-          <CheckCircle className="w-4 h-4 group-hover:scale-110 transition" />
-          Vote Yes
-        </button>
-        <button className="group bg-red-500/10 hover:bg-red-500/20 border border-red-600/30 rounded-lg py-2 px-3 text-sm font-medium text-red-400 flex items-center justify-center gap-2 transition-all">
-          <XCircle className="w-4 h-4 group-hover:scale-110 transition" />
-          Vote No
-        </button>
-        <button
-          onClick={() => setSelectedProposal(proposal)}
-          className="group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 px-3 text-sm font-medium text-purple-400 transition-all"
-        >
-          Details
-        </button>
-      </div>
+        {/* CTA Buttons */}
+        <div className="grid grid-cols-3 gap-4">
+            <button className="group bg-green-500/10 hover:bg-green-500/20 border border-green-600/30 rounded-lg py-2 text-sm font-medium text-green-400 flex items-center justify-center gap-2 transition-all">
+            <CheckCircle className="w-4 h-4 group-hover:scale-110 transition" />
+            Vote Yes
+            </button>
+            <button className="group bg-red-500/10 hover:bg-red-500/20 border border-red-600/30 rounded-lg py-2 text-sm font-medium text-red-400 flex items-center justify-center gap-2 transition-all">
+            <XCircle className="w-4 h-4 group-hover:scale-110 transition" />
+            Vote No
+            </button>
+            <button
+            onClick={() => setSelectedProposal(proposal)}
+            className="group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 text-sm font-medium text-purple-400 transition-all"
+            >
+            Details
+            </button>
+        </div>
+        </div>
+    );
+    };
+
+    // TokenCard subcomponent for cleaner layout
+    const TokenCard = ({ token }) => (
+    <div className="text-center space-y-0.5">
+        <div className="text-2xl">{token.icon}</div>
+        <div className="text-sm font-medium text-white">{token.symbol}</div>
+        <div className="text-xs text-slate-400">{formatNumber(token.amount)}</div>
     </div>
-  );
-};
-
-// TokenCard subcomponent for cleaner layout
-const TokenCard = ({ token }) => (
-  <div className="text-center space-y-0.5">
-    <div className="text-2xl">{token.icon}</div>
-    <div className="text-sm font-medium text-white">{token.symbol}</div>
-    <div className="text-xs text-slate-400">{formatNumber(token.amount)}</div>
-  </div>
-);
+    );
 
 
   const ProposalModal = ({ proposal, onClose }) => {
