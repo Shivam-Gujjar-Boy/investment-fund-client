@@ -28,7 +28,7 @@ export interface LightFund {
   creatorExists: boolean,
   creator: PublicKey,
   numOfMembers: number,
-  members: PublicKey[],
+  members: [PublicKey, number][],
   totalDeposit: bigint,
   vault: PublicKey,
   currentIndex: number,
@@ -44,18 +44,13 @@ export interface UserFund {
   votesNo: bigint | null,
   name: string,
   expectedMembers: number,
-  // creatorExists: boolean,
   creator: PublicKey,
   numOfMembers: number,
-  // members: PublicKey[],
   totalDeposit: bigint,
-  // governanceMint: PublicKey | null,
-  // vault: PublicKey,
-  // currentIndex: number,
   created_at: bigint,
   is_private: number,
-  // tags: number,
   secondaryTag: string,
+  members: [PublicKey, number][],
 }
 
 export interface Token {

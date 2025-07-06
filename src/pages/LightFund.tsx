@@ -65,18 +65,6 @@ const LightFund = () => {
     }));
   }, []);
 
-  const encode = (num: string) => {
-    if (num >= '0' && num <= '1') {
-        return '0';
-    } else if (num > '1' && num <= '4') {
-        return '1';
-    } else if (num > '4' && num <= '7') {
-        return '2';
-    } else {
-        return '3';
-    }
-  }
-
   useEffect(() => {
     // Calculate member cost
     const baseCost = 0.000355;
@@ -186,51 +174,9 @@ const LightFund = () => {
         tags = tags | tag;
       }
 
-      const encoder = new TextEncoder();
-      const data = encoder.encode(user.toBase58());
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      let count = 0;
-      let numbers = '';
-      for (const c of hash) {
-          if (c >= '0' && c <= '9') {
-            numbers += encode(c);
-            count ++;
-          }
-          if (count == 7) break;
-      }
-
-      if (count != 7) {
-          for (let i=count; i<7; i++) {
-              numbers += '0';
-          }
-      }
-
-      const a = numbers.slice(0, 3);
-      const b = numbers.slice(3, 7);
-      console.log(a, b);
-      console.log(hash);
-
-      let firstByte = 0;
-      for (let i=0; i<a.length; i++) {
-        firstByte += parseInt(a[i])*(4**(3-i));
-      }
-
-      let secondByte = 0;
-      for (let i=0; i<b.length; i++) {
-        secondByte += parseInt(b[i])*(4**(3-i));
-      }
-
-      console.log(firstByte, secondByte);
-
-      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + 1 + 1 + 4 + nameBytes.length);
+      const buffer = Buffer.alloc(1 + 1 + 1 + 1 + 4 + nameBytes.length);
       let offset = 0;
       buffer.writeUint8(instructionTag, offset);
-      offset += 1;
-      buffer.writeUint8(firstByte, offset);
-      offset += 1;
-      buffer.writeUInt8(secondByte, offset);
       offset += 1;
       buffer.writeUInt8((formData.addMembersLater ? 1 : 0), offset);
       offset += 1;
@@ -266,7 +212,7 @@ const LightFund = () => {
       );
 
       const keys = [
-        {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+        {pubkey: user, isSigner: true, isWritable: true},
         {pubkey: userAccountPda, isSigner: false, isWritable: true},
         {pubkey: vaultPda, isSigner: false, isWritable: true},
         {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},

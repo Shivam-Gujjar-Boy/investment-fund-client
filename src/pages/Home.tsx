@@ -50,6 +50,15 @@ export default function Home() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [croppedFileSize, setCroppedFileSize] = useState<string | null>(null);
   const [croppedFileMBExceeded, setCroppedFileMBExceeded] = useState<boolean>(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   useEffect(() => {
     const checkUserPDA = async () => {
@@ -257,16 +266,21 @@ export default function Home() {
       console.log('Request marne wali hai');
 
       try {
-        const res = await fetch('https://peerfunds.onrender.com/api/upload/upload-user-data', {
+        // const result = await axios.post('https://peerfunds.onrender.com/api/upload/upload-user-data', {
+        //   formData
+        // });
+        const res = await fetch('http://localhost:5000/api/upload/upload-user-data', {
           method: 'POST',
           body: formData
         });
 
         const result = await res.json();
 
-        if (!res.ok) {
+        if (res.status !== 200) {
           throw new Error(result?.error || 'Failed to upload user data');
         }
+
+        console.log(result);
         setModalLoading(false);
 
         console.log('✅ Upload success:', result);
@@ -392,142 +406,243 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <header className="pt-6 px-4 sm:px-6 lg:px-8">
+          <style>{`
+            @keyframes float {
+              0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0; }
+              50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+            }
+            .animate-float {
+              animation: float 6s ease-in-out infinite;
+            }
+            .animation-delay-1000 {
+              animation-delay: 1s;
+            }
+            .animation-delay-2000 {
+              animation-delay: 2s;
+            }
+            .bg-gradient-radial {
+              background: radial-gradient(circle, var(--tw-gradient-stops));
+            }
+            @keyframes glow {
+              0%, 100% { box-shadow: 0 0 5px rgba(139, 92, 246, 0.5); }
+              50% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.8); }
+            }
+            .animate-glow {
+              animation: glow 3s ease-in-out infinite;
+            }
+            @keyframes slideInUp {
+              from { transform: translateY(50px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            .animate-slideInUp {
+              animation: slideInUp 0.8s ease-out forwards;
+            }
+            @keyframes fadeInScale {
+              from { transform: scale(0.8); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+            .animate-fadeInScale {
+              animation: fadeInScale 1s ease-out forwards;
+            }
+            .animate-textGlow {
+              animation: textGlow 3s ease-in-out infinite;
+            }
+          `}</style>
+
+          <header className="relative z-10 pt-6 px-4 sm:px-6 lg:px-8 animate-slideInUp">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-white">PeerFunds</h1>
-              {connected && (
-                <div className="hidden sm:block">
-                  <CustomWalletButton />
-                </div>
-              )}
+              <h1 className="text-xl sm:text-4xl font-bold text-white hover:text-purple-400 transition-colors duration-300">
+                PeerFunds
+              </h1>
+              <div className="hidden sm:block">
+                <CustomWalletButton />
+              </div>
             </div>
           </header>
 
-          <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10">
+          <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10 relative z-10 mt-16">
             <div className="max-w-6xl mx-auto">
-              <section className="text-center mb-20">
-                <h1 className="text-5xl sm:text-6xl font-bold text-white mb-6">
-                  Decentralized{' '}
-                  <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent">
-                    Investment Funds
-                  </span>
-                </h1>
-                <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                  Create and manage trustless investment funds on the Solana blockchain. Join forces with friends, colleagues or communities.
-                </p>
-                <div className="mt-8">
-                  {!connected && <CustomWalletButton />}
+              {/* Hero Section */}
+              <section className="text-center mb-32 animate-fadeInScale flex flex-col items-center">
+                <div className="relative">
+                  <h1 className="text-6xl sm:text-8xl font-bold text-white mb-8 animate-textGlow">
+                    Decentralized{' '}
+                    <span className="bg-gradient-to-r from-purple-400 via-violet-400 to-indigo-400 bg-clip-text text-transparent animate-pulse">
+                      Investment Funds
+                    </span>
+                  </h1>
+                  <div className="absolute -top-10 -right-10 w-20 h-20 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-full blur-xl animate-pulse"></div>
+                  <div className="absolute -bottom-10 -left-10 w-16 h-16 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse animation-delay-1000"></div>
                 </div>
+                <p className="text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed mb-12 animate-slideInUp">
+                  Create and manage <span className="text-purple-400 font-semibold">trustless investment funds</span> on the Solana blockchain. 
+                  Join forces with friends, colleagues or communities in the <span className="text-violet-400 font-semibold">decentralized future</span>.
+                </p>
+            <div className="mt-12 animate-slideInUp">
+              <div className="inline-block relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative bg-gray-800/30 backdrop-blur-sm border border-purple-500/30 rounded-full p-2 hover:border-purple-400/50 hover:bg-gray-800/50 transition-all duration-300">
+                  <CustomWalletButton />
+                </div>
+              </div>
+            </div>
               </section>
 
-              <section className="mb-24">
+              {/* Features Grid */}
+              <section className="mb-32">
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
                   {[
                     {
                       title: 'Create a Fund',
-                      description: 'Start a DAO-style fund and set governance rules.'
+                      description: 'Start a DAO-style fund and set governance rules.',
+                      icon: '🚀',
+                      gradient: 'from-purple-600 to-indigo-600',
                     },
                     {
                       title: 'Join Together',
-                      description: 'Collaboratively pool resources for smarter investing.'
+                      description: 'Collaboratively pool resources for smarter investing.',
+                      icon: '🤝',
+                      gradient: 'from-violet-600 to-purple-600',
                     },
                     {
                       title: 'Invest Together',
-                      description: 'Invest through decentralized proposals on-chain!'
+                      description: 'Invest through decentralized proposals on-chain!',
+                      icon: '💎',
+                      gradient: 'from-indigo-600 to-blue-600',
                     },
                     {
                       title: 'Grow Together',
-                      description: 'See returns, PnL, and distribute profits fairly.'
+                      description: 'See returns, PnL, and distribute profits fairly.',
+                      icon: '📈',
+                      gradient: 'from-purple-600 to-violet-600',
                     }
                   ].map((item, i) => (
                     <div 
                       key={i} 
-                      className="bg-gray-800/30 backdrop-blur-sm rounded-2xl p-6 text-center border border-gray-700/50 hover:border-purple-500/50 hover:shadow-[0_0_20px_#8b5cf622] hover:scale-[1.02] transition-all duration-300 group"
+                      className="group relative bg-gray-800/20 backdrop-blur-xl rounded-3xl p-8 text-center border border-gray-700/30 hover:border-purple-500/50 hover:shadow-[0_0_40px_#8b5cf622] hover:scale-105 transition-all duration-500"
+                      // style={{ animationDelay: `${i * 0.2}s` }}
                     >
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-xl font-bold group-hover:scale-110 transition-transform duration-300">
-                        {i + 1}
+                      {/* <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-violet-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div> */}
+                      <div className="relative z-10">
+                        <div className={`w-16 h-16 bg-gradient-to-r ${item.gradient} rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl group-hover:scale-110 group-hover:rotate-12 transition-all duration-500 animate-glow`}>
+                          {item.icon}
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-4 group-hover:text-purple-300 transition-colors duration-300">{item.title}</h3>
+                        <p className="text-gray-400 group-hover:text-gray-300 transition-colors duration-300">{item.description}</p>
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                      <p className="text-gray-400 text-sm">{item.description}</p>
+                      {/* <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div> */}
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
-                <div className="space-y-6">
-                  <h2 className="text-3xl font-bold text-white">Why PeerFunds?</h2>
-                  <p className="text-gray-300 leading-relaxed">
-                    Whether you're a solo crypto trader or a team of enthusiastic friends, PeerFunds empowers you to invest with trustless collaboration.
+              {/* Why PeerFunds Section */}
+              <section className="mb-32 grid md:grid-cols-2 gap-16 items-center">
+                <div className="space-y-8 animate-slideInUp">
+                  <h2 className="text-5xl font-bold text-white mb-6 animate-textGlow">
+                    Why <span className="text-purple-400">PeerFunds</span>?
+                  </h2>
+                  <p className="text-xl text-gray-300 leading-relaxed">
+                    Whether you're a solo crypto trader or a team of enthusiastic friends, PeerFunds empowers you to invest with 
+                    <span className="text-purple-400 font-semibold"> trustless collaboration</span>.
                     On-chain governance, proposal voting, and fund transparency ensure every decision is made fairly.
                   </p>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Shield className="w-5 h-5 text-purple-400" />
-                      <span className="text-gray-300">Trustless voting system</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Zap className="w-5 h-5 text-purple-400" />
-                      <span className="text-gray-300">Performance analytics and portfolio insights</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Sparkles className="w-5 h-5 text-purple-400" />
-                      <span className="text-gray-300">Learn by joining funds, even with minimal risk</span>
-                    </div>
+                  <div className="space-y-6">
+                    {[
+                      { icon: Shield, text: 'Trustless voting system', color: 'text-purple-400' },
+                      { icon: Zap, text: 'Performance analytics and portfolio insights', color: 'text-violet-400' },
+                      { icon: Sparkles, text: 'Learn by joining funds, even with minimal risk', color: 'text-indigo-400' }
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center space-x-4 group hover:scale-105 transition-all duration-300">
+                        <div className="w-12 h-12 bg-gradient-to-r from-purple-600/20 to-violet-600/20 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-purple-600/40 group-hover:to-violet-600/40 transition-all duration-300">
+                          <item.icon className={`w-6 h-6 ${item.color} group-hover:scale-110 transition-transform duration-300`} />
+                        </div>
+                        <span className="text-lg text-gray-300 group-hover:text-white transition-colors duration-300">{item.text}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="h-64 bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-gray-900/30 rounded-2xl border border-purple-500/20 flex items-center justify-center text-purple-300">
-                  <div className="text-center">
-                    <Shield className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm opacity-75">Secure & Transparent</p>
+                <div className="relative h-80 animate-fadeInScale">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-gray-900/30 rounded-3xl border border-purple-500/30 backdrop-blur-xl flex items-center justify-center overflow-hidden group hover:scale-105 transition-transform duration-500">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-violet-500/10 animate-pulse"></div>
+                    <div className="text-center relative z-10">
+                      <div className="w-24 h-24 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-glow">
+                        <Shield className="w-12 h-12 text-purple-300 animate-pulse" />
+                      </div>
+                      <p className="text-lg text-purple-300 font-semibold">Secure & Transparent</p>
+                    </div>
                   </div>
                 </div>
               </section>
 
-              <section className="mb-24 grid md:grid-cols-2 gap-12 items-center">
-                <div className="h-64 bg-gradient-to-br from-violet-900/30 via-purple-900/30 to-gray-900/30 rounded-2xl border border-violet-500/20 flex items-center justify-center text-violet-300">
-                  <div className="text-center">
-                    <User className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm opacity-75">Learn & Grow</p>
+              {/* Learning Section */}
+              <section className="mb-32 grid md:grid-cols-2 gap-16 items-center">
+                <div className="relative h-80 animate-fadeInScale">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-900/30 via-purple-900/30 to-gray-900/30 rounded-3xl border border-violet-500/30 backdrop-blur-xl flex items-center justify-center overflow-hidden group hover:scale-105 transition-transform duration-500">
+                    <div className="absolute inset-0 bg-gradient-to-l from-violet-500/10 via-transparent to-purple-500/10 animate-pulse"></div>
+                    <div className="text-center relative z-10">
+                      <div className="w-24 h-24 bg-gradient-to-r from-violet-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-glow">
+                        <User className="w-12 h-12 text-violet-300 animate-pulse" />
+                      </div>
+                      <p className="text-lg text-violet-300 font-semibold">Learn & Grow</p>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-6">
-                  <h2 className="text-3xl font-bold text-white">Not Just Investing – It's Learning</h2>
-                  <p className="text-gray-300 leading-relaxed">
+                <div className="space-y-8 animate-slideInUp">
+                  <h2 className="text-5xl font-bold text-white mb-6 animate-textGlow">
+                    Not Just Investing – It's <span className="text-violet-400">Learning</span>
+                  </h2>
+                  <p className="text-xl text-gray-300 leading-relaxed">
                     Beginners can join public funds, learn how proposals work, and participate in governance without affecting real fund outcomes.
-                    Small voting powers ensure minimal risk, while real-time engagement drives crypto knowledge growth.
+                    <span className="text-violet-400 font-semibold"> Small voting powers</span> ensure minimal risk, while real-time engagement drives 
+                    <span className="text-purple-400 font-semibold"> crypto knowledge growth</span>.
                   </p>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Zap className="w-5 h-5 text-violet-400" />
-                      <span className="text-gray-300">Proposals with real-time outcomes</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Sparkles className="w-5 h-5 text-violet-400" />
-                      <span className="text-gray-300">PnL dashboards, voting analytics, and educational feedback</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <Shield className="w-5 h-5 text-violet-400" />
-                      <span className="text-gray-300">Learn by doing — not just reading</span>
-                    </div>
+                  <div className="space-y-6">
+                    {[
+                      { icon: Zap, text: 'Proposals with real-time outcomes', color: 'text-violet-400' },
+                      { icon: Sparkles, text: 'PnL dashboards, voting analytics, and educational feedback', color: 'text-purple-400' },
+                      { icon: Shield, text: 'Learn by doing — not just reading', color: 'text-indigo-400' }
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center space-x-4 group hover:scale-105 transition-all duration-300">
+                        <div className="w-12 h-12 bg-gradient-to-r from-violet-600/20 to-purple-600/20 rounded-xl flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-violet-600/40 group-hover:to-purple-600/40 transition-all duration-300">
+                          <item.icon className={`w-6 h-6 ${item.color} group-hover:scale-110 transition-transform duration-300`} />
+                        </div>
+                        <span className="text-lg text-gray-300 group-hover:text-white transition-colors duration-300">{item.text}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </section>
 
-              <section className="text-center mb-10">
-                <h2 className="text-3xl font-bold text-white mb-4">Ready to Join the Future of Community Investing?</h2>
-                <p className="text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
-                  Connect your wallet and dive into the world of decentralized fund management. It takes just a few seconds to get started.
+              {/* CTA Section */}
+              <section className="text-center mb-16 animate-fadeInScale">
+                <div className="relative">
+                  <h2 className="text-5xl font-bold text-white mb-6 animate-textGlow">
+                    Ready to Join the Future of <span className="text-purple-400">Community Investing</span>?
+                  </h2>
+                  <div className="absolute -top-5 -right-5 w-16 h-16 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-full blur-xl animate-pulse"></div>
+                  <div className="absolute -bottom-5 -left-5 w-12 h-12 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full blur-xl animate-pulse animation-delay-1000"></div>
+                </div>
+                <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-12 leading-relaxed">
+                  Connect your wallet and dive into the world of <span className="text-purple-400 font-semibold">decentralized fund management</span>. 
+                  It takes just a few seconds to get started on your <span className="text-violet-400 font-semibold">DeFi journey</span>.
                 </p>
+                <div className="inline-block transform hover:scale-110 transition-transform duration-300">
                   <CustomWalletButton />
+                </div>
               </section>
             </div>
           </main>
 
-          <footer className="py-8 text-center text-gray-500 text-sm border-t border-gray-800">
+          {/* Footer */}
+          <footer className="relative z-10 py-12 text-center text-gray-500 border-t border-gray-800/50 backdrop-blur-sm">
             <div className="max-w-6xl mx-auto px-4">
-              <p className="mb-2">Powered by Solana Blockchain</p>
-              <p className="text-xs">Building the future of decentralized finance, one fund at a time.</p>
+              <p className="text-lg mb-3 hover:text-purple-400 transition-colors duration-300">
+                Powered by <span className="font-semibold text-purple-400">Solana Blockchain</span>
+              </p>
+              <p className="text-sm opacity-75">
+                Building the future of decentralized finance, one fund at a time.
+              </p>
             </div>
           </footer>
         </>

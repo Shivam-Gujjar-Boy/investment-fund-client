@@ -20,6 +20,7 @@ import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import axios from 'axios';
 import FundMembers from '../components/FundInformation/FundMembers';
 import FundPerformance from '../components/FundInformation/FundPerformance';
+import Proposals from '../components/FundInformation/FundProposals';
 
 export default function FundsList() {
   const [fund, setFund] = useState<LightFund | null>(null);
@@ -36,6 +37,7 @@ export default function FundsList() {
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [inviteAddress, setInviteAddress] = useState('');
   const [showInviteInput, setShowInviteInput] = useState(false);
+  const [proposalStatus, setProposalStatus] = useState('all');
   if (loading) {console.log()}
 
   const wallet = useWallet();
@@ -74,26 +76,26 @@ export default function FundsList() {
         return;
       }
       const buffer = Buffer.from(accountInfo?.data);
-      const name_dummy = buffer.slice(0, 31).toString();
+      const name_dummy = buffer.slice(0, 32).toString();
       let name = '';
       for (const c of name_dummy) {
         if (c === '\x00') break;
         name += c;
       }
-      const fundType = buffer.readUInt8(31);
+      const fundType = buffer.readUInt8(32);
       if (fundType === 0) {
-        const members: PublicKey[] = [];
-        const numOfMembers = buffer.readUInt32LE(87);
+        const members: [PublicKey, number][] = [];
+        const numOfMembers = buffer.readUInt32LE(88);
         for (let i = 0; i < numOfMembers; i++) {
-          members.push(new PublicKey(buffer.slice(91 + 32 * i, 123 + 32 * i)));
+          members.push([new PublicKey(buffer.slice(92 + 36*i, 124 + 36*i)), buffer.readUInt32LE(124 + 36*i)]);
         }
-        const expectedMembers = buffer.readUint8(86);
-        const creatorExists = buffer.readUInt8(32) ? true : false;
+        const expectedMembers = buffer.readUint8(87);
+        const creatorExists = buffer.readUInt8(33) ? true : false;
         const creator = new PublicKey(buffer.slice(91, 123));
-        const totalDeposit = buffer.readBigInt64LE(33);
-        const vault = new PublicKey(buffer.slice(41, 73));
-        const currentIndex = buffer.readUInt8(73);
-        const created_at = buffer.readBigInt64LE(74);
+        const totalDeposit = buffer.readBigInt64LE(34);
+        const vault = new PublicKey(buffer.slice(42, 74));
+        const currentIndex = buffer.readUInt8(74);
+        const created_at = buffer.readBigInt64LE(75);
 
         const [userPda] = PublicKey.findProgramAddressSync(
           [Buffer.from("user"), wallet.publicKey.toBuffer()],
@@ -108,15 +110,15 @@ export default function FundsList() {
         let contribution: bigint = BigInt(0);
 
         for (let i = 0; i < noOfFunds; i++) {
-          const fundId = new PublicKey(userBuffer.slice(63 + i*51 , 95 + i*51));
+          const fundId = new PublicKey(userBuffer.slice(63 + i*55 , 95 + i*55));
           if (fundId.toBase58() === fundAccountPda.toBase58()) {
-            contribution = userBuffer.readBigInt64LE(96 + i*51);
+            contribution = userBuffer.readBigInt64LE(96 + i*55);
             break;
           }
         }
 
         setContribution(contribution);
-  
+
         setFund({
           fundPubkey: fundAccountPda,
           fundType,
@@ -177,7 +179,6 @@ export default function FundsList() {
         ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
-
       if (!fund.fundPubkey) {
         toast.error('No fund pda found');
         return;
@@ -232,14 +233,15 @@ export default function FundsList() {
       const amountBuffer = Buffer.alloc(8);
       amountBuffer.writeBigInt64LE(transferAmount);
 
-      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=${transferAmount}&slippageBps=50`);
-      if (!response) {
-        toast.error('Failed to fetch token price');
-        return;
-      }
       let mint_amount = transferAmount;
-      if (selectedToken.mint !== 'So11111111111111111111111111111111111111111') {
+      if (selectedToken.mint === 'So11111111111111111111111111111111111111111' || selectedToken.mint === 'So11111111111111111111111111111111111111112') {
+      const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${transferAmount}&slippageBps=50`);
+        if (!response) {
+          toast.error('Failed to fetch token price');
+          return;
+        }
         mint_amount = BigInt(response.data.outAmount);
+        console.log(`SOL is being deposited worth $${mint_amount/BigInt(1000000)}`);
       }
       console.log(mint_amount);
 
@@ -310,7 +312,7 @@ export default function FundsList() {
     );
   }
 
-  const fundValue = Number(fund.totalDeposit) / 1e9;
+  const fundValue = Number(fund.totalDeposit) / 1e6;
 
 
   return (
@@ -376,7 +378,7 @@ export default function FundsList() {
                 <div className="mb-8 space-y-4">
                   <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-2xl p-4 border border-slate-600/30">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-400 text-sm">Fund Portfolio</span>
+                      <span className="text-slate-400 text-sm">Fund Deposit</span>
                       <button onClick={() => setShowBalance(!showBalance)}>
                         {showBalance
                           ? <Eye className="w-4 h-4 text-slate-400" />
@@ -384,7 +386,7 @@ export default function FundsList() {
                       </button>
                     </div>
                     <div className="text-2xl font-bold text-white">
-                      {showBalance ? `${fundValue.toFixed(2)} SOL` : '****'}
+                      {showBalance ? `$${fundValue.toFixed(2)}` : '****'}
                     </div>
                   </div>
 
@@ -580,6 +582,25 @@ export default function FundsList() {
                   </div>
                 </>
               )}
+              {activeTab === 'proposals' && (
+                <div className="flex items-center gap-3">
+                  <div className="bg-slate-800/50 rounded-lg p-1 flex">
+                    {['all', 'active', 'passed', 'failed'].map((filterType) => (
+                      <button
+                        key={filterType}
+                        onClick={() => setProposalStatus(filterType)}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                          proposalStatus === filterType
+                            ? 'bg-purple-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-4 p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl transition-all">
                 <motion.button
                   whileTap={{ scale: 0.95, rotate: 90 }}
@@ -596,6 +617,12 @@ export default function FundsList() {
           <FundPerformance fund={fund} connection={connection} metaplex={metaplex} userStakePercent={Number(contribution)/Number(fund.totalDeposit) * 100} setShowDepositModal={setShowDepositModal}/>
         )}
         {activeTab === 'members' && <FundMembers fund={fund} searchTerm={searchTerm} />}
+        {activeTab === 'proposals' && (
+          // <div className='mt-40 border'>Hello behen ke tako</div>
+          <div className='mt-20'>
+            <Proposals />
+          </div>
+        )}
       </div>
       {showDepositModal && (
         <div onClick={(e) => {

@@ -23,7 +23,7 @@ export default function FundMembers({fund, searchTerm} : MembersProps) {
 
     const userAccounts = fund.members.map((member) => {
       const [userAccount] = PublicKey.findProgramAddressSync(
-        [Buffer.from('user'), member.toBuffer()],
+        [Buffer.from('user'), member[0].toBuffer()],
         programId
       );
       return userAccount;
@@ -71,7 +71,7 @@ export default function FundMembers({fund, searchTerm} : MembersProps) {
           return {
             name: metadata.username,
             profilePic: profileImageUrl,
-            address: fund.members[i],
+            address: fund.members[i][0],
             contributionPercent: fund.totalDeposit === BigInt(0) ? 0 : Number(balance)/Number(fund.totalDeposit) * 100,
             joined
           } as Member;

@@ -52,33 +52,40 @@ export default function FundsList() {
         const votesNos: (bigint | null)[] = [];
 
         for (let i = 0; i < num_of_funds; i++) {
-          const fund_pubkey = new PublicKey(buffer.slice(63 + i * 51, 95 + i * 51));
-          const isPending = buffer.readUint8(104 + i * 51) ? true : false;
-          const isEligible = buffer.readUint8(105 + i * 51) ? true : false;
+          const fund_pubkey = new PublicKey(buffer.slice(63 + i * 55, 95 + i * 55));
+          const isPending = buffer.readUint8(104 + i * 55) ? true : false;
+          const isEligible = buffer.readUint8(105 + i * 55) ? true : false;
           isPendings.push(isPending);
           isEligibles.push(isEligible);
           funds_pubkey.push(fund_pubkey);
         }
+
+        console.log(funds_pubkey.map(fund_pubkey => fund_pubkey.toBase58()));
 
         const fundAccountInfos = await connection.getMultipleAccountsInfo(funds_pubkey);
         if (!fundAccountInfos) return;
 
         const fundDataArray: UserFund[] = fundAccountInfos.map((acc, i) => {
           if (!acc || !acc.data) return null;
-          const acc_buffer = Buffer.from(acc?.data);
-          const name_dummy = acc_buffer.slice(0, 31).toString();
+          const acc_buffer = Buffer.from(acc.data);
+          const name_dummy = acc_buffer.slice(0, 32).toString();
           let name = '';
           for (const c of name_dummy) {
             if (c === '\x00') break;
             name += c;
           }
-          const fundType = acc_buffer.readUint8(31);
-          const totalDeposit = acc_buffer.readBigInt64LE(33);
-          const created_at = acc_buffer.readBigInt64LE(74);
-          const tags = acc_buffer.readUInt32LE(82);
-          const maxMembers = acc_buffer.readUInt8(86);
-          const numOfMembers = acc_buffer.readUInt32LE(87);
-          const creator = new PublicKey(acc_buffer.slice(91, 123));
+          const fundType = acc_buffer.readUint8(32);
+          const totalDeposit = acc_buffer.readBigInt64LE(34);
+          const created_at = acc_buffer.readBigInt64LE(75);
+          const tags = acc_buffer.readUInt32LE(83);
+          const maxMembers = acc_buffer.readUInt8(87);
+          const members: [PublicKey, number][] = [];
+          const numOfMembers = acc_buffer.readUInt32LE(88);
+          console.log(numOfMembers);
+          for (let i = 0; i < numOfMembers; i++) {
+            members.push([new PublicKey(acc_buffer.slice(92 + 36*i, 124 + 36*i)), acc_buffer.readUInt32LE(124 + 36*i)]);
+          }
+          const creator = new PublicKey(acc_buffer.slice(92, 124));
 
           let num = 2;
           let secondaryTagId: number;
@@ -106,6 +113,7 @@ export default function FundsList() {
             is_private: 1,
             secondaryTag: secondaryTag?.name,
             creator,
+            members,
           };
         }).filter((f): f is UserFund => f !== null);
 
@@ -132,7 +140,7 @@ export default function FundsList() {
   const pendingFunds = funds?.filter(f => f.isPending) ?? [];
   const currentFunds = activeTab === 'active' ? activeFunds : (activeTab === 'inactive' ? inactiveFunds : pendingFunds);
 
-  const totalValue = activeFunds.reduce((sum, fund) => sum + Number(fund.totalDeposit), 0) / 1e9;
+  const totalValue = activeFunds.reduce((sum, fund) => sum + Number(fund.totalDeposit), 0) / 1e6;
   const totalMembers = activeFunds.reduce((sum, fund) => sum + fund.numOfMembers, 0);
 
   return (
@@ -192,13 +200,13 @@ export default function FundsList() {
               <div className="mb-8 space-y-4">
                 <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-2xl p-4 border border-slate-600/30">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-slate-400 text-sm">Total Portfolio</span>
+                    <span className="text-slate-400 text-sm">Total Deposit</span>
                     <button onClick={() => setShowBalance(!showBalance)}>
                       {showBalance ? <Eye className="w-4 h-4 text-slate-400" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
                     </button>
                   </div>
                   <div className="text-2xl font-bold text-white">
-                    {showBalance ? `${totalValue.toFixed(2)} SOL` : '****'}
+                    {showBalance ? `$${totalValue.toFixed(2)}` : '****'}
                   </div>
                   {/* <div className={`text-sm ${avgPerformance > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {avgPerformance > 0 ? '+' : ''}{avgPerformance.toFixed(1)}% overall
@@ -395,7 +403,7 @@ export default function FundsList() {
                 {currentFunds
                   .filter(fund => fund.name.toLowerCase().includes(searchTerm.toLowerCase()))
                   .map((fund, index) => (
-                    <FundCard key={fund.name + index} fund={fund} status={activeTab} />
+                    <FundCard key={fund.name + index} fund={fund} />
                   ))}
               </AnimatePresence>
             </motion.div>

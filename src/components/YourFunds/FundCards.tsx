@@ -15,11 +15,9 @@ import { useState } from 'react';
 
 interface FundCardProps {
     fund: UserFund;
-    status: string
 }
 
-export const FundCard = ({ fund, status }: FundCardProps) => {
-    // console.log(status);
+export const FundCard = ({ fund }: FundCardProps) => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [isInviting, setIsInviting] = useState(false);
     const [inviteePubkey, setInviteePubkey] = useState('');
@@ -29,35 +27,13 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
     const wallet = useWallet();
     const {connection} = useConnection();
 
-    const encode = (num: string) => {
-        if (num >= '0' && num <= '1') {
-            return '0';
-        } else if (num > '1' && num <= '4') {
-            return '1';
-        } else if (num > '4' && num <= '7') {
-            return '2';
-        } else {
-            return '3';
-        }
-    }
-
     const handleInvitations = async (response: number) => {
         if(!fund) return;
         if(!wallet.publicKey || !wallet.signTransaction) return;
 
         try {
-            const instructionTag = 19;
-            const nameBytes = Buffer.from(fund.name);
-
-            const buffer = Buffer.alloc(1 + 1 + nameBytes.length);
-            let offset = 0;
-            buffer.writeUint8(instructionTag, offset);
-            offset += 1;
-            buffer.writeUInt8(response, offset);
-            offset += 1;
-            nameBytes.copy(buffer, offset);
-
-            const instructionData = buffer;
+            let inviter_exists = 0;
+            let inviter_vec_index = 0;
 
             const [userPda] = PublicKey.findProgramAddressSync(
                 [Buffer.from("user"), wallet.publicKey.toBuffer()],
@@ -67,78 +43,56 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             const userInfo = await connection.getAccountInfo(userPda);
             if (!userInfo) return;
             const userBuffer = Buffer.from(userInfo.data);
-
-            let firstBytee = 0;
-            let secondBytee = 0;
             const numOfFunds = userBuffer.readUInt32LE(59);
             for (let i=0; i<numOfFunds; i++) {
-                const fundPublickey = new PublicKey(userBuffer.slice(63 + i*51, 95 + i*51));
-                if (fundPublickey.toBase58() === fund.fundPubkey.toBase58()) {
-                    firstBytee = userBuffer.readUInt8(95 + i*51);
-                    secondBytee = userBuffer.readUInt8(105 + i*51);
-                    break;
+                const fund_key = new PublicKey(userBuffer.slice(63 + i*55, 95 + i*55));
+                if (fund_key.toBase58() === fund.fundPubkey.toBase58()) {
+                    inviter_vec_index = userBuffer.readUInt32LE(106 + i*55);
                 }
             }
 
-            const fundInfo = await connection.getAccountInfo(fund.fundPubkey);
-            if (!fundInfo) return;
-            const fundBuffer = Buffer.from(fundInfo.data);
-
-            let inviter: string = '';
-
-            const numOfMembers = fundBuffer.readUInt32LE(87);
-            console.log(numOfMembers);
-            for (let i=0; i<numOfMembers; i++) {
-                const member = new PublicKey(fundBuffer.slice(91 + i*32, 123 + i*32));
-                const encoder = new TextEncoder();
-                const data = encoder.encode(member.toBase58());
-                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-                const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-                let count = 0;
-                let numbers = '';
-                for (const c of hash) {
-                    if (c >= '0' && c <= '9') {
-                        numbers += encode(c);
-                        count ++;
-                    }
-                    if (count == 7) break;
-                }
-
-                if (count != 7) {
-                    for (let i=count; i<7; i++) {
-                        numbers += '0';
-                    }
-                }
-
-                const a = numbers.slice(0, 3);
-                const b = numbers.slice(3, 7);
-
-                let firstByte = 0;
-                for (let i=0; i<a.length; i++) {
-                    firstByte += parseInt(a[i])*(4**(3-i));
-                }
-
-                let secondByte = 0;
-                for (let i=0; i<b.length; i++) {
-                    secondByte += parseInt(b[i])*(4**(3-i));
-                }
-
-                if (firstByte === firstBytee && secondByte === secondBytee) {
-                    inviter = member.toBase58();
+            let inviter: PublicKey | null = null;
+            for (const member of fund.members) {
+                if (member[1] === inviter_vec_index) {
+                    inviter_exists = 1;
+                    inviter = member[0];
                 }
             }
 
-            console.log(inviter);
+            const instructionTag = 19;
+            const nameBytes = Buffer.from(fund.name);
+
+            const buffer = Buffer.alloc(1 + 1 + 1 + nameBytes.length);
+            let offset = 0;
+            buffer.writeUint8(instructionTag, offset);
+            offset += 1;
+            buffer.writeUInt8(response, offset);
+            offset += 1;
+            buffer.writeUInt8(inviter_exists, offset);
+            offset += 1;
+            nameBytes.copy(buffer, offset);
+
+            const instructionData = buffer;
+
+            const [rentPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from('rent')],
+                programId
+            );
+
+            const keys = [
+                {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
+                {pubkey: userPda, isSigner: false, isWritable: true},
+                {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
+                {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+                {pubkey: rentPda, isSigner: false, isWritable: true},
+            ];
+
+            if (inviter_exists && inviter) {
+                keys.push({pubkey: new PublicKey(inviter), isSigner: false, isWritable: true})
+            }
 
             const instruction = new TransactionInstruction({
-                keys: [
-                    {pubkey: wallet.publicKey, isSigner: true, isWritable: true},
-                    {pubkey: userPda, isSigner: false, isWritable: true},
-                    {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
-                    {pubkey: new PublicKey(inviter), isSigner: false, isWritable: true},
-                    {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
-                ],
+                keys,
                 programId,
                 data: instructionData,
             });
@@ -159,9 +113,9 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             
             // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
             await connection.confirmTransaction({
-            signature,
-            blockhash,
-            lastValidBlockHeight
+                signature,
+                blockhash,
+                lastValidBlockHeight
             });
 
             toast.success(`${response ? 'Accepted' : 'Rejected'} invitation successfully`);
@@ -181,48 +135,10 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             const instructionTag = 20;
             const nameBytes = Buffer.from(fund.name, 'utf8');
 
-            const encoder = new TextEncoder();
-            const data = encoder.encode(user.toBase58());
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-            let count = 0;
-            let numbers = '';
-            for (const c of hash) {
-                if (c >= '0' && c <= '9') {
-                    numbers += encode(c);
-                    count ++;
-                }
-                if (count == 7) break;
-            }
-
-            if (count != 7) {
-                for (let i=count; i<7; i++) {
-                    numbers += '0';
-                }
-            }
-
-            const a = numbers.slice(0, 3);
-            const b = numbers.slice(3, 7);
-
-            let firstByte = 0;
-            for (let i=0; i<a.length; i++) {
-                firstByte += parseInt(a[i])*(4**(3-i));
-            }
-
-            let secondByte = 0;
-            for (let i=0; i<b.length; i++) {
-                secondByte += parseInt(b[i])*(4**(3-i));
-            }
-
-            const buffer = Buffer.alloc(1 + 1 + 1 + nameBytes.length);
+            const buffer = Buffer.alloc(1 + nameBytes.length);
             let offset = 0;
 
             buffer.writeUInt8(instructionTag, offset);
-            offset += 1;
-            buffer.writeUInt8(firstByte, offset);
-            offset += 1;
-            buffer.writeUInt8(secondByte, offset);
             offset += 1;
             nameBytes.copy(buffer, offset);
 
@@ -268,9 +184,9 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
             
             // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
             await connection.confirmTransaction({
-            signature,
-            blockhash,
-            lastValidBlockHeight
+                signature,
+                blockhash,
+                lastValidBlockHeight
             });
 
             toast.success('Invited Successfully');
@@ -329,7 +245,7 @@ export const FundCard = ({ fund, status }: FundCardProps) => {
                     <DollarSign className="w-4 h-4 text-emerald-400" />
                 </div>
                 <p className="text-white font-bold text-lg">
-                    ${(Number(fund.totalDeposit) / 1e9).toFixed(2)} SOL
+                    ${(Number(fund.totalDeposit) / 1e6).toFixed(2)}
                 </p>
                 </div>
                 <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">

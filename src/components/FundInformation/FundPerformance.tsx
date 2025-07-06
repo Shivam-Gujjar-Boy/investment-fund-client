@@ -4,7 +4,7 @@ import { LightFund, programId, Token } from '../../types';
 import { Connection, PublicKey, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { Metaplex } from '@metaplex-foundation/js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import axios from 'axios';
+// import axios from 'axios';
 import { fetchMintMetadata } from '../../functions/fetchuserTokens';
 import FundGraph from './FundGraph';
 import { TrendingUp, TrendingDown, DollarSign, ArrowDownLeft, LogOut, Info, Wallet, Target, Search } from 'lucide-react';
@@ -37,7 +37,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
 
       try {
         const instructionTag = 21;
-        const stake_percent: bigint = BigInt(parseInt(task ? "100" : withdrawPercent)) * BigInt(1e9);
+        const stake_percent: bigint = BigInt(parseInt(task ? "100" : withdrawPercent)) * BigInt(1e6);
         const nameBytes = Buffer.from(fund.name, 'utf8');
         
         const buffer = Buffer.alloc(1 + 1 + 1 + 8 + nameBytes.length);
@@ -148,16 +148,16 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
           })
           .filter((token) => token.balance > 0);
 
-        const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=50`);
-        const price = response.data.outAmount;
+        // const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=50`);
+        // const price = response.data.outAmount;
 
         const tokensWithMetadata = await Promise.all(
           tokens.map(async (token) => {
             const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
             // console.log("Metadata = ", metadata);
-            if (token.mint !== 'So11111111111111111111111111111111111111112') {
-              token.balance = (token.balance) * (price / 1_000_000_000);
-            }
+            // if (token.mint !== 'So11111111111111111111111111111111111111112') {
+            //   token.balance = (token.balance) * (price / 1_000_000_000);
+            // }
             return {
               ...token,
               name: metadata?.name || token.name,
