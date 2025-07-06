@@ -21,6 +21,7 @@ import axios from 'axios';
 import FundMembers from '../components/FundInformation/FundMembers';
 import FundPerformance from '../components/FundInformation/FundPerformance';
 import Proposals from '../components/FundInformation/FundProposals';
+import CreateProposal from '../components/Proposals/CreateProposal';
 
 export default function FundsList() {
   const [fund, setFund] = useState<LightFund | null>(null);
@@ -599,6 +600,13 @@ export default function FundsList() {
                       </button>
                     ))}
                   </div>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setActiveTab("create-proposal")}
+                      className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-semibold text-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">
+                      Create Proposal
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="flex items-center gap-4 p-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl transition-all">
@@ -621,6 +629,11 @@ export default function FundsList() {
           // <div className='mt-40 border'>Hello behen ke tako</div>
           <div className='mt-20'>
             <Proposals />
+          </div>
+        )}
+        {activeTab === 'create-proposal' && (
+          <div className='mt-20'>
+            <CreateProposal />
           </div>
         )}
       </div>
