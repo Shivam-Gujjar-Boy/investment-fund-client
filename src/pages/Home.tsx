@@ -266,10 +266,7 @@ export default function Home() {
       console.log('Request marne wali hai');
 
       try {
-        // const result = await axios.post('https://peerfunds.onrender.com/api/upload/upload-user-data', {
-        //   formData
-        // });
-        const res = await fetch('http://localhost:5000/api/upload/upload-user-data', {
+        const res = await fetch('https://peerfunds.onrender.com/api/upload/upload-user-data', {
           method: 'POST',
           body: formData
         });
