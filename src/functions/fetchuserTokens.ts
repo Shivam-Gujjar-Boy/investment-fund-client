@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
 import { TOKEN_METADATA_PROGRAM_ID } from "../types";
 import { Metaplex } from "@metaplex-foundation/js";
 import axios from "axios";
+import SOL from '../assets/SOL.jpg';
+import USDC from '../assets/USDC.png';
 
 export const fetchUserTokens = async (wallet: WalletContextState, connection: Connection, metaplex: Metaplex) => {
 
@@ -27,26 +29,39 @@ export const fetchUserTokens = async (wallet: WalletContextState, connection: Co
             const mint = info.mint;
             const balance = info.tokenAmount.uiAmount;
             const decimals = info.tokenAmount.decimals;
+            let image = '';
+            let name = 'Unknown';
+            let symbol = 'UNKNOWN';
+            if (mint === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+                image = USDC;
+                name = 'USDC';
+                symbol = 'USDC';
+            }
             return {
                 pubkey: acc.pubkey,
                 mint,
-                name: 'Unknown',
-                symbol: 'UNKNOWN',
-                image: '',
+                name,
+                symbol,
+                image,
                 balance,
+                balance_as_usdc: balance,
                 decimals
             };
         })
         .filter((token) => token.balance > 0);
 
         const balance = await connection.getBalance(wallet.publicKey);
+
+        // fetch real time SOL price ------
+
         tokens?.unshift({
             pubkey: new PublicKey('So11111111111111111111111111111111111111111'),
             mint: 'So11111111111111111111111111111111111111111',
-            name: 'uwSOL',
-            symbol: 'uwSOL',
-            image: '',
+            name: 'SOL',
+            symbol: 'SOL',
+            image: SOL,
             balance: balance/Math.pow(10, 9),
+            balance_as_usdc: balance,
             decimals: 9,
         });
 
@@ -132,7 +147,7 @@ export const getMetadataPDA = (mintPubkey: PublicKey) => {
 export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => {
     try {
         const [metadataPDA] = getMetadataPDA(mint);
-        console.log("Metadata PDA: ", metadataPDA.toBase58());
+        // console.log("Metadata PDA: ", metadataPDA.toBase58());
         const metadataAccountInfo = await metaplex
         .nfts()
         .findByMetadata({metadata: metadataPDA});

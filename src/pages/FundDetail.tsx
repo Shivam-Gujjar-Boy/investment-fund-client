@@ -603,7 +603,7 @@ export default function FundsList() {
                   <div className="flex justify-center">
                     <button
                       onClick={() => setActiveTab("create-proposal")}
-                      className="px-6 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-semibold text-md rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">
+                      className="px-6 py-2 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-600 hover:to-emerald-600 active:from-teal-700 active:to-emerald-700 text-white font-semibold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">
                       Create Proposal
                     </button>
                   </div>
@@ -633,7 +633,7 @@ export default function FundsList() {
         )}
         {activeTab === 'create-proposal' && (
           <div className='mt-20'>
-            <CreateProposal />
+            <CreateProposal fund={fund} connection={connection} metaplex={metaplex} />
           </div>
         )}
       </div>
@@ -643,71 +643,104 @@ export default function FundsList() {
         }} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
           <div className="bg-[#171f32] border border-white/10 shadow-2xl rounded-3xl p-6 w-[90%] max-w-xl text-white transition-all duration-300 scale-100 relative animate-fadeIn">
             <h2 className="text-2xl font-bold mb-6 tracking-wide">💰 Deposit Tokens</h2>
-            {selectedToken && (
-              <div className="flex justify-between text-xs text-white mb-2 px-1">
+            {userTokens && userTokens.length > 0 && selectedToken ? (
+              <div className="flex justify-between text-xs text-white mb-2 px-1 min-h-[24px]">
+                {/* Left: Token Balance */}
                 <div className="flex items-center gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                   {selectedToken.symbol} balance: {selectedToken.balance}
                 </div>
+
+                {/* Right: Buttons */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setAmount(selectedToken.balance.toString())}
-                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600 transition"
                   >
                     Max
                   </button>
                   <button
                     onClick={() => setAmount((selectedToken.balance * 0.5).toFixed(6))}
-                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600"
+                    className="text-xs bg-gray-700 text-gray-300 px-2 py-[2px] rounded hover:bg-gray-600 transition"
                   >
                     50%
                   </button>
                 </div>
               </div>
-            )}
-            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-x-auto text-white pr-2">
-              <div className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer w-[30%]">
-                <div className="w-10 h-10 bg-gray-600 rounded-full">
-                  {selectedToken?.image ? (
-                    <img src={selectedToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
-                  ) : (
-                    <div className="w-full h-full bg-gray-600 rounded-full" />
-                  )}
+            ) : (
+              <div className="flex justify-between items-center text-xs text-white mb-2 px-1 min-h-[24px] animate-pulse">
+                {/* Left: Icon + Gray Line */}
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 bg-gray-700 rounded" />
+                  <div className="h-3 w-28 bg-gray-700 rounded" />
                 </div>
-                <select
-                  value={selectedToken?.mint || ''}
-                  onChange={(e) =>
-                    setSelectedToken(userTokens.find((t) => t.mint === e.target.value) || null)
-                  }
-                  className="bg-transparent text-white text-xl outline-none cursor-pointer w-[60%]"
-                >
-                  {userTokens.map((token) => (
-                    <option key={token.mint} value={token.mint} className="text-black">
-                      {token.symbol}
-                    </option>
-                  ))}
-                </select>
+
+                {/* Right: Fake Buttons */}
+                <div className="flex gap-2">
+                  <div className="h-[18px] w-10 bg-gray-700 rounded" />
+                  <div className="h-[18px] w-10 bg-gray-700 rounded" />
+                </div>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => {
-                  let val = e.target.value;
-                  const decimals = selectedToken?.decimals ?? 0;
+            )}
+            <div className="flex items-center bg-[#0c1118] rounded-2xl overflow-x-auto text-white pr-2 min-h-[80px]">
+              {(userTokens && userTokens.length > 0) ? (
+                <>
+                  {/* Token Selector */}
+                  <div className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl m-3 cursor-pointer w-[30%]">
+                    <div className="w-10 h-10 bg-gray-600 rounded-full">
+                      {selectedToken?.image ? (
+                        <img src={selectedToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-600 rounded-full" />
+                      )}
+                    </div>
+                    <select
+                      value={selectedToken?.mint || ''}
+                      onChange={(e) =>
+                        setSelectedToken(userTokens.find((t) => t.mint === e.target.value) || null)
+                      }
+                      className="bg-transparent text-white text-xl outline-none cursor-pointer w-[60%]"
+                    >
+                      {userTokens.map((token) => (
+                        <option key={token.mint} value={token.mint} className="text-black">
+                          {token.symbol}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  if (val.includes('.')) {
-                    const [inPart, decimalPart] = val.split('.');
-                    if (decimalPart.length > decimals) {
-                      val = `${inPart}.${decimalPart.slice(0, decimals)}`
-                    }
-                  }
+                  {/* Amount Input */}
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => {
+                      let val = e.target.value;
+                      const decimals = selectedToken?.decimals ?? 0;
 
-                  setAmount(val);
-                }}
-                className="flex-1 text-right px-4 py-3 text-2xl bg-transparent outline-none placeholder-white"
-              />
+                      if (val.includes('.')) {
+                        const [inPart, decimalPart] = val.split('.');
+                        if (decimalPart.length > decimals) {
+                          val = `${inPart}.${decimalPart.slice(0, decimals)}`
+                        }
+                      }
+
+                      setAmount(val);
+                    }}
+                    className="flex-1 text-right px-4 py-3 text-2xl bg-transparent outline-none placeholder-white"
+                  />
+                </>
+              ) : (
+                // 🌀 Loader Placeholder
+                <div className="w-full flex justify-between items-center animate-pulse">
+                  {/* Loader Token Box */}
+                  <div className="flex items-center gap-3 bg-[#2c3a4e] px-3 py-2 rounded-2xl w-[30%] m-3">
+                    <div className="w-10 h-10 bg-gray-700 rounded-full" />
+                    <div className="h-4 w-16 bg-gray-700 rounded" />
+                  </div>
+                </div>
+              )}
             </div>
             {amount && selectedToken && parseFloat(amount) > selectedToken.balance && (
               <p className="text-red-500 text-sm mt-3">🚫 Insufficient balance</p>

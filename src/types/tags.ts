@@ -33,3 +33,26 @@ export const fundTags = [
   { id: '31', name: 'community', auto: false }
 ];
 
+// Available tags list for proposals
+export const availableTags: string[] = [
+  "profit-making",
+  "urgent",
+  "low-risk",
+  "high-yield",
+  "defi",
+  "arbitrage",
+  "liquidity",
+  "governance",
+  "staking",
+  "yield-farming",
+  "cross-chain",
+  "experimental",
+  "conservative",
+  "long-term",
+  "short-term",
+  "community",
+  "partnership",
+  "research",
+  "development",
+  "marketing",
+];

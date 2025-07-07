@@ -21,11 +21,11 @@ interface VaultHoldingsProps {
 
 export default function VaultHoldings({ tokens }: VaultHoldingsProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const totalBalance = tokens?.reduce((sum, token) => sum + (token.balance || 0), 0) || 0;
+  const totalBalance = tokens?.reduce((sum, token) => sum + (token.balance_as_usdc || 0), 0) || 0;
 
   const chartData = tokens?.map((token) => ({
     name: token.symbol,
-    value: token.balance,
+    value: token.balance_as_usdc,
     image: token.image,
   })) || [];
 

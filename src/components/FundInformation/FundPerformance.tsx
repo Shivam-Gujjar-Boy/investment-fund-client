@@ -11,6 +11,9 @@ import { TrendingUp, TrendingDown, DollarSign, ArrowDownLeft, LogOut, Info, Wall
 import { useWallet } from '@solana/wallet-adapter-react';
 import toast from 'react-hot-toast';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
+import axios from 'axios';
+import SOL from '../../assets/SOL.jpg';
+import USDC from '../../assets/USDC.png';
 
 interface PerformanceProps {
   fund: LightFund,
@@ -129,35 +132,54 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
           { programId: TOKEN_PROGRAM_ID }
         );
 
-        const tokens = tokenAccounts.value
-          .map((acc) => {
-            const info = acc.account.data.parsed.info;
-            const mint = info.mint;
-            const balance = info.tokenAmount.uiAmount;
-            const decimals = info.tokenAmount.decimals;
-            console.log(mint);
-            return {
-              pubkey: acc.pubkey,
-              mint,
-              name: 'Unknown',
-              symbol: 'UNKNOWN',
-              image: '',
-              balance,
-              decimals
-            };
-          })
-          .filter((token) => token.balance > 0);
-
-        // const response = await axios(`https://quote-api.jup.ag/v6/quote?inputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&outputMint=So11111111111111111111111111111111111111112&amount=1000000&slippageBps=50`);
-        // const price = response.data.outAmount;
+        const tokens = (await Promise.all(
+          tokenAccounts.value.map(async (acc) => {
+              const info = acc.account.data.parsed.info;
+              const mint = info.mint;
+              const balance = info.tokenAmount.uiAmount;
+              console.log(balance);
+              const decimals = info.tokenAmount.decimals;
+              let balance_as_usdc = balance;
+              if (mint === 'So11111111111111111111111111111111111111112') {
+                // fetch SOL price
+                const amount = info.tokenAmount.amount;
+                console.log(amount);
+                try {
+                  const response = await axios(
+                    `https://quote-api.jup.ag/v6/quote?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=${amount}&slippageBps=50`
+                  );
+                  balance_as_usdc = response.data.outAmount / 1e6;
+                } catch (err) {
+                  toast.error('Failed to fetch SOL price');
+                }
+              }
+              let image = '';
+              let name = 'Unknown';
+              let symbol = 'UNKNOWN';
+              if (mint === 'So11111111111111111111111111111111111111112') {
+                image = SOL;
+              } else if (mint === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+                image = USDC;
+                name = 'USDC';
+                symbol = 'USDC';
+              }
+              console.log(mint);
+              return {
+                pubkey: acc.pubkey,
+                mint,
+                name,
+                symbol,
+                image,
+                balance,
+                balance_as_usdc,
+                decimals
+              };
+            })
+        )).filter((token) => token.balance > 0);
 
         const tokensWithMetadata = await Promise.all(
           tokens.map(async (token) => {
             const metadata = await fetchMintMetadata(new PublicKey(token.mint), metaplex);
-            // console.log("Metadata = ", metadata);
-            // if (token.mint !== 'So11111111111111111111111111111111111111112') {
-            //   token.balance = (token.balance) * (price / 1_000_000_000);
-            // }
             return {
               ...token,
               name: metadata?.name || token.name,
@@ -219,7 +241,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Total Fund Value</p>
-                    <p className="text-2xl font-bold text-slate-300">{(Number(fund.totalDeposit) / 1e9).toFixed(4)} <span className="text-purple-400">SOL</span></p>
+                    <p className="text-2xl font-bold text-slate-300"><span className="text-purple-400">$</span> {(Number(fund.totalDeposit) / 1e6).toFixed(2)}</p>
                   </div>
                   <DollarSign className="w-9 h-9 text-purple-400 drop-shadow-[0_0_2px_#8b5cf660]" />
                 </div>
@@ -230,7 +252,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Your Contribution</p>
-                    <p className="text-2xl font-bold text-slate-300">{(userStakePercent / 100 * Number(fund.totalDeposit) / 1e9).toFixed(4)} <span className="text-indigo-400">SOL</span></p>
+                    <p className="text-2xl font-bold text-slate-300"><span className="text-indigo-400">$</span> {(userStakePercent / 100 * Number(fund.totalDeposit) / 1e6).toFixed(2)}</p>
                   </div>
                   <Wallet className="w-9 h-9 text-indigo-400 drop-shadow-[0_0_2px_#6366f680]" />
                 </div>
@@ -252,7 +274,7 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-slate-400 mb-1">Current Value</p>
-                    <p className="text-2xl font-bold text-slate-300">{(userStakePercent / 100 * Number(fund.totalDeposit) / 1e9).toFixed(4)} <span className="text-emerald-400">SOL</span></p>
+                    <p className="text-2xl font-bold text-slate-300"><span className="text-emerald-400">$</span> {(userStakePercent / 100 * Number(fund.totalDeposit) / 1e6).toFixed(2)}</p>
                   </div>
                   <TrendingUp className="w-9 h-9 text-emerald-400 drop-shadow-[0_0_2px_#10b98166]" />
                 </div>

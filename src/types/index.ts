@@ -60,8 +60,17 @@ export interface Token {
   symbol: string,
   image: string,
   balance: number,
+  balance_as_usdc: number,
   decimals: number,
-};
+}
+
+export interface ToToken {
+  mint: string,
+  name: string,
+  symbol: string,
+  image: string,
+  decimals: number,
+}
 
 export interface Proposal {
   proposalIndex: number,
