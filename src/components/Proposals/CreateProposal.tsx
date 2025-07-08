@@ -585,22 +585,27 @@ const CreateProposal = ({
                                   </select>
                                 </div>
                                 <input
-                                  type="number"
+                                  type="text" // use "text" to fully control what user types
                                   value={amount}
                                   onChange={(e) => {
                                     let val = e.target.value;
-                                    const decimals = selectedFromToken?.decimals ?? 0;
 
+                                    // Block any non-digit (except one dot)
+                                    if (!/^\d*\.?\d*$/.test(val)) return;
+
+                                    // Restrict decimal places
+                                    const decimals = selectedFromToken?.decimals ?? 0;
                                     if (val.includes('.')) {
-                                      const [inPart, decimalPart] = val.split('.');
+                                      const [intPart, decimalPart] = val.split('.');
                                       if (decimalPart.length > decimals) {
-                                        val = `${inPart}.${decimalPart.slice(0, decimals)}`
+                                        val = `${intPart}.${decimalPart.slice(0, decimals)}`;
                                       }
                                     }
 
                                     setAmount(val);
                                   }}
-                                  className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder-white w-[65%]"
+                                  placeholder="0"
+                                  className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder-slate-400 w-[65%]"
                                 />
                               </div>
                             )}
