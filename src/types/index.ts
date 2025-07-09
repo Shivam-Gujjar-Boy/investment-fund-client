@@ -72,6 +72,16 @@ export interface ToToken {
   decimals: number,
 }
 
+export interface FromToken {
+  mint: string,
+  name: string,
+  symbol: string,
+  image: string,
+  balance: number,
+  balance_as_usdc: number,
+  decimals: number,
+}
+
 export interface Proposal {
   proposalIndex: number,
   vecIndex: number,
@@ -87,6 +97,11 @@ export interface Proposal {
   deadline: bigint,
   executed: boolean,
   userVoted: boolean,
+}
+
+export interface LockedToken {
+  mint: string,
+  amount: bigint,
 }
 
 export interface JoinProposal {

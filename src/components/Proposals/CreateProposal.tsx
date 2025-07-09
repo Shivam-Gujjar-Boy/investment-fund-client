@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   X,
-  Plus,
   ArrowDownUp,
   ArrowRight,
   ArrowLeft,
@@ -10,7 +9,7 @@ import {
   ArrowDown,
   ClipboardIcon,
 } from "lucide-react";
-import { LightFund, Token, ToToken } from "../../types";
+import { FromToken, LightFund, programId, Token, ToToken } from "../../types";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { fetchMintMetadata } from "../../functions/fetchuserTokens";
 import { Connection, PublicKey } from "@solana/web3.js";
@@ -57,19 +56,44 @@ const CreateProposal = ({
   });
   const [tokens, setTokens] = useState<Token[] | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [selectedFromToken, setSelectedFromToken] = useState<Token | null>(null);
+
+  const [selectedFromToken, setSelectedFromToken] = useState<FromToken | null>(null);
   const [selectedToToken, setSelectedToToken] = useState<ToToken | null>(null);
   const [amount, setAmount] = useState('');
+  const [slippage, setSlippage] = useState('');
+  
   const [toTokenMints, setToTokenMints] = useState<string[]>([]);
   const [toTokens, setToTokens] = useState<ToToken[] | null>([]);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState<boolean>(false);
-  const [showTokensModal, setShowTokensModal] = useState(false);
+  const [showToTokensModal, setShowToTokensModal] = useState(false);
+  const [showFromTokensModal, setShowFromTokensModal] = useState(false);
   const [search, setSearch] = useState('');
   const [mintExists, setMintExists] = useState<number>(0);
   const [newToken, setNewToken] = useState<ToToken | null>(null);
+  const [fromTokens, setFromTokens] = useState<FromToken[]>([]);
+  const [expectedFromTokens, setExpectedFromTokens] = useState<Token[]>([]);
+
+  const [proposal, setProposal] = useState<ProposalData>({
+    title: '',
+    description: '',
+    swaps: [],
+    tags: [],
+    deadline: ''
+  });
+
+  const [swap, setSwap] = useState<Swap>({
+    fromToken: '',
+    fromAmount: '',
+    toToken: '',
+    slippage: ''
+  });
+
+  const [currentSwapIndex, setCurrentSwapIndex] = useState(0);
+
 
   const wallet = useWallet();
 
+  // check for valid pubkey
   const isValidPubkey = (input: string) => {
     try {
       new PublicKey(input);
@@ -79,6 +103,7 @@ const CreateProposal = ({
     }
   };
 
+  // filter tokens based on search parameter
   const filteredTokens = (() => {
     if (isValidPubkey(search)) {
       return toTokens?.filter(token => token.mint === search);
@@ -87,14 +112,15 @@ const CreateProposal = ({
     }
   })();
 
+  // run check everytime when search parameter changes
   useEffect(() => {
     const runCheck = async () => {
-      console.log('running check');
+      // console.log('running check');
       if (isValidPubkey(search) && filteredTokens?.length === 0) {
         const exists = await checkIfMintExists(search);
         if (!exists) return;
         setMintExists(exists);
-        console.log(`Mint was ${exists === 1 ? 'Wrong' : 'Correct'}`);
+        // console.log(`Mint was ${exists === 1 ? 'Wrong' : 'Correct'}`);
         if (exists === 2) {
           await fetchTokenMetas(search);
         }
@@ -105,6 +131,7 @@ const CreateProposal = ({
     runCheck();
   }, [search]);
 
+  // check if search mint account exists
   const checkIfMintExists = async (mint: string) => {
     try {
       const mintInfo = await connection.getAccountInfo(new PublicKey(mint));
@@ -117,6 +144,7 @@ const CreateProposal = ({
     }
   }
 
+  // fetch vault tokens
   const fetchVaultTokens = useCallback(async () => {
     try {
       if (!fund || !fund.vault) return;
@@ -176,24 +204,39 @@ const CreateProposal = ({
       // console.log(tokens);
 
       setTokens(tokensWithMetadata);
-      setSelectedFromToken(tokens[0]);
-      console.log('DONE FETCHING VAULT TOKENS');
+
+      setFromTokens(tokensWithMetadata.map(({pubkey, ...rest}) => {
+        // console.log(pubkey);
+        return rest;
+      }));
+
+      setSelectedFromToken(
+        tokensWithMetadata.length
+          ? (({ pubkey, ...rest }) => {
+            // console.log(pubkey);
+            return rest;
+          })(tokensWithMetadata[0])
+          : null
+      );
+
+      // console.log('DONE FETCHING VAULT TOKENS');
     } catch (err) {
       console.error("Error fetching fund tokens:", err);
       return [];
     }
   }, [connection, metaplex, fund]);
 
+  // fetch mints of to tokens from backend
   const fetchAllToTokenMints = useCallback(async () => {
     try {
-      const response = await fetch('https://peerfunds.onrender.com/api/token/get-all-tokens');
+      const response = await fetch('https://investment-fund-server-production.up.railway.app/api/token/get-all-tokens');
       if (!response.ok) {
         throw new Error('Failed to fetch tokens');
       }
       const data = await response.json();
       setToTokenMints(data);
-      console.log('DONE FETCHING MINTS FROM DATABASE');
-      console.log(data);
+      // console.log('DONE FETCHING MINTS FROM DATABASE');
+      // console.log(data);
     } catch (err) {
       console.error('Error fetching tokens:', err);
       toast.error('Failed to fetch tokens');
@@ -204,22 +247,36 @@ const CreateProposal = ({
     fetchToTokens();
   }, [toTokenMints]);
 
+  // when to tokens change, reset the selected one to index 0
   useEffect(() => {
-    if (!toTokens) return;
-    setSelectedToToken(toTokens[0]);
+    if (!toTokens || toTokens.length === 0) return;
+    setSelectedToToken(toTokens.length ? toTokens[0] : null);
   }, [toTokens]);
 
+  // fetch to tokens with metadata
   const fetchToTokens = async () => {
-    console.log('Trying to fetch metadatas');
-    console.log(toTokenMints);
+    // console.log('Trying to fetch metadatas');
+    // console.log(toTokenMints);
     if (!toTokenMints || toTokenMints.length === 0) return;
     try {
       const toTokenss = toTokenMints.map((toTokenMint) => {
+
+        let image = '';
+        let name = 'Unknown';
+        let symbol = 'UNKNOWN';
+        if (toTokenMint === 'So11111111111111111111111111111111111111112') {
+          image = SOL;
+        } else if (toTokenMint === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+          image = USDC;
+          name = 'USDC';
+          symbol = 'USDC';
+        }
+
         return {
           mint: toTokenMint,
-          name: 'Unknown',
-          symbol: 'UNKNOWN',
-          image: '',
+          name,
+          symbol,
+          image,
           decimals: 0
         };
       });
@@ -237,20 +294,33 @@ const CreateProposal = ({
       );
 
       setToTokens(toTokensWithMetadata);
-      console.log('DONE FETCHING TO TOKENS METADATA');
-      console.log('To Tokens:', toTokens);
+      // console.log('DONE FETCHING TO TOKENS METADATA');
+      // console.log('To Tokens:', toTokens);
 
     } catch (err) {
       console.log(err);
     }
   };
 
+  // fetch metadata for newly entered mint account
   const fetchTokenMetas = async (mint: string) => {
+
+    let image = '';
+    let name = 'Unknown';
+    let symbol = 'UNKNOWN';
+    if (mint === 'So11111111111111111111111111111111111111112') {
+      image = SOL;
+    } else if (mint === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+      image = USDC;
+      name = 'USDC';
+      symbol = 'USDC';
+    }
+
     let toToken = {
       mint,
-      name: 'Unknown',
-      symbol: 'UNKNOWN',
-      image: '',
+      name,
+      symbol,
+      image,
       decimals: 0
     };
 
@@ -265,14 +335,7 @@ const CreateProposal = ({
     setNewToken(toToken);
   }
 
-  const fetchedRef = useRef(false);
 
-  useEffect(() => {
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
-    fetchVaultTokens();
-    fetchAllToTokenMints();
-  }, [fetchVaultTokens, fetchAllToTokenMints]);
 
   const handleInputChange = (field: keyof ProposalData, value: string) => {
     setProposalData((prev) => ({
@@ -281,18 +344,11 @@ const CreateProposal = ({
     }));
   };
 
-  // const handleSwapChange = (
-  //   index: number,
-  //   field: keyof Swap,
-  //   value: string
-  // ) => {
-  //   const updatedSwaps = [...proposalData.swaps];
-  //   updatedSwaps[index][field] = value;
-  //   setProposalData((prev) => ({
-  //     ...prev,
-  //     swaps: updatedSwaps,
-  //   }));
-  // };
+  const handleSwapChange = (updatedFields: Partial<Swap>) => {
+    setSwap((prev) => {
+      return {...prev, ...updatedFields}
+    });
+  };
 
   const addSwap = () => {
     setProposalData((prev) => ({
@@ -302,6 +358,12 @@ const CreateProposal = ({
         { fromToken: "", fromAmount: "", toToken: "", slippage: "0.5" },
       ],
     }));
+
+    console.log(currentSwapIndex);
+    setCurrentSwapIndex(currentSwapIndex + 1);
+
+    // also handle the modifications in the from tokens and expected tokens lists and their balances ****
+
   };
 
   // const removeSwap = (index: number) => {
@@ -377,10 +439,11 @@ const CreateProposal = ({
     }
   };
 
+  // add mew mint to database
   const addToken = async () => {
     if (!newToken) return;
     try {
-      const response = await fetch('https://peerfunds.onrender.com/api/token/add-new-token', {
+      const response = await fetch('https://investment-fund-server-production.up.railway.app/api/token/add-new-token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -395,13 +458,102 @@ const CreateProposal = ({
       const data = await response.json();
       toast.success('Token added successfully 🎉');
       console.log('Added token:', data);
-      
+
+      const currentToTokenMints = toTokenMints;
+      currentToTokenMints.push(newToken.mint);
+      setToTokenMints(currentToTokenMints);
+
+      if (toTokens) {
+        const currentToTokens = toTokens;
+        currentToTokens?.push(newToken);
+        setToTokens(currentToTokens);
+      }
+
+      setSearch('');
       // Optionally refresh token list or close modal here
     } catch (err) {
       console.error('Error adding token:', err);
       toast.error('Failed to add token 😔');
     }
   };
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowFromTokensModal(false);
+        setShowToTokensModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
+  const fetchActiveProposals = useCallback(async () => {
+    if (!fund) return;
+
+    try {
+      const currentAggregatorIndex = fund.currentIndex;
+      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentAggregatorIndex]), fund.fundPubkey.toBuffer()],
+        programId
+      );
+
+      const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+      if (!currentAggregatorInfo) return;
+
+      const currentAggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+
+      const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
+      let offset = 5;
+      for (let i=0; i<numOfProposals; i++) {
+        const isExecuted = currentAggregatorBuffer.readUInt8(offset + 123) ? true : false;
+        if (!isExecuted) {
+          const cid = currentAggregatorBuffer.slice(offset + 32, offset + 91).toString();
+          // fetch proposal from tokens, and their amounts, and accordingly deduct that amount from the fromTokens
+        }
+        const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
+        offset += (130 + (numOfVoters * 5));
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  }, [connection, fund]);
+
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetchVaultTokens();
+    fetchAllToTokenMints();
+    fetchActiveProposals();
+  }, [fetchVaultTokens, fetchAllToTokenMints, fetchActiveProposals]);
+
+
+
+  useEffect(() => {
+    if (selectedFromToken) {
+      handleSwapChange({ fromToken: selectedFromToken.mint });
+    }
+  }, [selectedFromToken]);
+
+  useEffect(() => {
+    if (selectedToToken) {
+      handleSwapChange({ toToken: selectedToToken.mint });
+    }
+  }, [selectedToToken]);
+
+  useEffect(() => {
+    if (amount !== '') {
+      handleSwapChange({ fromAmount: amount });
+    }
+  }, [amount]);
+
+  useEffect(() => {
+    if (slippage !== '') {
+      handleSwapChange({ slippage });
+    }
+  }, [slippage]);
 
   return (
     <>
@@ -489,13 +641,13 @@ const CreateProposal = ({
                       <h3 className="text-xl font-semibold text-white">
                         Token Swaps
                       </h3>
-                      <button
+                      {/* <button
                         onClick={addSwap}
                         className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
                       >
                         <Plus size={16} />
                         Add Swap
-                      </button>
+                      </button> */}
                     </div>
 
                     <div className="min-h-[250px] flex gap-2">
@@ -555,45 +707,40 @@ const CreateProposal = ({
                             )}
                             {tokens && (
                               <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
-                                <div className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
+                                <div
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowFromTokensModal(true);
+                                  }} 
+                                  className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
                                   <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                    {selectedFromToken?.image ? (
-                                      <img src={selectedFromToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
+                                    {selectedFromToken ? (
+                                      <div className="w-10 h-10 bg-gray-600 rounded-full">
+                                        {selectedFromToken?.image ? (
+                                          <img src={selectedFromToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
+                                        ) : (
+                                          <div className="w-full h-full bg-gray-600 rounded-full" />
+                                        )}
+                                      </div>
                                     ) : (
                                       <div className="w-full h-full bg-gray-600 rounded-full" />
                                     )}
                                   </div>
-                                  <select
-                                    value={selectedFromToken?.mint || ''}
-                                    onChange={(e) =>
-                                      setSelectedFromToken(tokens.find((t) => t.mint === e.target.value) || null)
-                                    }
-                                    className="bg-transparent text-white text-xl outline-none cursor-pointer w-[60%]"
-                                  >
-                                    {tokens.map((token) => (
-                                      <option key={token.mint} value={token.mint} className="text-black">
-                                        <div className="w-6 h-6 bg-gray-600 rounded-full">
-                                          {token?.image ? (
-                                            <img src={token.image} alt="token" className="w-full h-full object-cover rounded-full" />
-                                          ) : (
-                                            <div className="w-full h-full bg-gray-600 rounded-full" />
-                                          )}
-                                        </div>
-                                        {token.symbol}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  {selectedFromToken && (
+                                    <p className="text-xl ml-2" onClick={(e) => {
+                                      e.preventDefault();
+                                      console.log("Selected From Token:", selectedFromToken);
+                                    }}>{selectedFromToken.symbol}</p>
+                                  )}
                                 </div>
                                 <input
-                                  type="text" // use "text" to fully control what user types
+                                  type="text"
                                   value={amount}
                                   onChange={(e) => {
                                     let val = e.target.value;
 
-                                    // Block any non-digit (except one dot)
                                     if (!/^\d*\.?\d*$/.test(val)) return;
 
-                                    // Restrict decimal places
                                     const decimals = selectedFromToken?.decimals ?? 0;
                                     if (val.includes('.')) {
                                       const [intPart, decimalPart] = val.split('.');
@@ -604,8 +751,8 @@ const CreateProposal = ({
 
                                     setAmount(val);
                                   }}
-                                  placeholder="0"
-                                  className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder-slate-400 w-[65%]"
+                                  placeholder="Enter Amount"
+                                  className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder:text-2xl placeholder-slate-700 w-[65%]"
                                 />
                               </div>
                             )}
@@ -639,13 +786,13 @@ const CreateProposal = ({
                                 <div
                                   onClick={(e) => {
                                     e.preventDefault();
-                                    setShowTokensModal(true);
+                                    setShowToTokensModal(true);
                                   }}
                                   className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-full h-full">
                                   <div className="w-10 h-10 bg-gray-600 rounded-full">
                                     {selectedToToken ? (
                                       <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                        {selectedFromToken?.image ? (
+                                        {selectedToToken?.image ? (
                                           <img src={selectedToToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
                                         ) : (
                                           <div className="w-full h-full bg-gray-600 rounded-full" />
@@ -673,6 +820,8 @@ const CreateProposal = ({
                                     min="0"
                                     max="100"
                                     placeholder="0.5"
+                                    value={slippage}
+                                    onChange={(e) => setSlippage(e.target.value)}
                                     className="w-full pl-4 pr-10 py-2 rounded-xl bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                                   />
                                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">%</span>
@@ -683,6 +832,9 @@ const CreateProposal = ({
                             {/* Add Button */}
                             <div className="w-[20%] h-[50%]">
                               <button
+                                onClick={() => {
+                                  addSwap();
+                                }}
                                 className="w-full h-full border border-emerald-500 rounded-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-300 bg-slate-900/60 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all duration-300 shadow-inner shadow-emerald-500/10 backdrop-blur-md group"
                               >
                                 Add
@@ -926,14 +1078,17 @@ const CreateProposal = ({
           </div>
         </div>
       </div>
-      {showTokensModal && (
+      {showToTokensModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-[#111827] w-[460px] max-h-[90vh] rounded-2xl p-6 text-white overflow-hidden shadow-2xl relative">
+          <div className="bg-[#111827] w-[460px] max-h-[90vh] rounded-2xl p-6 text-white overflow-hidden shadow-2xl relative animate-fadeIn">
             
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Select a token</h2>
-              <button onClick={() => setShowTokensModal(false)} className="text-gray-400 hover:text-white transition">
+              <button onClick={() => {
+                setShowToTokensModal(false);
+                setSearch('');
+              }} className="text-gray-400 hover:text-white transition">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -953,13 +1108,17 @@ const CreateProposal = ({
             </div>
 
             {/* Token List */}
-            <div className="overflow-y-auto max-h-[300px] space-y-2 pr-1">
+            <div className="overflow-y-auto max-h-[300px] space-y-2 pr-1 scrollbar-none">
                 {filteredTokens && filteredTokens.length > 0 ? (
                   filteredTokens.map((token) => (
                     <div
                       onClick={() => {
                         setSelectedToToken(token);
-                        setShowTokensModal(false);
+                        if (token?.mint === selectedFromToken?.mint) {
+                          setSelectedFromToken(null);
+                        }
+                        setShowToTokensModal(false);
+                        setSearch('');
                       }}
                       key={token.mint}
                       className="flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-700/30 transition cursor-pointer"
@@ -1026,6 +1185,113 @@ const CreateProposal = ({
             <div className="mt-4 bg-gray-800/50 text-sm text-gray-400 rounded-xl px-4 py-3">
               Can’t find the token you’re looking for? Try entering the mint address.
             </div>
+          </div>
+        </div>
+      )}
+      {showFromTokensModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#111827] min-h-[50vh] rounded-2xl p-4 py-6 text-white overflow-hidden shadow-2xl relative flex flex-col animate-fadeIn">
+
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6 ml-2">
+              <h2 className="text-lg font-semibold">Token Overview</h2>
+              <button onClick={() => setShowFromTokensModal(false)} className="text-gray-400 hover:text-white transition">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Dual Columns */}
+            <div className="grid grid-cols-2 gap-3 h-[40vh]">
+              
+              {/* Left: Current Tokens */}
+              <div className="bg-[#1F2937] rounded-2xl p-3 h-[41vh] scrollbar-thin">
+                <h3 className="text-base font-semibold mb-4 ml-4">Current Tokens</h3>
+                <div className="max-h-[360px] space-y-3 pr-1 overflow-y-auto h-[85%] scrollbar-none">
+                  {fromTokens && fromTokens.length > 0 ? (
+                    fromTokens.map((token) => (
+                      <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedFromToken(token);
+                          if (token?.mint === selectedToToken?.mint) {
+                            setSelectedToToken(null);
+                          }
+                          setShowFromTokensModal(false);
+                        }}
+                        key={token.mint}
+                        className="flex justify-between items-center px-2 py-2 rounded-lg gap-10 hover:bg-gray-700/30 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={token.image} alt={token.symbol} className="w-8 h-8 rounded-full" />
+                          <div>
+                            <div className="font-medium">{token.symbol}</div>
+                            <div className="text-sm text-gray-400">{token.name}</div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 text-right">
+                          <span className="text-xs text-emerald-400 font-medium">Balance: {token.balance} </span>
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <span className="text-sm max-w-[120px] truncate">
+                              {token.mint.slice(0, 4)}...{token.mint.slice(-4)}
+                            </span>
+                            <ClipboardIcon
+                              onClick={() => navigator.clipboard.writeText(token.mint)}
+                              className="w-4 h-4 hover:text-white cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-400 text-sm py-6">No current tokens found.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Expected Tokens */}
+              <div className="bg-[#1F2937] rounded-2xl p-4">
+                <h3 className="text-base font-semibold mb-4">Expected Tokens</h3>
+                <div className="overflow-y-auto max-h-[360px] space-y-3 pr-1">
+                  {expectedFromTokens && expectedFromTokens.length > 0 ? (
+                    expectedFromTokens.map((token) => (
+                      <div
+                        key={token.mint}
+                        className="flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-700/30 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={token.image} alt={token.symbol} className="w-8 h-8 rounded-full" />
+                          <div>
+                            <div className="font-medium">{token.symbol}</div>
+                            <div className="text-sm text-gray-400">{token.name}</div>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 text-right">
+                          <span className="text-xs text-emerald-400 font-medium">{token.balance}</span>
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <span className="text-sm max-w-[120px] truncate">
+                              {token.mint.slice(0, 4)}...{token.mint.slice(-4)}
+                            </span>
+                            <ClipboardIcon
+                              onClick={() => navigator.clipboard.writeText(token.mint)}
+                              className="w-4 h-4 hover:text-white cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-400 text-sm py-6">No expected tokens found.</div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Optional Note */}
+            <div className="mt-6 bg-gray-800/50 text-sm text-gray-400 rounded-xl px-4 py-3">
+              Current tokens represent what the vault holds. Expected tokens reflect the state after proposal execution.
+            </div>
+
           </div>
         </div>
       )}

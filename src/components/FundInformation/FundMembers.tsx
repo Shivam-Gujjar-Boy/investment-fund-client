@@ -46,10 +46,10 @@ export default function FundMembers({fund, searchTerm} : MembersProps) {
           let joined: bigint = BigInt(0);
 
           for (let i = 0; i < numberOfFunds; i++) {
-            const fundPubkey = new PublicKey(userBuffer.slice(63 + i * 51, 95 + i * 51));
+            const fundPubkey = new PublicKey(userBuffer.slice(63 + i * 55, 95 + i * 55));
             if (fundPubkey.equals(fund.fundPubkey)) {
-              balance = userBuffer.readBigInt64LE(96 + i*51);
-              joined = userBuffer.readBigInt64LE(106 + i*51 );
+              balance = userBuffer.readBigInt64LE(96 + i*55);
+              joined = userBuffer.readBigInt64LE(110 + i*55);
               break;
             }
           }
@@ -179,7 +179,9 @@ export default function FundMembers({fund, searchTerm} : MembersProps) {
                   <div className="text-left">
                     <h3 className="text-lg font-bold text-white">{member.name}</h3>
                     <p className="text-xs text-gray-400 font-mono break-all">{member.address.toBase58()}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p
+                      onClick={(e) => console.log(member.joined)}
+                      className="text-xs text-gray-500 mt-1">
                       Member since {new Date(Number(member.joined) * 1000).toLocaleDateString()}
                     </p>
                   </div>

@@ -7,6 +7,7 @@ import { CustomWalletButton } from '../../context/CustomWalletButton';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { programId } from '../../types';
+import peerfunds from '../../assets/peerfunds.png';
 
 interface UserProfile {
   username: string;
@@ -119,7 +120,7 @@ export default function Navbar() {
                 e.preventDefault();
                 navigate('/dashboard');
               }} className='flex justify-center items-center gap-2 cursor-pointer'>
-                <img src="/peerfunds.png" alt="PeerFunds" className='w-10 sm:w-12 rounded-full' />
+                <img src={peerfunds} alt="PeerFunds" className='w-10 sm:w-12 rounded-full' />
                 <h1 className="text-white text-xl sm:text-2xl font-bold tracking-tight">PeerFunds</h1>
               </div>
 

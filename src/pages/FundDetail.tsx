@@ -294,6 +294,16 @@ export default function FundsList() {
     }
   };
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDepositModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, []);
+
   if (!fund) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-[#0e1117] to-[#1b1f27] min-h-screen">
@@ -602,7 +612,13 @@ export default function FundsList() {
                   </div>
                   <div className="flex justify-center">
                     <button
-                      onClick={() => setActiveTab("create-proposal")}
+                      onClick={() => {
+                        if (contribution !== BigInt(0)) {
+                          setActiveTab("create-proposal");
+                        } else {
+                          toast.error(`Can't create proposal without any contribution`);
+                        }
+                      }}
                       className="px-6 py-2 bg-gradient-to-r from-teal-700 to-emerald-700 hover:from-teal-600 hover:to-emerald-600 active:from-teal-700 active:to-emerald-700 text-white font-semibold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out">
                       Create Proposal
                     </button>

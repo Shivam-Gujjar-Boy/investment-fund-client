@@ -1,110 +1,109 @@
 import { useState } from 'react';
-import { Clock, TrendingUp, Users, ArrowRight, MoreHorizontal, CheckCircle, XCircle, Calendar, Target, Zap, Copy } from 'lucide-react';
+import { ArrowRight, MoreHorizontal, CheckCircle, XCircle, Calendar, Target, Zap, Copy } from 'lucide-react';
 
 const Proposals = () => {
-  const [selectedProposal, setSelectedProposal] = useState(null);
-  const [filter, setFilter] = useState('all');
-  console.log('Proposals me aaya bro');
+    const [selectedProposal, setSelectedProposal] = useState(null);
+    // const [filter, setFilter] = useState('all');
 
-  // Dummy data for proposals
-  const proposals = [
-    {
-      id: 1,
-      title: "Swap 50,000 USDC to SOL",
-      description: "Strategic position building in SOL before anticipated market rally",
-      proposer: {
-        address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
-        name: "CryptoWhale",
-        image: "https://api.dicebear.com/7.x/avataaars/svg?seed=CryptoWhale"
+    // Dummy data for proposals
+    const proposals = [
+      {
+        id: 1,
+        title: "Swap 50,000 USDC to SOL",
+        description: "Strategic position building in SOL before anticipated market rally",
+        proposer: {
+          address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+          name: "CryptoWhale",
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=CryptoWhale"
+        },
+        swap: {
+          from: { symbol: "USDC", amount: 50000, icon: "💵" },
+          to: { symbol: "SOL", amount: 454.5, icon: "🟣" }
+        },
+        slippage: 0.5,
+        deadline: "2025-07-10T10:00:00Z",
+        createdAt: "2025-07-06T08:30:00Z",
+        votes: {
+          yes: 67,
+          no: 23,
+          total: 90
+        },
+        status: "active",
+        category: "swap"
       },
-      swap: {
-        from: { symbol: "USDC", amount: 50000, icon: "💵" },
-        to: { symbol: "SOL", amount: 454.5, icon: "🟣" }
+      {
+        id: 2,
+        title: "Diversify into AI Tokens",
+        description: "Allocate 30% of portfolio to emerging AI cryptocurrency projects",
+        proposer: {
+          address: "8XzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtBWWN",
+          name: "AIEnthusiast",
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=AIEnthusiast"
+        },
+        swap: {
+          from: { symbol: "USDC", amount: 75000, icon: "💵" },
+          to: { symbol: "AI-BASKET", amount: 75000, icon: "🤖" }
+        },
+        slippage: 1.0,
+        deadline: "2025-07-12T15:00:00Z",
+        createdAt: "2025-07-05T14:20:00Z",
+        votes: {
+          yes: 45,
+          no: 55,
+          total: 100
+        },
+        status: "active",
+        category: "diversification"
       },
-      slippage: 0.5,
-      deadline: "2025-07-10T10:00:00Z",
-      createdAt: "2025-07-06T08:30:00Z",
-      votes: {
-        yes: 67,
-        no: 23,
-        total: 90
+      {
+        id: 3,
+        title: "Take Profit on BONK",
+        description: "Sell 80% of BONK holdings while price is at multi-month highs",
+        proposer: {
+          address: "7YzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtCWWO",
+          name: "ProfitTaker",
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=ProfitTaker"
+        },
+        swap: {
+          from: { symbol: "BONK", amount: 2500000, icon: "🐕" },
+          to: { symbol: "USDC", amount: 12500, icon: "💵" }
+        },
+        slippage: 2.0,
+        deadline: "2025-07-08T12:00:00Z",
+        createdAt: "2025-07-06T06:15:00Z",
+        votes: {
+          yes: 78,
+          no: 12,
+          total: 90
+        },
+        status: "active",
+        category: "profit-taking"
       },
-      status: "active",
-      category: "swap"
-    },
-    {
-      id: 2,
-      title: "Diversify into AI Tokens",
-      description: "Allocate 30% of portfolio to emerging AI cryptocurrency projects",
-      proposer: {
-        address: "8XzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtBWWN",
-        name: "AIEnthusiast",
-        image: "https://api.dicebear.com/7.x/avataaars/svg?seed=AIEnthusiast"
-      },
-      swap: {
-        from: { symbol: "USDC", amount: 75000, icon: "💵" },
-        to: { symbol: "AI-BASKET", amount: 75000, icon: "🤖" }
-      },
-      slippage: 1.0,
-      deadline: "2025-07-12T15:00:00Z",
-      createdAt: "2025-07-05T14:20:00Z",
-      votes: {
-        yes: 45,
-        no: 55,
-        total: 100
-      },
-      status: "active",
-      category: "diversification"
-    },
-    {
-      id: 3,
-      title: "Take Profit on BONK",
-      description: "Sell 80% of BONK holdings while price is at multi-month highs",
-      proposer: {
-        address: "7YzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtCWWO",
-        name: "ProfitTaker",
-        image: "https://api.dicebear.com/7.x/avataaars/svg?seed=ProfitTaker"
-      },
-      swap: {
-        from: { symbol: "BONK", amount: 2500000, icon: "🐕" },
-        to: { symbol: "USDC", amount: 12500, icon: "💵" }
-      },
-      slippage: 2.0,
-      deadline: "2025-07-08T12:00:00Z",
-      createdAt: "2025-07-06T06:15:00Z",
-      votes: {
-        yes: 78,
-        no: 12,
-        total: 90
-      },
-      status: "active",
-      category: "profit-taking"
-    },
-    {
-      id: 4,
-      title: "Emergency Exit Strategy",
-      description: "Convert all positions to stablecoins due to market uncertainty",
-      proposer: {
-        address: "6XzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtEWWP",
-        name: "RiskManager",
-        image: "https://api.dicebear.com/7.x/avataaars/svg?seed=RiskManager"
-      },
-      swap: {
-        from: { symbol: "ALL", amount: 250000, icon: "🔄" },
-        to: { symbol: "USDC", amount: 245000, icon: "💵" }
-      },
-      slippage: 1.5,
-      deadline: "2025-07-07T20:00:00Z",
-      createdAt: "2025-07-06T10:45:00Z",
-      votes: {
-        yes: 23,
-        no: 67,
-        total: 90
-      },
-      status: "active",
-      category: "emergency"
-    }
-  ];
+      {
+        id: 4,
+        title: "Emergency Exit Strategy",
+        description: "Convert all positions to stablecoins due to market uncertainty",
+        proposer: {
+          address: "6XzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtEWWP",
+          name: "RiskManager",
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=RiskManager"
+        },
+        swap: {
+          from: { symbol: "ALL", amount: 250000, icon: "🔄" },
+          to: { symbol: "USDC", amount: 245000, icon: "💵" }
+        },
+        slippage: 1.5,
+        deadline: "2025-07-07T20:00:00Z",
+        createdAt: "2025-07-06T10:45:00Z",
+        votes: {
+          yes: 23,
+          no: 67,
+          total: 90
+        },
+        status: "active",
+        category: "emergency"
+      }
+    ];
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -147,13 +146,13 @@ const Proposals = () => {
         };
     };
 
-    const formatNumber = (num) => {
+    const formatNumber = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
         return num.toString();
     };
 
-    const copyToClipboard = (text) => {
+    const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
     };
 
