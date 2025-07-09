@@ -371,6 +371,7 @@ const CreateProposal = ({
 
 
   const fetchExpectedPrice = async (inputMint: string, outputMint: string, inputDecimals: number, outputDecimals: number, val: string) => {
+    if (!val) return;
     const solMint = new PublicKey('So11111111111111111111111111111111111111112');
     const programId = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
     const dataSize = 1544;
@@ -650,6 +651,42 @@ const CreateProposal = ({
           token.balance += expectedAmount;
         }
         return token;
+      });
+    }
+
+    // === CASE 5: A in fromTokens and B in none ===
+    else if (A_in_from) {
+      frmTokens = fromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= Number(swap.fromAmount);
+        }
+        return token;
+      });
+
+      exptdTokens.push({
+        mint: B.mint,
+        name: B.name,
+        symbol: B.symbol,
+        image: B.image,
+        balance: expectedAmount,
+      });
+    }
+
+    // === CASE 6: A in expectedFromTokens and B in none ===
+    else if (A_in_expected) {
+      exptdTokens = expectedFromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+        }
+        return token;
+      });
+
+      exptdTokens.push({
+        mint: B.mint,
+        name: B.name,
+        symbol: B.symbol,
+        image: B.image,
+        balance: expectedAmount,
       });
     }
 
