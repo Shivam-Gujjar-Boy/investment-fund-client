@@ -266,7 +266,7 @@ export default function Home() {
       console.log('Request marne wali hai');
 
       try {
-        const res = await fetch('https://peerfunds.onrender.com/api/upload/upload-user-data', {
+        const res = await fetch('https://investment-fund-server-production.up.railway.app/api/upload/upload-user-data', {
           method: 'POST',
           body: formData
         });

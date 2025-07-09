@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import io from 'socket.io-client';
 
-const socket = io(`https://peerfunds.onrender.com`, {
+const socket = io(`https://investment-fund-server-production.up.railway.app`, {
   transports: ['websocket'],
 });
 
