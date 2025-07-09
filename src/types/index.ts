@@ -70,6 +70,7 @@ export interface ToToken {
   symbol: string,
   image: string,
   decimals: number,
+  balance: number,
 }
 
 export interface FromToken {
@@ -78,8 +79,8 @@ export interface FromToken {
   symbol: string,
   image: string,
   balance: number,
-  balance_as_usdc: number,
-  decimals: number,
+  // balance_as_usdc: number,
+  // decimals: number,
 }
 
 export interface Proposal {

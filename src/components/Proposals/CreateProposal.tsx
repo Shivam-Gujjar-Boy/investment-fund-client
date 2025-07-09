@@ -14,16 +14,16 @@ import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { fetchMintMetadata } from "../../functions/fetchuserTokens";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Metaplex } from "@metaplex-foundation/js";
+import { Metaplex, token } from "@metaplex-foundation/js";
 import SOL from '../../assets/SOL.jpg';
 import USDC from '../../assets/USDC.png';
 import { availableTags } from "../../types/tags";
 import toast from "react-hot-toast";
 
 interface Swap {
-  fromToken: string;
+  fromToken: FromToken;
   fromAmount: string;
-  toToken: string;
+  toToken: ToToken;
   slippage: string;
 }
 
@@ -50,7 +50,7 @@ const CreateProposal = ({
   const [proposalData, setProposalData] = useState<ProposalData>({
     title: "",
     description: "",
-    swaps: [{ fromToken: "", fromAmount: "", toToken: "", slippage: "0.5" }],
+    swaps: [],
     tags: [],
     deadline: "",
   });
@@ -71,7 +71,8 @@ const CreateProposal = ({
   const [mintExists, setMintExists] = useState<number>(0);
   const [newToken, setNewToken] = useState<ToToken | null>(null);
   const [fromTokens, setFromTokens] = useState<FromToken[]>([]);
-  const [expectedFromTokens, setExpectedFromTokens] = useState<Token[]>([]);
+  const [expectedFromTokens, setExpectedFromTokens] = useState<FromToken[]>([]);
+  const [expectedAmount, setExpectedAmount] = useState(0);
 
   const [proposal, setProposal] = useState<ProposalData>({
     title: '',
@@ -82,10 +83,23 @@ const CreateProposal = ({
   });
 
   const [swap, setSwap] = useState<Swap>({
-    fromToken: '',
-    fromAmount: '',
-    toToken: '',
-    slippage: ''
+  fromToken: {
+    mint: "",
+    name: "",
+    symbol: "",
+    image: "",
+    balance: 0,
+  },
+  fromAmount: '',
+  toToken: {
+    mint: "",
+    name: "",
+    symbol: "",
+    image: "",
+    decimals: 0,
+    balance: 0,
+  },
+  slippage: '',
   });
 
   const [currentSwapIndex, setCurrentSwapIndex] = useState(0);
@@ -277,7 +291,8 @@ const CreateProposal = ({
           name,
           symbol,
           image,
-          decimals: 0
+          decimals: 0,
+          balance: 0,
         };
       });
 
@@ -321,7 +336,8 @@ const CreateProposal = ({
       name,
       symbol,
       image,
-      decimals: 0
+      decimals: 0,
+      balance: 0,
     };
 
     const tukenMetadata = await fetchMintMetadata(new PublicKey(mint), metaplex);
@@ -350,18 +366,304 @@ const CreateProposal = ({
     });
   };
 
+
+
+
+
+  const fetchExpectedPrice = async (inputMint: string, outputMint: string, inputDecimals: number, outputDecimals: number, val: string) => {
+    const solMint = new PublicKey('So11111111111111111111111111111111111111112');
+    const programId = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
+    const dataSize = 1544;
+
+    if (inputMint === solMint.toBase58()) {
+      const accounts = await connection.getProgramAccounts(programId, {
+          filters: [
+              {dataSize},
+              {
+                  memcmp: {
+                      offset: 73,
+                      bytes: solMint.toBase58()
+                  },
+              },
+              {
+                  memcmp: {
+                      offset: 105,
+                      bytes: outputMint
+                  },
+              },
+          ],
+          dataSlice: {offset: 0, length: 0},
+          commitment: 'confirmed',
+      });
+
+      if (accounts.length === 0) {
+        return;
+      }
+
+      console.log(accounts.length);
+
+      let bestAmount = 0;
+
+      for (const acc of accounts) {
+        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+        if (!accInfo) continue;
+        const buffer = Buffer.from(accInfo.data);
+        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+        const expectedPrice = (sqrtPrice**2)*1000;
+        const expectedAmount = (expectedPrice*(Number(val)));
+        bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
+        console.log(expectedAmount);
+        console.log(`Amount: ${val}`);
+      }
+      setExpectedAmount(bestAmount);
+    } else if (outputMint === solMint.toBase58()) {
+      const accounts = await connection.getProgramAccounts(programId, {
+          filters: [
+              {dataSize},
+              {
+                  memcmp: {
+                      offset: 73,
+                      bytes: solMint.toBase58()
+                  },
+              },
+              {
+                  memcmp: {
+                      offset: 105,
+                      bytes: inputMint
+                  },
+              },
+          ],
+          dataSlice: {offset: 0, length: 0},
+          commitment: 'confirmed',
+      });
+
+      if (accounts.length === 0) {
+        return;
+      }
+      
+      console.log(accounts.length);
+
+      let bestAmount = 0;
+      
+      for (const acc of accounts) {
+        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+        if (!accInfo) continue;
+        const buffer = Buffer.from(accInfo.data);
+        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+        const expectedPrice = (sqrtPrice**2)*1000;
+        const expectedAmount = (Number(val)/expectedPrice);
+        bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
+        console.log(expectedAmount);
+        console.log(`Amount: ${val}`);
+      }
+      setExpectedAmount(bestAmount);
+    } else {
+      const inputAccounts = await connection.getProgramAccounts(programId, {
+          filters: [
+              {dataSize},
+              {
+                  memcmp: {
+                      offset: 73,
+                      bytes: solMint.toBase58()
+                  },
+              },
+              {
+                  memcmp: {
+                      offset: 105,
+                      bytes: inputMint
+                  },
+              },
+          ],
+          dataSlice: {offset: 0, length: 0},
+          commitment: 'confirmed',
+      });
+
+      if (inputAccounts.length === 0) {
+        return;
+      }
+      
+      console.log(inputAccounts.length);
+
+      let bestInputPrice = 0;
+      
+      for (const acc of inputAccounts) {
+        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+        if (!accInfo) continue;
+        const buffer = Buffer.from(accInfo.data);
+        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+        const inputExpectedPrice = (sqrtPrice**2)*1000;
+        // const expectedAmount = (Number(val)/inputExpectedPrice);
+        bestInputPrice = inputExpectedPrice > bestInputPrice ? inputExpectedPrice : bestInputPrice;
+        console.log(bestInputPrice);
+        console.log(`Amount: ${val}`);
+      }
+
+//-----------------------------------------------------------------------------------------------------------------//
+
+      const outputAccounts = await connection.getProgramAccounts(programId, {
+          filters: [
+              {dataSize},
+              {
+                  memcmp: {
+                      offset: 73,
+                      bytes: solMint.toBase58()
+                  },
+              },
+              {
+                  memcmp: {
+                      offset: 105,
+                      bytes: inputMint
+                  },
+              },
+          ],
+          dataSlice: {offset: 0, length: 0},
+          commitment: 'confirmed',
+      });
+
+      if (outputAccounts.length === 0) {
+        return;
+      }
+      
+      console.log(outputAccounts.length);
+
+      let bestOutputPrice = 0;
+      
+      for (const acc of outputAccounts) {
+        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+        if (!accInfo) continue;
+        const buffer = Buffer.from(accInfo.data);
+        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+        const outputExpectedPrice = (sqrtPrice**2)*1000;
+        // const expectedAmount = (Number(val)/outputExpectedPrice);
+        bestOutputPrice = outputExpectedPrice > bestOutputPrice ? outputExpectedPrice : bestOutputPrice;
+        console.log(bestOutputPrice);
+        console.log(`Amount: ${val}`);
+      }
+
+      const expectedAmount = (bestInputPrice/bestOutputPrice)*Number(val);
+      setExpectedAmount(expectedAmount);
+    }
+  }
+
+
+
+
+
+
   const addSwap = () => {
+    if ( !swap ||!swap.toToken ||
+        !swap.fromToken ||
+        swap.toToken.mint === swap.fromToken.mint || 
+        Number(slippage) >= 100 || 
+        Number(swap.fromAmount) > swap.fromToken?.balance || 
+        !swap.fromAmount ||
+        !swap.slippage) {
+      console.log("Invalid Swap");
+      return;
+    }
+
+    console.log(currentSwapIndex);
+    setCurrentSwapIndex(currentSwapIndex + 1);
+    setAmount("");
+    setSlippage("");
+    setExpectedAmount(0);
+
+    let frmTokens: FromToken[] = fromTokens;
+    let exptdTokens: FromToken[] = expectedFromTokens;
+
+    const A = swap.fromToken;
+    const B = swap.toToken;
+
+    const A_in_from = fromTokens.some(t => t.mint === A.mint);
+    const B_in_from = fromTokens.some(t => t.mint === B.mint);
+    const A_in_expected = expectedFromTokens.some(t => t.mint === A.mint);
+    const B_in_expected = expectedFromTokens.some(t => t.mint === B.mint);
+
+    // === CASE 1: A and B both in fromTokens ===
+    if (A_in_from && B_in_from) {
+      frmTokens = fromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= Number(swap.fromAmount);
+        }
+        return token;
+      });
+
+      exptdTokens.push({
+        mint: B.mint,
+        name: B.name,
+        symbol: B.symbol,
+        image: B.image,
+        balance: expectedAmount + frmTokens.filter(token => token.mint === B.mint)[0].balance,
+      });
+
+      frmTokens = frmTokens.filter(token => token.mint !== B.mint); // remove B from fromTokens
+    }
+
+    // === CASE 2: A in fromTokens, B in expectedFromTokens ===
+    else if (A_in_from && B_in_expected) {
+      frmTokens = fromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= Number(swap.fromAmount);
+        }
+        return token;
+      });
+
+      exptdTokens = expectedFromTokens.map(token => {
+        if (token.mint === B.mint) {
+          token.balance += expectedAmount;
+        }
+        return token;
+      });
+    }
+
+    // === CASE 3: A in expectedFromTokens, B in fromTokens ===
+    else if (A_in_expected && B_in_from) {
+      exptdTokens = expectedFromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+        }
+        return token;
+      });
+
+      exptdTokens.push({
+        mint: B.mint,
+        name: B.name,
+        symbol: B.symbol,
+        image: B.image,
+        balance: expectedAmount + frmTokens.filter(token => token.mint === B.mint)[0].balance,
+      });
+
+      frmTokens = frmTokens.filter(token => token.mint !== B.mint); // remove B from fromTokens
+    }
+
+    // === CASE 4: A and B both in expectedFromTokens ===
+    else if (A_in_expected && B_in_expected) {
+      exptdTokens = expectedFromTokens.map(token => {
+        if (token.mint === A.mint) {
+          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+        }
+        if (token.mint === B.mint) {
+          token.balance += expectedAmount;
+        }
+        return token;
+      });
+    }
+
+    setFromTokens(frmTokens);
+    setExpectedFromTokens(exptdTokens);
+
+
     setProposalData((prev) => ({
       ...prev,
       swaps: [
         ...prev.swaps,
-        { fromToken: "", fromAmount: "", toToken: "", slippage: "0.5" },
+        { fromToken: swap.fromToken, fromAmount: "", toToken: swap.toToken, slippage: "0.5" },
       ],
     }));
-
-    console.log(currentSwapIndex);
-    setCurrentSwapIndex(currentSwapIndex + 1);
-
     // also handle the modifications in the from tokens and expected tokens lists and their balances ****
 
   };
@@ -405,19 +707,19 @@ const CreateProposal = ({
     }
   };
 
-  const handleSubmit = () => {
-    console.log("Proposal Created:", proposalData);
-    alert("Proposal created successfully!");
-    setCurrentStep(1);
-    setProposalData({
-      title: "",
-      description: "",
-      swaps: [{ fromToken: "", fromAmount: "", toToken: "", slippage: "0.5" }],
-      tags: [],
-      deadline: "",
-    });
-    setIsTagDropdownOpen(false);
-  };
+  // const handleSubmit = () => {
+  //   console.log("Proposal Created:", proposalData);
+  //   alert("Proposal created successfully!");
+  //   setCurrentStep(1);
+  //   setProposalData({
+  //     title: "",
+  //     description: "",
+  //     swaps: [{ fromToken: , fromAmount: "", toToken: "", slippage: "0.5" }],
+  //     tags: [],
+  //     deadline: "",
+  //   });
+  //   setIsTagDropdownOpen(false);
+  // };
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -425,13 +727,13 @@ const CreateProposal = ({
         return proposalData.title.trim() && proposalData.description.trim()
           ? true
           : false;
-      case 2:
-        return proposalData.swaps.every(
-          (swap) =>
-            swap.fromToken.trim() &&
-            swap.fromAmount.trim() &&
-            swap.toToken.trim()
-        );
+      // case 2:
+      //   return proposalData.swaps.every(
+      //     (swap) =>
+      //       swap.fromToken.trim() &&
+      //       swap.fromAmount.trim() &&
+      //       swap.toToken.trim()
+      //   );
       case 3:
         return !!proposalData.deadline;
       default:
@@ -533,26 +835,22 @@ const CreateProposal = ({
 
   useEffect(() => {
     if (selectedFromToken) {
-      handleSwapChange({ fromToken: selectedFromToken.mint });
+      handleSwapChange({ fromToken: selectedFromToken });
     }
   }, [selectedFromToken]);
 
   useEffect(() => {
     if (selectedToToken) {
-      handleSwapChange({ toToken: selectedToToken.mint });
+      handleSwapChange({ toToken: selectedToToken });
     }
   }, [selectedToToken]);
 
   useEffect(() => {
-    if (amount !== '') {
-      handleSwapChange({ fromAmount: amount });
-    }
+    handleSwapChange({ fromAmount: amount });
   }, [amount]);
 
   useEffect(() => {
-    if (slippage !== '') {
-      handleSwapChange({ slippage });
-    }
+    handleSwapChange({ slippage });
   }, [slippage]);
 
   return (
@@ -650,12 +948,12 @@ const CreateProposal = ({
                       </button> */}
                     </div>
 
-                    <div className="min-h-[250px] flex gap-2">
+                    <div className="min-h-[330px] flex gap-2">
                       <div className="w-[49%] p-3 rounded-3xl bg-slate-800/50 backdrop-blur-lg shadow-inner">
                         <div className="h-full flex flex-col">
 
                           {/* From Tokens Area */}
-                          <div className="h-[53%] rounded-3xl flex flex-col justify-end bg-slate-800">
+                          <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
                             {tokens && tokens.length > 0 && selectedFromToken ? (
                               <div className="mx-5 h-[19.5%] text-xs flex justify-between">
                                 <p className="flex justify-center items-center">From Token</p>
@@ -733,34 +1031,42 @@ const CreateProposal = ({
                                     }}>{selectedFromToken.symbol}</p>
                                   )}
                                 </div>
-                                <input
-                                  type="text"
-                                  value={amount}
-                                  onChange={(e) => {
-                                    let val = e.target.value;
+                                {selectedFromToken && selectedToToken && (
+                                  <input
+                                    type="text"
+                                    value={amount}
+                                    onChange={(e) => {
+                                      let val = e.target.value;
 
-                                    if (!/^\d*\.?\d*$/.test(val)) return;
+                                      if (!/^\d*\.?\d*$/.test(val)) return;
 
-                                    const decimals = selectedFromToken?.decimals ?? 0;
-                                    if (val.includes('.')) {
-                                      const [intPart, decimalPart] = val.split('.');
-                                      if (decimalPart.length > decimals) {
-                                        val = `${intPart}.${decimalPart.slice(0, decimals)}`;
+                                      const decimals = selectedFromToken?.decimals ?? 0;
+                                      if (val.includes('.')) {
+                                        const [intPart, decimalPart] = val.split('.');
+                                        if (decimalPart.length > decimals) {
+                                          val = `${intPart}.${decimalPart.slice(0, decimals)}`;
+                                        }
                                       }
-                                    }
 
-                                    setAmount(val);
-                                  }}
-                                  placeholder="Enter Amount"
-                                  className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder:text-2xl placeholder-slate-700 w-[65%]"
-                                />
+                                      if (val === "") {
+                                        setAmount("")
+                                      } else {
+                                        setAmount(val);
+                                      }
+                                      fetchExpectedPrice(selectedFromToken?.mint, selectedToToken?.mint, 9, 6, val)
+                                      console.log(val);
+                                    }}
+                                    placeholder="Enter Amount"
+                                    className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder:text-2xl placeholder-slate-700 w-[65%]"
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
 
                           {/* Direction Button */}
                           <div
-                            className="h-2 w-[35%] flex justify-center items-center"
+                            className="h-4 w-full flex justify-center items-center"
                           >
                             <div
                               className={`z-10 rounded-full w-10 h-10 bg-blue-300 p-2 cursor-pointer transition-shadow duration-300 ${
@@ -778,17 +1084,41 @@ const CreateProposal = ({
                           </div>
                           
                           {/* To Tokens + Slippage Area */}
-                          <div className="h-[40%] flex justify-between items-center">
+                          <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
+                            {tokens && tokens.length > 0 && selectedToToken ? (
+                              <div className="mx-5 h-[19.5%] text-xs flex justify-between">
+                                <p className="flex justify-center items-center">To Token</p>
+                                <div className="flex justify-between items-center gap-2">
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mx-5 h-[19.5%] flex justify-between text-xs">
+                                <div className="flex justify-center items-center">
+                                  To Token
+                                </div>
+                                <div className="flex justify-between items-center text-xs gap-2 text-white px-1 min-h-[24px] animate-pulse">
+                                  {/* Left: Icon + Gray Line */}
+                                  <div className="flex items-center gap-2">
+                                    <div className="h-4 w-4 bg-gray-700 rounded" />
+                                    <div className="h-3 w-28 bg-gray-700 rounded" />
+                                  </div>
 
-                            {/* To Tokens Area */}
-                            <div className="w-[37%] h-[93%] rounded-3xl p-2 bg-[#0f161f]">
-                              <div className="h-full w-full rounded-2xl">
+                                  {/* Right: Fake Buttons */}
+                                  <div className="flex gap-2">
+                                    <div className="h-[18px] w-10 bg-gray-700 rounded mb-1" />
+                                    <div className="h-[18px] w-10 bg-gray-700 rounded" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {tokens && (
+                              <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
                                 <div
                                   onClick={(e) => {
                                     e.preventDefault();
                                     setShowToTokensModal(true);
-                                  }}
-                                  className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-full h-full">
+                                  }} 
+                                  className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
                                   <div className="w-10 h-10 bg-gray-600 rounded-full">
                                     {selectedToToken ? (
                                       <div className="w-10 h-10 bg-gray-600 rounded-full">
@@ -803,34 +1133,52 @@ const CreateProposal = ({
                                     )}
                                   </div>
                                   {selectedToToken && (
-                                    <p className="text-xl ml-2">{selectedToToken.symbol}</p>
+                                    <p className="text-xl ml-2" onClick={(e) => {
+                                      e.preventDefault();
+                                      console.log("Selected From Token:", selectedToToken);
+                                    }}>{selectedToToken.symbol}</p>
+                                  )}
+                                </div>
+                                <div className="w-[65%] text-4xl px-4 py-3 text-right flex-1 justify-items-end">
+                                  {expectedAmount ? (
+                                    <>{expectedAmount.toFixed(3)}</>
+                                  ) : (
+                                    <div className="w-[50%] h-10 bg-gray-800/40 animate-pulse rounded-md" />
                                   )}
                                 </div>
                               </div>
+                            )}
+                          </div>
+                          <div className="mt-4 h-12 flex justify-between items-center gap-2">
+                            {/* Slippage Section */}
+                            <div className="w-[61%] h-full px-4 flex items-center border border-gray-900 rounded-lg bg-gray-800 shadow-sm">
+                              <input
+                                type="text"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                placeholder="Slippage"
+                                value={slippage}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (!/^\d*\.?\d*$/.test(val)) return;
+                                  setSlippage(val);
+                                }}
+                                className="w-full outline-none bg-transparent text-sm font-medium text-white placeholder-gray-400"
+                              />
                             </div>
-
-                            {/* Slippage Area */}
-                            <div className="w-[40%] h-[90%] rounded-2xl flex justify-center items-center text-white">
-                              <div className="flex flex-col justify-center items-center gap-2 w-full max-w-md">
-                                <label className="text-sm font-medium text-slate-300">Slippage Tolerance</label>
-                                <div className="relative w-36">
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    min="0"
-                                    max="100"
-                                    placeholder="0.5"
-                                    value={slippage}
-                                    onChange={(e) => setSlippage(e.target.value)}
-                                    className="w-full pl-4 pr-10 py-2 rounded-xl bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                                  />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">%</span>
-                                </div>
-                              </div>
+                            {/* Add Button Section */}
+                            <div className="w-[35%] h-full">
+                              <button 
+                                onClick={() => addSwap()}
+                                className="w-full h-full bg-black text-white font-semibold text-sm rounded-lg hover:bg-gray-800 transition duration-200">
+                                Add
+                              </button>
                             </div>
-
+                          </div>
+                          
                             {/* Add Button */}
-                            <div className="w-[20%] h-[50%]">
+                            {/* <div className="w-[20%] h-[50%]">
                               <button
                                 onClick={() => {
                                   addSwap();
@@ -842,13 +1190,12 @@ const CreateProposal = ({
                                   <ArrowRight className="w-4 h-4" />
                                 </span>
                               </button>
-                            </div>
+                            </div> */}
                           </div>
 
                         </div>
                       </div>
                       <div className=" w-[49%]"></div>
-                    </div>
 
                     {/* {proposalData.swaps.map((swap, index) => (
                       <div
@@ -1060,7 +1407,7 @@ const CreateProposal = ({
                     </button>
                   ) : (
                     <button
-                      onClick={handleSubmit}
+                      // onClick={handleSubmit}
                       disabled={!canProceed()}
                       className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
                         canProceed()
@@ -1249,12 +1596,20 @@ const CreateProposal = ({
               </div>
 
               {/* Right: Expected Tokens */}
-              <div className="bg-[#1F2937] rounded-2xl p-4">
+              <div className="bg-[#1F2937] rounded-2xl p-4 h-[41vh] scrollbar-thin">
                 <h3 className="text-base font-semibold mb-4">Expected Tokens</h3>
-                <div className="overflow-y-auto max-h-[360px] space-y-3 pr-1">
+                <div className="overflow-y-auto max-h-[360px] space-y-3 pr-1 h-[85%] scrollbar-none">
                   {expectedFromTokens && expectedFromTokens.length > 0 ? (
                     expectedFromTokens.map((token) => (
                       <div
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setSelectedFromToken(token);
+                          if (token?.mint === selectedToToken?.mint) {
+                            setSelectedToToken(null);
+                          }
+                          setShowFromTokensModal(false);
+                        }}
                         key={token.mint}
                         className="flex justify-between items-center px-3 py-2 rounded-lg hover:bg-gray-700/30 transition cursor-pointer"
                       >
@@ -1266,7 +1621,7 @@ const CreateProposal = ({
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1 text-right">
-                          <span className="text-xs text-emerald-400 font-medium">{token.balance}</span>
+                          <span className="text-xs text-emerald-400 font-medium">{token.balance.toFixed(3)}</span>
                           <div className="flex items-center gap-2 text-gray-400">
                             <span className="text-sm max-w-[120px] truncate">
                               {token.mint.slice(0, 4)}...{token.mint.slice(-4)}
