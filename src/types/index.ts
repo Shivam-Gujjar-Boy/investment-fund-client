@@ -79,8 +79,7 @@ export interface FromToken {
   symbol: string,
   image: string,
   balance: number,
-  // balance_as_usdc: number,
-  // decimals: number,
+  decimals: number,
 }
 
 export interface Proposal {
@@ -102,7 +101,7 @@ export interface Proposal {
 
 export interface LockedToken {
   mint: string,
-  amount: bigint,
+  amount: number,
 }
 
 export interface JoinProposal {

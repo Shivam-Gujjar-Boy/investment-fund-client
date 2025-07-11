@@ -1,24 +1,29 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import {motion} from 'framer-motion';
+import clsx from "clsx";
 import {
   X,
   ArrowDownUp,
   ArrowRight,
   ArrowLeft,
-  Tag,
   DollarSign,
   ArrowDown,
   ClipboardIcon,
+  RefreshCw,
+  CalendarDays,
+  TimerReset,
 } from "lucide-react";
-import { FromToken, LightFund, programId, Token, ToToken } from "../../types";
+import { FromToken, LightFund, LockedToken, programId, Token, ToToken } from "../../types";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { fetchMintMetadata } from "../../functions/fetchuserTokens";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Metaplex, token } from "@metaplex-foundation/js";
+import { Metaplex } from "@metaplex-foundation/js";
 import SOL from '../../assets/SOL.jpg';
 import USDC from '../../assets/USDC.png';
 import { availableTags } from "../../types/tags";
 import toast from "react-hot-toast";
+import { SYSTEM_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
 
 interface Swap {
   fromToken: FromToken;
@@ -39,6 +44,12 @@ interface CreateProposalProps {
   fund: LightFund;
   connection: Connection;
   metaplex: Metaplex;
+}
+
+enum Status {
+  None = 1,
+  Uploading = 2,
+  Creating = 3,
 }
 
 const CreateProposal = ({
@@ -64,7 +75,6 @@ const CreateProposal = ({
   
   const [toTokenMints, setToTokenMints] = useState<string[]>([]);
   const [toTokens, setToTokens] = useState<ToToken[] | null>([]);
-  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState<boolean>(false);
   const [showToTokensModal, setShowToTokensModal] = useState(false);
   const [showFromTokensModal, setShowFromTokensModal] = useState(false);
   const [search, setSearch] = useState('');
@@ -73,36 +83,88 @@ const CreateProposal = ({
   const [fromTokens, setFromTokens] = useState<FromToken[]>([]);
   const [expectedFromTokens, setExpectedFromTokens] = useState<FromToken[]>([]);
   const [expectedAmount, setExpectedAmount] = useState(0);
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [lockedTokens, setLockedTokens] = useState<LockedToken[] | null>(null);
+  const [deadlineMode, setDeadlineMode] = useState("timer");
+  const [timerHours, setTimerHours] = useState('');
+  const [timerMinutes, setTimerMinutes] = useState('');
+  const [timerSeconds, setTimerSeconds] = useState('');
+  const [selectedDateTime, setSelectedDateTime] = useState("");
+  const [proposalStatus, setProposalStatus] = useState<Status>(Status.None);
 
-  const [proposal, setProposal] = useState<ProposalData>({
-    title: '',
-    description: '',
-    swaps: [],
-    tags: [],
-    deadline: ''
+  // Required functions to add to your component:
+  const applyTimer = () => {
+    const now = new Date();
+    const future = new Date(now.getTime() + (Number(timerHours) * 3600 + Number(timerMinutes) * 60 + Number(timerSeconds)) * 1000);
+    if (future.getTime() - now.getTime() <= 300000) {
+      toast.error('Deadline should be atleast 5 minutes');
+      setProposalData((prev) => ({
+        ...prev,
+        deadline: '',
+      }));
+      return;
+    }
+    handleInputChange("deadline", future.getTime().toString());
+  };
+
+  const applyDateTime = () => {
+    if (selectedDateTime) {
+      const now = new Date();
+      const future = new Date(selectedDateTime);
+      if (future.getTime() - now.getTime() <= 300000) {
+        toast.error('Deadline should be atleast 5 minutes');
+        setProposalData((prev) => ({
+          ...prev,
+          deadline: '',
+        }));
+        return;
+      }
+      handleInputChange("deadline", future.getTime().toString());
+    }
+  };
+
+  // useEffect(() => {
+  //   toast.success(`Proposal Deadline: ${proposalData.deadline}`);
+  // }, [proposalData]);
+
+  const [tooltipState, setTooltipState] = useState({
+    visible: false,
+    content: {
+      mint: '',
+      name: '',
+      symbol: '',
+      image: '',
+      decimals: 0,
+      balance: 0,
+    },
+    x: 0,
+    y: 0
   });
 
   const [swap, setSwap] = useState<Swap>({
-  fromToken: {
-    mint: "",
-    name: "",
-    symbol: "",
-    image: "",
-    balance: 0,
-  },
-  fromAmount: '',
-  toToken: {
-    mint: "",
-    name: "",
-    symbol: "",
-    image: "",
-    decimals: 0,
-    balance: 0,
-  },
-  slippage: '',
+    fromToken: {
+      mint: "",
+      name: "",
+      symbol: "",
+      image: "",
+      decimals: 0,
+      balance: 0,
+    },
+    fromAmount: '',
+    toToken: {
+      mint: "",
+      name: "",
+      symbol: "",
+      image: "",
+      decimals: 0,
+      balance: 0,
+    },
+    slippage: '',
   });
 
   const [currentSwapIndex, setCurrentSwapIndex] = useState(0);
+
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
 
   const wallet = useWallet();
@@ -219,19 +281,22 @@ const CreateProposal = ({
 
       setTokens(tokensWithMetadata);
 
-      setFromTokens(tokensWithMetadata.map(({pubkey, ...rest}) => {
+      setFromTokens(tokensWithMetadata.map(({pubkey, balance_as_usdc, ...rest}) => {
         // console.log(pubkey);
         return rest;
       }));
 
-      setSelectedFromToken(
-        tokensWithMetadata.length
-          ? (({ pubkey, ...rest }) => {
-            // console.log(pubkey);
-            return rest;
-          })(tokensWithMetadata[0])
-          : null
-      );
+      setSelectedFromToken(() => {
+        const selected = tokensWithMetadata.find(
+          (token) => token.mint !== selectedToToken?.mint
+        );
+
+        if (!selected) return null;
+
+        // Destructure to remove `pubkey` and `balance_as_usdc`
+        const { pubkey, balance_as_usdc, ...rest } = selected;
+        return rest;
+      });
 
       // console.log('DONE FETCHING VAULT TOKENS');
     } catch (err) {
@@ -264,8 +329,13 @@ const CreateProposal = ({
   // when to tokens change, reset the selected one to index 0
   useEffect(() => {
     if (!toTokens || toTokens.length === 0) return;
-    setSelectedToToken(toTokens.length ? toTokens[0] : null);
-  }, [toTokens]);
+
+    const selected = toTokens.find(
+      (token) => token.mint !== selectedFromToken?.mint
+    );
+
+    setSelectedToToken(selected || null);
+  }, [toTokens, selectedFromToken]);
 
   // fetch to tokens with metadata
   const fetchToTokens = async () => {
@@ -291,7 +361,7 @@ const CreateProposal = ({
           name,
           symbol,
           image,
-          decimals: 0,
+          decimals: 6,
           balance: 0,
         };
       });
@@ -304,6 +374,7 @@ const CreateProposal = ({
             name: metadata?.name || toToken.name,
             symbol: metadata?.symbol || toToken.symbol,
             image: metadata?.image || toToken.image,
+            decimals: metadata?.decimals || toToken.decimals
           }
         })
       );
@@ -336,7 +407,7 @@ const CreateProposal = ({
       name,
       symbol,
       image,
-      decimals: 0,
+      decimals: 6,
       balance: 0,
     };
 
@@ -346,12 +417,11 @@ const CreateProposal = ({
       name: tukenMetadata?.name || toToken.name,
       symbol: tukenMetadata?.symbol || toToken.symbol,
       image: tukenMetadata?.image || toToken.image,
+      decimals: tukenMetadata?.decimals || toToken.decimals
     };
 
     setNewToken(toToken);
   }
-
-
 
   const handleInputChange = (field: keyof ProposalData, value: string) => {
     setProposalData((prev) => ({
@@ -368,190 +438,194 @@ const CreateProposal = ({
 
 
 
-
-
-  const fetchExpectedPrice = async (inputMint: string, outputMint: string, inputDecimals: number, outputDecimals: number, val: string) => {
-    if (!val) return;
+  const fetchExpectedPrice = async (inputMint: string, outputMint: string, val: string) => {
+    if (!val || val === '0') {
+      console.log('Setting Expected Amoun to Zero');
+      setExpectedAmount(0);
+      return;
+    }
+    setFetchingPrice(true);
     const solMint = new PublicKey('So11111111111111111111111111111111111111112');
     const programId = new PublicKey('devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH');
     const dataSize = 1544;
 
-    if (inputMint === solMint.toBase58()) {
-      const accounts = await connection.getProgramAccounts(programId, {
-          filters: [
-              {dataSize},
-              {
-                  memcmp: {
-                      offset: 73,
-                      bytes: solMint.toBase58()
-                  },
-              },
-              {
-                  memcmp: {
-                      offset: 105,
-                      bytes: outputMint
-                  },
-              },
-          ],
-          dataSlice: {offset: 0, length: 0},
-          commitment: 'confirmed',
-      });
+    try {
+      if (inputMint === solMint.toBase58()) {
+        const accounts = await connection.getProgramAccounts(programId, {
+            filters: [
+                {dataSize},
+                {
+                    memcmp: {
+                        offset: 73,
+                        bytes: solMint.toBase58()
+                    },
+                },
+                {
+                    memcmp: {
+                        offset: 105,
+                        bytes: outputMint
+                    },
+                },
+            ],
+            dataSlice: {offset: 0, length: 0},
+            commitment: 'confirmed',
+        });
 
-      if (accounts.length === 0) {
-        return;
+        if (accounts.length === 0) {
+          return;
+        }
+
+        console.log(accounts.length);
+
+        let bestAmount = 0;
+
+        for (const acc of accounts) {
+          const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+          if (!accInfo) continue;
+          const buffer = Buffer.from(accInfo.data);
+          const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+          const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+          const expectedPrice = (sqrtPrice**2)*1000;
+          const expectedAmount = (expectedPrice*(Number(val)));
+          bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
+          console.log(expectedAmount);
+          console.log(`Amount: ${val}`);
+        }
+        setExpectedAmount(bestAmount);
+      } else if (outputMint === solMint.toBase58()) {
+        const accounts = await connection.getProgramAccounts(programId, {
+            filters: [
+                {dataSize},
+                {
+                    memcmp: {
+                        offset: 73,
+                        bytes: solMint.toBase58()
+                    },
+                },
+                {
+                    memcmp: {
+                        offset: 105,
+                        bytes: inputMint
+                    },
+                },
+            ],
+            dataSlice: {offset: 0, length: 0},
+            commitment: 'confirmed',
+        });
+
+        if (accounts.length === 0) {
+          return;
+        }
+        
+        console.log(accounts.length);
+
+        let bestAmount = 0;
+        
+        for (const acc of accounts) {
+          const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+          if (!accInfo) continue;
+          const buffer = Buffer.from(accInfo.data);
+          const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+          const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+          const expectedPrice = (sqrtPrice**2)*1000;
+          const expectedAmount = (Number(val)/expectedPrice);
+          bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
+          console.log(expectedAmount);
+          console.log(`Amount: ${val}`);
+        }
+        setExpectedAmount(bestAmount);
+      } else {
+        const inputAccounts = await connection.getProgramAccounts(programId, {
+            filters: [
+                {dataSize},
+                {
+                    memcmp: {
+                        offset: 73,
+                        bytes: solMint.toBase58()
+                    },
+                },
+                {
+                    memcmp: {
+                        offset: 105,
+                        bytes: inputMint
+                    },
+                },
+            ],
+            dataSlice: {offset: 0, length: 0},
+            commitment: 'confirmed',
+        });
+
+        if (inputAccounts.length === 0) {
+          return;
+        }
+        
+        console.log(inputAccounts.length);
+
+        let bestInputPrice = 0;
+        
+        for (const acc of inputAccounts) {
+          const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+          if (!accInfo) continue;
+          const buffer = Buffer.from(accInfo.data);
+          const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+          const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+          const inputExpectedPrice = (sqrtPrice**2)*1000;
+          // const expectedAmount = (Number(val)/inputExpectedPrice);
+          bestInputPrice = inputExpectedPrice > bestInputPrice ? inputExpectedPrice : bestInputPrice;
+          console.log(bestInputPrice);
+          console.log(`Amount: ${val}`);
+        }
+
+        const outputAccounts = await connection.getProgramAccounts(programId, {
+            filters: [
+                {dataSize},
+                {
+                    memcmp: {
+                        offset: 73,
+                        bytes: solMint.toBase58()
+                    },
+                },
+                {
+                    memcmp: {
+                        offset: 105,
+                        bytes: outputMint
+                    },
+                },
+            ],
+            dataSlice: {offset: 0, length: 0},
+            commitment: 'confirmed',
+        });
+
+        if (outputAccounts.length === 0) {
+          return;
+        }
+        
+        console.log(outputAccounts.length);
+
+        let bestOutputPrice = 0;
+        
+        for (const acc of outputAccounts) {
+          const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
+          if (!accInfo) continue;
+          const buffer = Buffer.from(accInfo.data);
+          const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
+          const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
+          const outputExpectedPrice = (sqrtPrice**2)*1000;
+          // const expectedAmount = (Number(val)/outputExpectedPrice);
+          bestOutputPrice = outputExpectedPrice > bestOutputPrice ? outputExpectedPrice : bestOutputPrice;
+          console.log(bestOutputPrice);
+          console.log(`Amount: ${val}`);
+        }
+
+        const expectedAmount = (bestInputPrice/bestOutputPrice)*Number(val);
+        setExpectedAmount(expectedAmount);
       }
-
-      console.log(accounts.length);
-
-      let bestAmount = 0;
-
-      for (const acc of accounts) {
-        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-        if (!accInfo) continue;
-        const buffer = Buffer.from(accInfo.data);
-        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
-        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
-        const expectedPrice = (sqrtPrice**2)*1000;
-        const expectedAmount = (expectedPrice*(Number(val)));
-        bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
-        console.log(expectedAmount);
-        console.log(`Amount: ${val}`);
-      }
-      setExpectedAmount(bestAmount);
-    } else if (outputMint === solMint.toBase58()) {
-      const accounts = await connection.getProgramAccounts(programId, {
-          filters: [
-              {dataSize},
-              {
-                  memcmp: {
-                      offset: 73,
-                      bytes: solMint.toBase58()
-                  },
-              },
-              {
-                  memcmp: {
-                      offset: 105,
-                      bytes: inputMint
-                  },
-              },
-          ],
-          dataSlice: {offset: 0, length: 0},
-          commitment: 'confirmed',
-      });
-
-      if (accounts.length === 0) {
-        return;
-      }
-      
-      console.log(accounts.length);
-
-      let bestAmount = 0;
-      
-      for (const acc of accounts) {
-        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-        if (!accInfo) continue;
-        const buffer = Buffer.from(accInfo.data);
-        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
-        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
-        const expectedPrice = (sqrtPrice**2)*1000;
-        const expectedAmount = (Number(val)/expectedPrice);
-        bestAmount = expectedAmount > bestAmount ? expectedAmount : bestAmount;
-        console.log(expectedAmount);
-        console.log(`Amount: ${val}`);
-      }
-      setExpectedAmount(bestAmount);
-    } else {
-      const inputAccounts = await connection.getProgramAccounts(programId, {
-          filters: [
-              {dataSize},
-              {
-                  memcmp: {
-                      offset: 73,
-                      bytes: solMint.toBase58()
-                  },
-              },
-              {
-                  memcmp: {
-                      offset: 105,
-                      bytes: inputMint
-                  },
-              },
-          ],
-          dataSlice: {offset: 0, length: 0},
-          commitment: 'confirmed',
-      });
-
-      if (inputAccounts.length === 0) {
-        return;
-      }
-      
-      console.log(inputAccounts.length);
-
-      let bestInputPrice = 0;
-      
-      for (const acc of inputAccounts) {
-        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-        if (!accInfo) continue;
-        const buffer = Buffer.from(accInfo.data);
-        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
-        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
-        const inputExpectedPrice = (sqrtPrice**2)*1000;
-        // const expectedAmount = (Number(val)/inputExpectedPrice);
-        bestInputPrice = inputExpectedPrice > bestInputPrice ? inputExpectedPrice : bestInputPrice;
-        console.log(bestInputPrice);
-        console.log(`Amount: ${val}`);
-      }
-
-//-----------------------------------------------------------------------------------------------------------------//
-
-      const outputAccounts = await connection.getProgramAccounts(programId, {
-          filters: [
-              {dataSize},
-              {
-                  memcmp: {
-                      offset: 73,
-                      bytes: solMint.toBase58()
-                  },
-              },
-              {
-                  memcmp: {
-                      offset: 105,
-                      bytes: inputMint
-                  },
-              },
-          ],
-          dataSlice: {offset: 0, length: 0},
-          commitment: 'confirmed',
-      });
-
-      if (outputAccounts.length === 0) {
-        return;
-      }
-      
-      console.log(outputAccounts.length);
-
-      let bestOutputPrice = 0;
-      
-      for (const acc of outputAccounts) {
-        const accInfo = await connection.getAccountInfo(acc.pubkey, 'confirmed');
-        if (!accInfo) continue;
-        const buffer = Buffer.from(accInfo.data);
-        const rawSqrtPrice = buffer.readBigUInt64LE(253) + (buffer.readBigUInt64LE(261) << 64n);
-        const sqrtPrice = Number(rawSqrtPrice)/(Number(1n << 64n));
-        const outputExpectedPrice = (sqrtPrice**2)*1000;
-        // const expectedAmount = (Number(val)/outputExpectedPrice);
-        bestOutputPrice = outputExpectedPrice > bestOutputPrice ? outputExpectedPrice : bestOutputPrice;
-        console.log(bestOutputPrice);
-        console.log(`Amount: ${val}`);
-      }
-
-      const expectedAmount = (bestInputPrice/bestOutputPrice)*Number(val);
-      setExpectedAmount(expectedAmount);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setFetchingPrice(false);
     }
   }
-
-
-
 
 
 
@@ -562,8 +636,11 @@ const CreateProposal = ({
         Number(slippage) >= 100 || 
         Number(swap.fromAmount) > swap.fromToken?.balance || 
         !swap.fromAmount ||
-        !swap.slippage) {
+        !swap.slippage ||
+        fetchingPrice ||
+        !expectedAmount ) {
       console.log("Invalid Swap");
+      toast.error('Correctly fill the details');
       return;
     }
 
@@ -599,6 +676,7 @@ const CreateProposal = ({
         symbol: B.symbol,
         image: B.image,
         balance: expectedAmount + frmTokens.filter(token => token.mint === B.mint)[0].balance,
+        decimals: B.decimals
       });
 
       frmTokens = frmTokens.filter(token => token.mint !== B.mint); // remove B from fromTokens
@@ -625,7 +703,7 @@ const CreateProposal = ({
     else if (A_in_expected && B_in_from) {
       exptdTokens = expectedFromTokens.map(token => {
         if (token.mint === A.mint) {
-          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+          token.balance -= (Number(swap.fromAmount));
         }
         return token;
       });
@@ -636,6 +714,7 @@ const CreateProposal = ({
         symbol: B.symbol,
         image: B.image,
         balance: expectedAmount + frmTokens.filter(token => token.mint === B.mint)[0].balance,
+        decimals: B.decimals
       });
 
       frmTokens = frmTokens.filter(token => token.mint !== B.mint); // remove B from fromTokens
@@ -645,7 +724,7 @@ const CreateProposal = ({
     else if (A_in_expected && B_in_expected) {
       exptdTokens = expectedFromTokens.map(token => {
         if (token.mint === A.mint) {
-          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+          token.balance -= (Number(swap.fromAmount));
         }
         if (token.mint === B.mint) {
           token.balance += expectedAmount;
@@ -669,6 +748,7 @@ const CreateProposal = ({
         symbol: B.symbol,
         image: B.image,
         balance: expectedAmount,
+        decimals: B.decimals
       });
     }
 
@@ -676,7 +756,7 @@ const CreateProposal = ({
     else if (A_in_expected) {
       exptdTokens = expectedFromTokens.map(token => {
         if (token.mint === A.mint) {
-          token.balance -= (Number(swap.fromAmount) * token.balance) / 100;
+          token.balance -= (Number(swap.fromAmount));
         }
         return token;
       });
@@ -687,6 +767,7 @@ const CreateProposal = ({
         symbol: B.symbol,
         image: B.image,
         balance: expectedAmount,
+        decimals: B.decimals
       });
     }
 
@@ -698,38 +779,24 @@ const CreateProposal = ({
       ...prev,
       swaps: [
         ...prev.swaps,
-        { fromToken: swap.fromToken, fromAmount: "", toToken: swap.toToken, slippage: "0.5" },
+        { fromToken: swap.fromToken, fromAmount: swap.fromAmount, toToken: swap.toToken, slippage: swap.slippage },
       ],
     }));
-    // also handle the modifications in the from tokens and expected tokens lists and their balances ****
 
   };
 
-  // const removeSwap = (index: number) => {
-  //   if (proposalData.swaps.length > 1) {
-  //     const updatedSwaps = proposalData.swaps.filter((_, i) => i !== index);
-  //     setProposalData((prev) => ({
-  //       ...prev,
-  //       swaps: updatedSwaps,
-  //     }));
-  //   }
-  // };
-
-  const addTag = (tag: string) => {
+  const toggleTag = (tag: string) => {
     if (!proposalData.tags.includes(tag)) {
       setProposalData((prev) => ({
         ...prev,
         tags: [...prev.tags, tag],
       }));
+    } else {
+      setProposalData((prev) => ({
+        ...prev,
+        tags: prev.tags.filter((tagg) => tagg !== tag),
+      }));
     }
-    setIsTagDropdownOpen(false);
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setProposalData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToRemove),
-    }));
   };
 
   const handleNext = () => {
@@ -744,19 +811,131 @@ const CreateProposal = ({
     }
   };
 
-  // const handleSubmit = () => {
-  //   console.log("Proposal Created:", proposalData);
-  //   alert("Proposal created successfully!");
-  //   setCurrentStep(1);
-  //   setProposalData({
-  //     title: "",
-  //     description: "",
-  //     swaps: [{ fromToken: , fromAmount: "", toToken: "", slippage: "0.5" }],
-  //     tags: [],
-  //     deadline: "",
-  //   });
-  //   setIsTagDropdownOpen(false);
-  // };
+  const handleSubmit = async () => {
+    if (!proposalData.deadline) {
+      toast.error(`Invalid Deadline`);
+    }
+    console.log("Proposal Created:", proposalData);
+
+    if (!wallet || !wallet.publicKey || !wallet.signTransaction) {
+      return;
+    }
+
+    const user = wallet.publicKey;
+
+    try {
+      const response = await fetch('https://investment-fund-server-production.up.railway.app/api/proposal/upload-proposal', {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: fund.name,
+          title: proposalData.title,
+          description: proposalData.description,
+          tags: proposalData.tags,
+          deadline: proposalData.deadline,
+          swaps: proposalData.swaps.map((swap) => ({
+            fromToken: swap.fromToken.mint,
+            fromAmount: swap.fromAmount,
+            toToken: swap.toToken.mint,
+            slippage: swap.slippage
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        toast.error('teri behen ka bhangi maaru');
+        return;
+      }
+
+      const data = await response.json();
+      toast.success('Proposal Data uploaded on IPFS');
+      console.log(data.cid);
+      setProposalStatus(Status.Creating);
+
+      ////////////////////////////////////////////////////////////////
+
+      // const cid = 'bafkreifszdbyfmuj2my6z6y5hbxocmzmfgbrsyi2hgeksds2egah4opcpy';
+      const instructionTag = 1;
+      const nameBytes = Buffer.from(fund.name, 'utf8');
+      const cidBytes = Buffer.from(data.cid, 'utf8');
+
+      const buffer = Buffer.alloc(1 + 8 + 59 + nameBytes.length);
+      let offset = 0;
+
+      buffer.writeUInt8(instructionTag, offset);
+      offset += 1;
+      buffer.writeBigInt64LE(BigInt(proposalData.deadline), offset);
+      offset += 8;
+      cidBytes.copy(buffer, offset);
+      offset += 59;
+      nameBytes.copy(buffer, offset);
+
+      const instructionData = buffer;
+      console.log(instructionData.length);
+      console.log(instructionData);
+
+      const currentAggregatorIndex = fund.currentIndex;
+
+      const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentAggregatorIndex]), fund.fundPubkey.toBuffer()],
+        programId
+      );
+
+      const [newAggregatorPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('proposal-aggregator'), Buffer.from([currentAggregatorIndex + 1]), fund.fundPubkey.toBuffer()],
+        programId
+      );
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {pubkey: user, isSigner: true, isWritable: true},
+          {pubkey: fund.fundPubkey, isSigner: false, isWritable: true},
+          {pubkey: currentAggregatorPda, isSigner: false, isWritable: true},
+          {pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false},
+          {pubkey: newAggregatorPda, isSigner: false, isWritable: true}
+        ],
+        programId,
+        data: instructionData
+      });
+
+      const transaction = new Transaction().add(instruction);
+
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
+
+      // Sign the transaction
+      // transaction.partialSign(governanceMint);
+      const signedTransaction = await wallet.signTransaction(transaction);
+      
+      // Send and confirm transaction
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+      
+      // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+      await connection.confirmTransaction({
+        signature,
+        blockhash,
+        lastValidBlockHeight
+      });
+
+
+      toast.success("Proposal created successfully!");
+      setCurrentStep(1);
+      setProposalData({
+        title: "",
+        description: "",
+        swaps: [],
+        tags: [],
+        deadline: "",
+      });
+    } catch (err) {
+      console.log(err);
+      toast.error('Error Creating Proposal');
+    }
+    setProposalStatus(Status.None);
+  };
 
   const canProceed = (): boolean => {
     switch (currentStep) {
@@ -764,13 +943,8 @@ const CreateProposal = ({
         return proposalData.title.trim() && proposalData.description.trim()
           ? true
           : false;
-      // case 2:
-      //   return proposalData.swaps.every(
-      //     (swap) =>
-      //       swap.fromToken.trim() &&
-      //       swap.fromAmount.trim() &&
-      //       swap.toToken.trim()
-      //   );
+      case 2:
+        return proposalData.swaps.length === 0 ? false : true
       case 3:
         return !!proposalData.deadline;
       default:
@@ -816,6 +990,7 @@ const CreateProposal = ({
     }
   };
 
+  // ESC key modal closing
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -827,11 +1002,12 @@ const CreateProposal = ({
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const fetchActiveProposals = useCallback(async () => {
+  // fetch Active proposals and make expected changes in token balances by deucting locked amounts
+  const fetchLockedTokens = useCallback(async () => {
     if (!fund) return;
 
     try {
-      const currentAggregatorIndex = fund.currentIndex;
+      let currentAggregatorIndex = fund.currentIndex;
       const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('proposal-aggregator'), Buffer.from([currentAggregatorIndex]), fund.fundPubkey.toBuffer()],
         programId
@@ -844,32 +1020,109 @@ const CreateProposal = ({
 
       const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
       let offset = 5;
+      const lockedTokensList: LockedToken[] = [];
       for (let i=0; i<numOfProposals; i++) {
         const isExecuted = currentAggregatorBuffer.readUInt8(offset + 123) ? true : false;
         if (!isExecuted) {
           const cid = currentAggregatorBuffer.slice(offset + 32, offset + 91).toString();
           // fetch proposal from tokens, and their amounts, and accordingly deduct that amount from the fromTokens
+          const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
+          const proposalDataResponse = await fetch(proposalDataUrl);
+          if (!proposalDataResponse.ok) {
+            throw new Error(`Failed to fetch metadata: ${proposalDataResponse.status}`);
+          }
+
+          const fetchedProposalData = await proposalDataResponse.json();
+          const fromTokenMint = fetchedProposalData.fromToken;
+          const transferAmount = fetchedProposalData.fromAmount;
+          lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+
         }
         const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
         offset += (130 + (numOfVoters * 5));
       }
+
+      if (currentAggregatorIndex > 0) {
+        currentAggregatorIndex -= 1;
+        const [currentAggregatorPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('proposal-aggregator'), Buffer.from([currentAggregatorIndex]), fund.fundPubkey.toBuffer()],
+          programId
+        );
+
+        const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
+        if (!currentAggregatorInfo) return;
+
+        const currentAggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+
+        const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
+        let offset = 5;
+        const lockedTokensList: LockedToken[] = [];
+        for (let i=0; i<numOfProposals; i++) {
+          const isExecuted = currentAggregatorBuffer.readUInt8(offset + 123) ? true : false;
+          if (!isExecuted) {
+            const cid = currentAggregatorBuffer.slice(offset + 32, offset + 91).toString();
+            // fetch proposal from tokens, and their amounts, and accordingly deduct that amount from the fromTokens
+            const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
+            const proposalDataResponse = await fetch(proposalDataUrl);
+            if (!proposalDataResponse.ok) {
+              throw new Error(`Failed to fetch metadata: ${proposalDataResponse.status}`);
+            }
+
+            const fetchedProposalData = await proposalDataResponse.json();
+            const fromTokenMint = fetchedProposalData.fromToken;
+            const transferAmount = fetchedProposalData.fromAmount;
+            lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+
+          }
+          const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
+          offset += (130 + (numOfVoters * 5));
+        }
+      }
+
+      setLockedTokens(lockedTokensList);
     } catch (err) {
       console.log(err);
     }
   }, [connection, fund]);
 
-  const fetchedRef = useRef(false);
 
+  const fetchedRef = useRef(false);
+  const fetchedRefV2 = useRef(false);
+
+  // main useEffect
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
     fetchVaultTokens();
     fetchAllToTokenMints();
-    fetchActiveProposals();
-  }, [fetchVaultTokens, fetchAllToTokenMints, fetchActiveProposals]);
+    fetchLockedTokens();
+  }, [fetchVaultTokens, fetchAllToTokenMints, fetchLockedTokens]);
 
 
+  useEffect(() => {
+    if (fetchedRefV2.current) return;
+    if (fromTokens && lockedTokens) {
+      // do your work
+      const fromTukens = fromTokens;
+      for (const lockedToken of lockedTokens) {
+        fromTukens.map(fromTuken => {
+          if (fromTuken.mint === lockedToken.mint) {
+            fromTuken.balance -= lockedToken.amount;
+          }
+        })
+      }
+      setFromTokens(fromTukens);
+      fetchedRefV2.current = true;
+    }
+  }, [fromTokens, lockedTokens]);
 
+  // const handleInterChange = async () => {
+  //   if (!selectedFromToken || !selectedToToken) return;
+
+  //   if (fromTokens.some(t => t.mint === selectedToToken.mint))
+  // }
+
+  // Handling SWAP changes
   useEffect(() => {
     if (selectedFromToken) {
       handleSwapChange({ fromToken: selectedFromToken });
@@ -971,444 +1224,602 @@ const CreateProposal = ({
                 )}
 
                 {currentStep === 2 && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-xl font-semibold text-white">
-                        Token Swaps
-                      </h3>
-                      {/* <button
-                        onClick={addSwap}
-                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-                      >
-                        <Plus size={16} />
-                        Add Swap
-                      </button> */}
-                    </div>
+                  (fromTokens && toTokens && tokens && lockedTokens) ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-semibold text-white">
+                          Token Swaps
+                        </h3>
+                      </div>
 
-                    <div className="min-h-[330px] flex gap-2">
-                      <div className="w-[49%] p-3 rounded-3xl bg-slate-800/50 backdrop-blur-lg shadow-inner">
-                        <div className="h-full flex flex-col">
+                      <div className="h-[330px] flex gap-2">
+                        <div className="w-[49%] p-3 rounded-3xl bg-slate-800/50 backdrop-blur-lg shadow-inner">
+                          <div className="h-full flex flex-col">
 
-                          {/* From Tokens Area */}
-                          <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
-                            {tokens && tokens.length > 0 && selectedFromToken ? (
-                              <div className="mx-5 h-[19.5%] text-xs flex justify-between">
-                                <p className="flex justify-center items-center">From Token</p>
-                                <div className="flex justify-between items-center gap-2">
-                                  {amount && selectedFromToken && parseFloat(amount) > selectedFromToken.balance && (
-                                    <p className="text-red-500 text-sm mb-1">🚫 Insufficient balance</p>
-                                  )}
-                                  <div className="flex items-center gap-1 mb-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                    </svg>
-                                    Balance: {selectedFromToken.balance}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => setAmount(selectedFromToken.balance.toString())}
-                                      className="text-xs bg-gray-700 text-gray-300 px-2 mb-1 rounded hover:bg-gray-600 transition"
-                                    >
-                                      Max
-                                    </button>
-                                    <button
-                                      onClick={() => setAmount((selectedFromToken.balance * 0.5).toFixed(6))}
-                                      className="text-xs bg-gray-700 text-gray-300 px-2 mb-1 rounded hover:bg-gray-600 transition"
-                                    >
-                                      50%
-                                    </button>
+                            {/* From Tokens Area */}
+                            <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
+                              {tokens && tokens.length > 0 && selectedFromToken ? (
+                                <div className="mx-5 h-[19.5%] text-xs flex justify-between">
+                                  <p className="flex justify-center items-center">From Token</p>
+                                  <div className="flex justify-between items-center gap-2">
+                                    {amount && selectedFromToken && parseFloat(amount) > selectedFromToken.balance && (
+                                      <p className="text-red-500 text-sm mb-1">🚫 Insufficient balance</p>
+                                    )}
+                                    <div className="flex items-center gap-1 mb-1">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                      </svg>
+                                      Balance: {selectedFromToken.balance}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => {
+                                          const amnt = selectedFromToken.balance.toString();
+                                          setAmount(amnt);
+                                          if (selectedToToken) {
+                                            fetchExpectedPrice(selectedFromToken.mint, selectedToToken?.mint, amnt);
+                                          }
+                                        }}
+                                        className="text-xs bg-gray-700 text-gray-300 px-2 mb-1 rounded hover:bg-gray-600 transition"
+                                      >
+                                        Max
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const amnt = (selectedFromToken.balance * 0.5);
+                                          setAmount(amnt.toFixed(6));
+                                          if (selectedToToken) {
+                                            fetchExpectedPrice(selectedFromToken.mint, selectedToToken?.mint, amnt.toString());
+                                          }
+                                        }}
+                                        className="text-xs bg-gray-700 text-gray-300 px-2 mb-1 rounded hover:bg-gray-600 transition"
+                                      >
+                                        50%
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="mx-5 h-[19.5%] flex justify-between text-xs">
-                                <div className="flex justify-center items-center">
-                                  From Token
-                                </div>
-                                <div className="flex justify-between items-center text-xs gap-2 text-white px-1 min-h-[24px] animate-pulse">
-                                  {/* Left: Icon + Gray Line */}
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-4 w-4 bg-gray-700 rounded" />
-                                    <div className="h-3 w-28 bg-gray-700 rounded" />
+                              ) : (
+                                <div className="mx-5 h-[19.5%] flex justify-between text-xs">
+                                  <div className="flex justify-center items-center">
+                                    From Token
                                   </div>
+                                  <div className="flex justify-between items-center text-xs gap-2 text-white px-1 min-h-[24px] animate-pulse">
+                                    {/* Left: Icon + Gray Line */}
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-4 w-4 bg-gray-700 rounded" />
+                                      <div className="h-3 w-28 bg-gray-700 rounded" />
+                                    </div>
 
-                                  {/* Right: Fake Buttons */}
-                                  <div className="flex gap-2">
-                                    <div className="h-[18px] w-10 bg-gray-700 rounded mb-1" />
-                                    <div className="h-[18px] w-10 bg-gray-700 rounded" />
+                                    {/* Right: Fake Buttons */}
+                                    <div className="flex gap-2">
+                                      <div className="h-[18px] w-10 bg-gray-700 rounded mb-1" />
+                                      <div className="h-[18px] w-10 bg-gray-700 rounded" />
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
-                            {tokens && (
-                              <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
-                                <div
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowFromTokensModal(true);
-                                  }} 
-                                  className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
-                                  <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                    {selectedFromToken ? (
-                                      <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                        {selectedFromToken?.image ? (
-                                          <img src={selectedFromToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
-                                        ) : (
-                                          <div className="w-full h-full bg-gray-600 rounded-full" />
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="w-full h-full bg-gray-600 rounded-full" />
+                              )}
+                              {tokens && (
+                                <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
+                                  <div
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setShowFromTokensModal(true);
+                                    }} 
+                                    className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
+                                    <div className="w-10 h-10 bg-gray-600 rounded-full">
+                                      {selectedFromToken ? (
+                                        <div className="w-10 h-10 bg-gray-600 rounded-full">
+                                          {selectedFromToken?.image ? (
+                                            <img src={selectedFromToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
+                                          ) : (
+                                            <div className="w-full h-full bg-gray-600 rounded-full" />
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="w-full h-full bg-gray-600 rounded-full" />
+                                      )}
+                                    </div>
+                                    {selectedFromToken && (
+                                      <p className="text-xl ml-2" onClick={(e) => {
+                                        e.preventDefault();
+                                        console.log("Selected From Token:", selectedFromToken);
+                                      }}>{selectedFromToken.symbol}</p>
                                     )}
                                   </div>
-                                  {selectedFromToken && (
-                                    <p className="text-xl ml-2" onClick={(e) => {
-                                      e.preventDefault();
-                                      console.log("Selected From Token:", selectedFromToken);
-                                    }}>{selectedFromToken.symbol}</p>
+                                  {selectedFromToken && selectedToToken && (
+                                    <input
+                                      type="text"
+                                      value={amount}
+                                      onChange={(e) => {
+                                        let val = e.target.value;
+
+                                        if (!/^\d*\.?\d*$/.test(val)) return;
+
+                                        const decimals = selectedFromToken?.decimals ?? 0;
+                                        if (val.includes('.')) {
+                                          const [intPart, decimalPart] = val.split('.');
+                                          if (decimalPart.length > decimals) {
+                                            val = `${intPart}.${decimalPart.slice(0, decimals)}`;
+                                          }
+                                        }
+
+                                        setAmount(val);
+
+                                        if (debounceRef.current) {
+                                          clearTimeout(debounceRef.current);
+                                        }
+
+                                        debounceRef.current = setTimeout(() => {
+                                          fetchExpectedPrice(selectedFromToken?.mint, selectedToToken?.mint, val);
+                                          console.log(val);
+                                        }, 500);
+                                      }}
+                                      placeholder="Enter Amount"
+                                      className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder:text-2xl placeholder-slate-700 w-[65%]"
+                                    />
                                   )}
                                 </div>
-                                {selectedFromToken && selectedToToken && (
-                                  <input
-                                    type="text"
-                                    value={amount}
-                                    onChange={(e) => {
-                                      let val = e.target.value;
+                              )}
+                            </div>
 
-                                      if (!/^\d*\.?\d*$/.test(val)) return;
-
-                                      const decimals = selectedFromToken?.decimals ?? 0;
-                                      if (val.includes('.')) {
-                                        const [intPart, decimalPart] = val.split('.');
-                                        if (decimalPart.length > decimals) {
-                                          val = `${intPart}.${decimalPart.slice(0, decimals)}`;
-                                        }
-                                      }
-
-                                      if (val === "") {
-                                        setAmount("")
-                                      } else {
-                                        setAmount(val);
-                                      }
-                                      fetchExpectedPrice(selectedFromToken?.mint, selectedToToken?.mint, 9, 6, val)
-                                      console.log(val);
-                                    }}
-                                    placeholder="Enter Amount"
-                                    className="flex-1 text-right px-4 py-3 text-4xl bg-transparent outline-none placeholder:text-2xl placeholder-slate-700 w-[65%]"
-                                  />
+                            {/* Direction Button */}
+                            <div
+                              className="h-4 w-full flex justify-center items-center"
+                            >
+                              <div
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  // handleInterChange();
+                                }}
+                                className={`z-10 rounded-full w-10 h-10 bg-blue-300 p-2 cursor-pointer transition-shadow duration-300 ${
+                                  isHovered ? "scale-105  " : ""
+                                }`}
+                                onMouseEnter={() => setIsHovered(true)}
+                                onMouseLeave={() => setIsHovered(false)}
+                              >
+                                {isHovered ? (
+                                  <ArrowDownUp className="w-full h-full text-black transition-all duration-200" />
+                                ) : (
+                                  <ArrowDown className="w-full h-full text-black transition-all duration-200" />
                                 )}
                               </div>
-                            )}
+                            </div>
+                            
+                            {/* To Tokens + Slippage Area */}
+                            <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
+                              <div className="mx-5 h-[19.5%] text-xs flex justify-between">
+                                <p className="flex justify-center items-center">To Token</p>
+                                {selectedFromToken && selectedToToken && (
+                                  <div className="flex items-center gap-4 p-2 bg-slate-800/50 rounded-xl transition-all">
+                                    <motion.button
+                                      whileTap={{ scale: 0.95, rotate: 90 }}
+                                    >
+                                      <RefreshCw
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          fetchExpectedPrice(selectedFromToken?.mint, selectedToToken?.mint, amount);
+                                        }}
+                                        className="w-4 h-4 text-slate-300" />
+                                    </motion.button>
+                                  </div>
+                                )}
+                              </div>
+                              {tokens && (
+                                <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
+                                  <div
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setShowToTokensModal(true);
+                                    }} 
+                                    className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
+                                    <div className="w-10 h-10 bg-gray-600 rounded-full">
+                                      {selectedToToken ? (
+                                        <div className="w-10 h-10 bg-gray-600 rounded-full">
+                                          {selectedToToken?.image ? (
+                                            <img src={selectedToToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
+                                          ) : (
+                                            <div className="w-full h-full bg-gray-600 rounded-full" />
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="w-full h-full bg-gray-600 rounded-full" />
+                                      )}
+                                    </div>
+                                    {selectedToToken && (
+                                      <p className="text-xl ml-2" onClick={(e) => {
+                                        e.preventDefault();
+                                        console.log("Selected From Token:", selectedToToken);
+                                      }}>{selectedToToken.symbol}</p>
+                                    )}
+                                  </div>
+                                  <div className="w-[65%] text-4xl px-4 py-3 text-right flex-1 justify-items-end">
+                                    {!fetchingPrice ? (
+                                      <>~{expectedAmount ? expectedAmount.toFixed(3) : '0'}</>
+                                    ) : (
+                                      <div className="w-[50%] h-10 bg-gray-800/40 animate-pulse rounded-md" />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-4 h-12 flex justify-between items-center gap-2">
+                              {/* Slippage Section */}
+                              <div className="w-[61%] h-full px-4 flex items-center border border-gray-900 rounded-lg bg-gray-800 shadow-sm gap-2">
+                                <input
+                                  type="text"
+                                  step="0.1"
+                                  min="0"
+                                  max="100"
+                                  placeholder="Slippage"
+                                  value={slippage}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!/^\d*\.?\d*$/.test(val)) return;
+                                    setSlippage(val);
+                                  }}
+                                  className="w-[60%] outline-none bg-transparent text-sm font-medium text-white placeholder-gray-400"
+                                />
+                                <button onClick={() => setSlippage('0.1')} className="border border-slate-600 text-xs rounded p-1 w-[13%] cursor-pointer hover:bg-slate-600">0.1%</button>
+                                <button onClick={() => setSlippage('0.5')} className="border border-slate-600 text-xs rounded p-1 w-[13%] cursor-pointer hover:bg-slate-600">0.5%</button>
+                                <button onClick={() => setSlippage('1')} className="border border-slate-600 text-xs rounded p-1 w-[13%] cursor-pointer hover:bg-slate-600">1%</button>
+                              </div>
+                              {/* Add Button Section */}
+                              <div className="w-[35%] h-full">
+                                <button 
+                                  onClick={() => addSwap()}
+                                  className="w-full h-full bg-black text-white font-semibold text-sm rounded-lg hover:bg-gray-800 transition duration-200">
+                                  Add
+                                </button>
+                              </div>
+                            </div>
                           </div>
-
-                          {/* Direction Button */}
-                          <div
-                            className="h-4 w-full flex justify-center items-center"
-                          >
-                            <div
-                              className={`z-10 rounded-full w-10 h-10 bg-blue-300 p-2 cursor-pointer transition-shadow duration-300 ${
-                                isHovered ? "scale-105  " : ""
-                              }`}
-                              onMouseEnter={() => setIsHovered(true)}
-                              onMouseLeave={() => setIsHovered(false)}
+                        </div>
+                        <div className="relative w-[49%] h-full">
+                          {/* Tooltip Portal - positioned at the top level */}
+                          {tooltipState.visible && (
+                            <div 
+                              className="absolute z-[100] px-3 py-2 bg-slate-800 text-white rounded-xl shadow-lg text-xs w-max max-w-[200px] text-center pointer-events-none"
+                              style={{
+                                left: tooltipState.x,
+                                top: tooltipState.y,
+                                transform: 'translate(-50%, -100%)'
+                              }}
                             >
-                              {isHovered ? (
-                                <ArrowDownUp className="w-full h-full text-black transition-all duration-200" />
+                              <div className="font-semibold truncate">{tooltipState.content?.name}</div>
+                              <div className="text-slate-400">{tooltipState.content?.symbol}</div>
+                              <div className="text-slate-500 text-[10px]">
+                                {tooltipState.content?.mint?.slice(0, 4)}...{tooltipState.content?.mint?.slice(-4)}
+                              </div>
+                              {/* Tooltip arrow */}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-800 rotate-45 mt-[-6px] z-[-1]" />
+                            </div>
+                          )}
+                          
+                          <div className="w-full h-full p-3 bg-slate-800/50 rounded-3xl flex justify-center items-start relative">
+                            <div className="flex flex-col gap-2 w-full h-full overflow-y-auto scrollbar-none">
+                              <div
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setProposalData((prev) => ({
+                                    ...prev,
+                                    swaps: []
+                                  }));
+                                  setFromTokens((prev) =>
+                                    (tokens ?? []).map(({ pubkey, balance_as_usdc, ...rest }) => rest)
+                                  );
+                                  setExpectedFromTokens([]);
+                                }}
+                                className="absolute z-50 right-3 bottom-3 px-4 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-slate-300 text-sm font-medium hover:bg-slate-700 hover:text-white hover:border-emerald-400 shadow-md shadow-emerald-500/10 backdrop-blur-md transition-all cursor-pointer"
+                              >
+                                Clear
+                              </div>
+                              {proposalData.swaps.length === 0 ? (
+                                <div className="w-full h-full flex justify-center items-center">
+                                  <p className="text-slate-500 text-lg font-medium tracking-wide italic">
+                                    Added swaps will appear here
+                                  </p>
+                                </div>
                               ) : (
-                                <ArrowDown className="w-full h-full text-black transition-all duration-200" />
+                                proposalData.swaps.map((swap, index) => (
+                                  <div key={index} className="relative bg-slate-900 rounded-3xl p-4 shadow-sm shadow-emerald-400/10 backdrop-blur-md hover:shadow-emerald-500/20 transition-all duration-300 overflow-visible">
+                                    {/* Amount + Slippage */}
+                                    <div className="absolute top-3 left-1/2 -translate-x-1/2 text-center text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full shadow-sm border border-slate-700">
+                                      <span className="mr-3 text-emerald-300">Amount: {Number(swap.fromAmount).toFixed(3)}</span>
+                                      <span className="text-orange-300">Slippage: {swap.slippage}%</span>
+                                    </div>
+
+                                    {/* Main Swap Row */}
+                                    <div className="relative flex items-center justify-between">
+                                      {/* From Token */}
+                                      <div className="flex flex-col items-center gap-2 w-1/4 relative">
+                                        <img
+                                          src={swap.fromToken.image || '/fallback.png'}
+                                          alt={swap.fromToken.symbol}
+                                          className="w-14 h-14 rounded-full object-cover bg-slate-700 shadow-inner shadow-black/40 cursor-pointer"
+                                          onMouseEnter={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const containerRect = e.currentTarget.closest('.w-\\[49\\%\\]').getBoundingClientRect();
+                                            setTooltipState({
+                                              visible: true,
+                                              content: swap.fromToken,
+                                              x: rect.left + rect.width / 2 - containerRect.left,
+                                              y: rect.top - containerRect.top - 10
+                                            });
+                                          }}
+                                          onMouseLeave={() => setTooltipState({ visible: false, content: {
+                                            mint: '',
+                                            name: '',
+                                            symbol: '',
+                                            image: '',
+                                            decimals: 0,
+                                            balance: 0,
+                                          }, x: 0, y: 0 })}
+                                        />
+                                      </div>
+
+                                      {/* Arrow */}
+                                      <div className="w-full flex justify-center items-center relative">
+                                        <div className="w-full h-0.5 bg-gradient-to-r from-emerald-400/20 via-emerald-500 to-emerald-400/20"></div>
+                                        <ArrowRight className="absolute text-emerald-400 bg-slate-900 p-1 rounded-full border border-emerald-500 shadow-md w-5 h-5" />
+                                      </div>
+
+                                      {/* To Token */}
+                                      <div className="flex flex-col items-center gap-2 w-1/4 relative">
+                                        <img
+                                          src={swap.toToken.image || '/fallback.png'}
+                                          alt={swap.toToken.symbol}
+                                          className="w-14 h-14 rounded-full object-cover bg-slate-700 shadow-inner shadow-black/40 cursor-pointer"
+                                          onMouseEnter={(e) => {
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const containerRect = e.currentTarget.closest('.w-\\[49\\%\\]').getBoundingClientRect();
+                                            setTooltipState({
+                                              visible: true,
+                                              content: swap.toToken,
+                                              x: rect.left + rect.width / 2 - containerRect.left,
+                                              y: rect.top - containerRect.top - 10
+                                            });
+                                          }}
+                                          onMouseLeave={() => setTooltipState({ visible: false, content: {
+                                            mint: '',
+                                            name: '',
+                                            symbol: '',
+                                            image: '',
+                                            decimals: 0,
+                                            balance: 0,
+                                          }, x: 0, y: 0 })}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
                               )}
                             </div>
                           </div>
-                          
-                          {/* To Tokens + Slippage Area */}
-                          <div className="h-[40%] rounded-3xl flex flex-col justify-end bg-slate-800">
-                            {tokens && tokens.length > 0 && selectedToToken ? (
-                              <div className="mx-5 h-[19.5%] text-xs flex justify-between">
-                                <p className="flex justify-center items-center">To Token</p>
-                                <div className="flex justify-between items-center gap-2">
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mx-5 h-[19.5%] flex justify-between text-xs">
-                                <div className="flex justify-center items-center">
-                                  To Token
-                                </div>
-                                <div className="flex justify-between items-center text-xs gap-2 text-white px-1 min-h-[24px] animate-pulse">
-                                  {/* Left: Icon + Gray Line */}
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-4 w-4 bg-gray-700 rounded" />
-                                    <div className="h-3 w-28 bg-gray-700 rounded" />
-                                  </div>
-
-                                  {/* Right: Fake Buttons */}
-                                  <div className="flex gap-2">
-                                    <div className="h-[18px] w-10 bg-gray-700 rounded mb-1" />
-                                    <div className="h-[18px] w-10 bg-gray-700 rounded" />
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            {tokens && (
-                              <div className="bg-[#0f161f] h-[77%] rounded-3xl p-3 flex">
-                                <div
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    setShowToTokensModal(true);
-                                  }} 
-                                  className="flex items-center justify-start px-2 gap-1 py-2 bg-[#2c3a4e] rounded-2xl cursor-pointer w-[35%] h-full">
-                                  <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                    {selectedToToken ? (
-                                      <div className="w-10 h-10 bg-gray-600 rounded-full">
-                                        {selectedToToken?.image ? (
-                                          <img src={selectedToToken.image} alt="token" className="w-full h-full object-cover rounded-full" />
-                                        ) : (
-                                          <div className="w-full h-full bg-gray-600 rounded-full" />
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="w-full h-full bg-gray-600 rounded-full" />
-                                    )}
-                                  </div>
-                                  {selectedToToken && (
-                                    <p className="text-xl ml-2" onClick={(e) => {
-                                      e.preventDefault();
-                                      console.log("Selected From Token:", selectedToToken);
-                                    }}>{selectedToToken.symbol}</p>
-                                  )}
-                                </div>
-                                <div className="w-[65%] text-4xl px-4 py-3 text-right flex-1 justify-items-end">
-                                  {expectedAmount ? (
-                                    <>{expectedAmount.toFixed(3)}</>
-                                  ) : (
-                                    <div className="w-[50%] h-10 bg-gray-800/40 animate-pulse rounded-md" />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <div className="mt-4 h-12 flex justify-between items-center gap-2">
-                            {/* Slippage Section */}
-                            <div className="w-[61%] h-full px-4 flex items-center border border-gray-900 rounded-lg bg-gray-800 shadow-sm">
-                              <input
-                                type="text"
-                                step="0.1"
-                                min="0"
-                                max="100"
-                                placeholder="Slippage"
-                                value={slippage}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (!/^\d*\.?\d*$/.test(val)) return;
-                                  setSlippage(val);
-                                }}
-                                className="w-full outline-none bg-transparent text-sm font-medium text-white placeholder-gray-400"
-                              />
-                            </div>
-                            {/* Add Button Section */}
-                            <div className="w-[35%] h-full">
-                              <button 
-                                onClick={() => addSwap()}
-                                className="w-full h-full bg-black text-white font-semibold text-sm rounded-lg hover:bg-gray-800 transition duration-200">
-                                Add
-                              </button>
-                            </div>
-                          </div>
-                          
-                            {/* Add Button */}
-                            {/* <div className="w-[20%] h-[50%]">
-                              <button
-                                onClick={() => {
-                                  addSwap();
-                                }}
-                                className="w-full h-full border border-emerald-500 rounded-full flex items-center justify-center gap-2 text-sm font-semibold text-emerald-300 bg-slate-900/60 hover:bg-emerald-500/10 hover:text-emerald-400 transition-all duration-300 shadow-inner shadow-emerald-500/10 backdrop-blur-md group"
-                              >
-                                Add
-                                <span className="transform transition-transform duration-300 group-hover:translate-x-1 group-hover:text-emerald-400">
-                                  <ArrowRight className="w-4 h-4" />
-                                </span>
-                              </button>
-                            </div> */}
-                          </div>
-
                         </div>
                       </div>
-                      <div className=" w-[49%]"></div>
-
-                    {/* {proposalData.swaps.map((swap, index) => (
-                      <div
-                        key={index}
-                        className="bg-slate-800 rounded-lg p-4 space-y-4"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-300 font-medium">
-                            Swap {index + 1}
-                          </span>
-                          {proposalData.swaps.length > 1 && (
-                            <button
-                              onClick={() => removeSwap(index)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                              From Token *
-                            </label>
-                            <input
-                              type="text"
-                              value={swap.fromToken}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
-                                handleSwapChange(
-                                  index,
-                                  "fromToken",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full bg-slate-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                              placeholder="e.g., USDC"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                              Amount *
-                            </label>
-                            <input
-                              type="number"
-                              value={swap.fromAmount}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
-                                handleSwapChange(
-                                  index,
-                                  "fromAmount",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full bg-slate-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                              To Token *
-                            </label>
-                            <input
-                              type="text"
-                              value={swap.toToken}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
-                                handleSwapChange(index, "toToken", e.target.value)
-                              }
-                              className="w-full bg-slate-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                              placeholder="e.g., ETH"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                              Slippage (%)
-                            </label>
-                            <input
-                              type="number"
-                              value={swap.slippage}
-                              onChange={(
-                                e: React.ChangeEvent<HTMLInputElement>
-                              ) =>
-                                handleSwapChange(
-                                  index,
-                                  "slippage",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full bg-slate-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                              placeholder="0.5"
-                              step="0.1"
-                            />
-                          </div>
-                        </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center items-center min-h-[150px]">
+                      <div className="relative flex items-center justify-center w-16 h-16">
+                        <div className="absolute w-full h-full rounded-full border-4 border-emerald-500 border-t-transparent animate-spin" />
+                        <div className="absolute w-10 h-10 rounded-full border-4 border-purple-500 border-b-transparent animate-spin reverse-slow" />
+                        <div className="absolute w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-500 to-purple-500 shadow-lg shadow-purple-500/30" />
                       </div>
-                    ))} */}
-                  </div>
+                    </div>
+                  )
                 )}
 
                 {currentStep === 3 && (
                   <div className="space-y-4">
-                    <h3 className="text-xl font-semibold text-white mb-4">
-                      Final Details
-                    </h3>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Tags
-                      </label>
-                      <div className="relative">
-                        <button
-                          onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                          className="w-full bg-slate-800 border border-gray-600 rounded-lg px-4 py-3 text-white text-left focus:outline-none focus:border-purple-500 flex items-center justify-between"
-                        >
-                          <span className="text-gray-400">
-                            Select tags for your proposal
-                          </span>
-                          <Tag size={16} className="text-gray-400" />
-                        </button>
-                        {isTagDropdownOpen && (
-                          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-gray-600 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-                            {availableTags
-                              .filter((tag) => !proposalData.tags.includes(tag))
-                              .map((tag) => (
-                                <button
-                                  key={tag}
-                                  onClick={() => addTag(tag)}
-                                  className="w-full text-left px-4 py-2 text-white hover:bg-slate-700 transition-colors"
-                                >
-                                  {tag}
-                                </button>
-                              ))}
-                            {availableTags.filter(
-                              (tag) => !proposalData.tags.includes(tag)
-                            ).length === 0 && (
-                              <div className="px-4 py-2 text-gray-400">
-                                All tags selected
+                    <div className="flex flex-col lg:flex-row gap-3 w-full">
+                      {/* Left Section - Proposal Preview */}
+                      <div className="w-full lg:w-3/4 bg-slate-900 rounded-2xl p-3 shadow-lg border border-slate-700 h-[60vh]">
+                        <h2 className="text-2xl font-bold text-white mb-6">Proposal Preview</h2>
+
+                        <div className="flex flex-col lg:flex-row gap-3 h-[49vh]">
+                          {/* Left Side: Title & Description */}
+                          <div className="w-full lg:w-1/2 space-y-4 border p-2 rounded-2xl border-slate-700/50">
+                            <div>
+                              <h3 className="text-md text-purple-400 font-semibold mb-1">Title</h3>
+                              <p className="text-white/90 border border-slate-700/50 p-2 rounded-lg text-lg font-semibold overflow-x-auto scrollbar-none">{proposalData.title || 'No title provided'}</p>
+                            </div>
+
+                            <div>
+                              <h3 className="text-md text-purple-400 font-semibold mb-1">Description</h3>
+                              <p className="text-white/90 whitespace-pre-wrap border border-slate-700/50 p-2 text-sm rounded-lg overflow-x-auto scrollbar-none">{proposalData.description || 'No description provided'}</p>
+                            </div>
+                          </div>
+
+                          {/* Right Side: Swaps */}
+                          <div className="w-full lg:w-1/2 border p-2 rounded-2xl border-slate-700/50 h-full">
+                            <h3 className="text-lg text-purple-400 font-semibold mb-3">Swaps</h3>
+                            {proposalData.swaps.length === 0 ? (
+                              <p className="text-slate-500 italic">No swaps added yet</p>
+                            ) : (
+                              <div className="space-y-2 overflow-y-auto h-[88%] scrollbar-none">
+                                {proposalData.swaps.map((swap, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-slate-800/60 p-4 rounded-xl flex items-center justify-between gap-4 shadow-inner"
+                                  >
+                                    <div className="flex items-center gap-3 w-1/4">
+                                      <img
+                                        src={swap.fromToken.image || '/fallback.png'}
+                                        alt={swap.fromToken.symbol}
+                                        className="w-10 h-10 rounded-full object-cover bg-slate-700"
+                                      />
+                                      {/* <div>
+                                        <p className="text-white text-sm">{swap.fromToken.symbol}</p>
+                                        <p className="text-xs text-slate-400 truncate w-24">{swap.fromToken.name}</p>
+                                      </div> */}
+                                    </div>
+
+                                    <div className="text-center w-1/2 text-sm text-slate-300">
+                                      <p>Amount: <span className="text-emerald-400">{swap.fromAmount}</span></p>
+                                      <p>Slippage: <span className="text-orange-400">{swap.slippage}%</span></p>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 w-1/4 justify-end">
+                                      {/* <div className="text-right">
+                                        <p className="text-white text-sm">{swap.toToken.symbol}</p>
+                                        <p className="text-xs text-slate-400 truncate w-24">{swap.toToken.name}</p>
+                                      </div> */}
+                                      <img
+                                        src={swap.toToken.image || '/fallback.png'}
+                                        alt={swap.toToken.symbol}
+                                        className="w-10 h-10 rounded-full object-cover bg-slate-700"
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                      {proposalData.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {proposalData.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="bg-purple-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                            >
-                              {tag}
-                              <button
-                                onClick={() => removeTag(tag)}
-                                className="text-purple-200 hover:text-white"
-                              >
-                                <X size={12} />
-                              </button>
-                            </span>
-                          ))}
                         </div>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Proposal Deadline *
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={proposalData.deadline}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          handleInputChange("deadline", e.target.value)
-                        }
-                        className="w-full bg-slate-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-purple-500"
-                      />
+                      </div>
+
+                      <div className="w-full lg:w-[30%] bg-slate-900 rounded-2xl p-3 shadow-lg border border-slate-700 space-y-2 flex flex-col justify-between">
+                        <h3 className="text-xl font-semibold text-white">Finalize Proposal</h3>
+                        
+                        {/* Tags */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Tags</label>
+                          <div className="flex flex-wrap gap-2 overflow-y-auto px-1 py-1">
+                            {availableTags.map((tag) => {
+                              const isSelected = proposalData.tags.includes(tag);
+                              return (
+                                <button
+                                  key={tag}
+                                  onClick={() => toggleTag(tag)}
+                                  className={`relative group px-2 py-0.5 rounded-full text-xs font-semibold transition-all duration-300 border
+                                    ${isSelected
+                                      ? 'text-violet-500 border-violet-500 shadow-md scale-[1.02]'
+                                      : 'bg-[#1e293b] text-gray-300 border-slate-600 hover:bg-slate-600/50 hover:text-white'}
+                                  `}
+                                >
+                                  <span className="whitespace-nowrap">{tag}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Deadline Selector with Timer/DateTime Toggle */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-300 mb-2">Proposal Deadline *</label>
+
+                          {/* Tabs */}
+                          <div className="flex gap-2 mb-3 justify-start">
+                            <button
+                              className={clsx(
+                                "flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-medium transition-all",
+                                deadlineMode === "timer"
+                                  ? "bg-purple-700 text-white"
+                                  : "bg-slate-800 text-gray-400 hover:text-white"
+                              )}
+                              onClick={() => setDeadlineMode("timer")}
+                            >
+                              <TimerReset size={14} />
+                              Timer
+                            </button>
+                            <button
+                              className={clsx(
+                                "flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-medium transition-all",
+                                deadlineMode === "datetime"
+                                  ? "bg-purple-700 text-white"
+                                  : "bg-slate-800 text-gray-400 hover:text-white"
+                              )}
+                              onClick={() => setDeadlineMode("datetime")}
+                            >
+                              <CalendarDays size={14} />
+                              Set Time
+                            </button>
+                          </div>
+
+                          {/* Content Area */}
+                          <div className="bg-slate-800 border border-slate-600 rounded-xl p-3 space-y-3">
+                            {deadlineMode === "timer" ? (
+                              <div className="space-y-2">
+                                <div className="flex gap-2 items-end">
+                                  {/* Hours */}
+                                  <div className="flex flex-col">
+                                    <label className="text-xs text-gray-300 mb-1">Hours</label>
+                                    <input
+                                      type="text"
+                                      value={timerHours}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "") return setTimerHours("");
+                                        if (/^\d+$/.test(val)) setTimerHours(String(Math.max(0, Number(val))));
+                                      }}
+                                      className="bg-slate-900 text-white px-2 py-1 rounded-lg border border-slate-700 w-16 text-sm"
+                                    />
+                                  </div>
+
+                                  {/* Minutes */}
+                                  <div className="flex flex-col">
+                                    <label className="text-xs text-gray-300 mb-1">Min</label>
+                                    <input
+                                      type="text"
+                                      value={timerMinutes}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "") return setTimerMinutes("");
+                                        if (/^\d+$/.test(val)) {
+                                          const num = Number(val);
+                                          if (num <= 59) setTimerMinutes(String(num));
+                                        }
+                                      }}
+                                      className="bg-slate-900 text-white px-2 py-1 rounded-lg border border-slate-700 w-16 text-sm"
+                                    />
+                                  </div>
+
+                                  {/* Seconds */}
+                                  <div className="flex flex-col">
+                                    <label className="text-xs text-gray-300 mb-1">Sec</label>
+                                    <input
+                                      type="text"
+                                      value={timerSeconds}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === "") return setTimerSeconds("");
+                                        if (/^\d+$/.test(val)) {
+                                          const num = Number(val);
+                                          if (num <= 59) setTimerSeconds(String(num));
+                                        }
+                                      }}
+                                      className="bg-slate-900 text-white px-2 py-1 rounded-lg border border-slate-700 w-16 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <button
+                                  onClick={applyTimer}
+                                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow transition-colors"
+                                >
+                                  Apply Timer
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <input
+                                  type="datetime-local"
+                                  value={selectedDateTime}
+                                  onChange={(e) => setSelectedDateTime(e.target.value)}
+                                  className="w-full bg-slate-900 text-white px-3 py-2 rounded-lg border border-slate-700 text-sm"
+                                />
+                                <button
+                                  onClick={applyDateTime}
+                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium shadow transition-colors"
+                                >
+                                  Set Date & Time
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1444,16 +1855,18 @@ const CreateProposal = ({
                     </button>
                   ) : (
                     <button
-                      // onClick={handleSubmit}
+                      onClick={() => {
+                        setProposalStatus(Status.Uploading);
+                        handleSubmit();
+                      }}
                       disabled={!canProceed()}
                       className={`flex items-center gap-2 px-6 py-2 rounded-lg transition-colors ${
-                        canProceed()
+                        (canProceed() && proposalStatus === Status.None)
                           ? "bg-green-600 hover:bg-green-700 text-white"
                           : "bg-gray-700 text-gray-400 cursor-not-allowed"
                       }`}
                     >
-                      Create Proposal
-                      <DollarSign size={16} />
+                      {proposalStatus === Status.None ? 'Create Proposal' : proposalStatus === Status.Uploading ? 'Uploading...' : 'Creating...'}
                     </button>
                   )}
                 </div>

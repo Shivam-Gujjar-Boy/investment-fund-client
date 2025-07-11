@@ -158,6 +158,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
         const symbol = metadataAccountInfo.symbol;
         const uri = metadataAccountInfo.uri;
         const name = metadataAccountInfo.name;
+        const decimals = metadataAccountInfo.mint.decimals;
         // console.log(name);
         let imageUri = '';
         if (uri !== '') {
@@ -171,6 +172,7 @@ export const fetchMintMetadata = async (mint: PublicKey, metaplex: Metaplex) => 
             name,
             symbol,
             image: imageUri,
+            decimals,
         };
     } catch (err) {
         console.warn('Error fetching metadata for mint: ', mint.toBase58(), err);

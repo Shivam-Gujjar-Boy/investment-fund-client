@@ -208,6 +208,19 @@ export default function FundPerformance ({fund, connection, metaplex, userStakeP
       fetchVaultTokens();
     }, [fetchVaultTokens]);
 
+    // ESC key modal closing
+    useEffect(() => {
+      const handleEsc = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowWithdrawModal(false);
+          setShowDepositModal(false);
+          setShowLeaveModal(false);
+        }
+      };
+      window.addEventListener('keydown', handleEsc);
+      return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
+
     return (
         <>
           <div className="flex flex-col px-2 pt-3 text-white bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 min-h-screen mt-20">
