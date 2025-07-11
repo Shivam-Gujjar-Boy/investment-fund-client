@@ -6,7 +6,6 @@ import {
   ArrowDownUp,
   ArrowRight,
   ArrowLeft,
-  DollarSign,
   ArrowDown,
   ClipboardIcon,
   RefreshCw,

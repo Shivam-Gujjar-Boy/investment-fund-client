@@ -83,20 +83,30 @@ export interface FromToken {
 }
 
 export interface Proposal {
+  tags: string[],
+  title: string,
+  description: string,
   proposalIndex: number,
   vecIndex: number,
   proposer: PublicKey,
   numOfSwaps: number,
-  fromAssets: PublicKey[],
-  toAssets: PublicKey[],
-  amounts: bigint[],
+  fromAssets: string[],
+  toAssets: string[],
+  amounts: number[],
   slippages: number[],
   votesYes: bigint,
   votesNo: bigint,
   creationTime: bigint,
   deadline: bigint,
-  executed: boolean,
-  userVoted: boolean,
+  executed: number,
+  voters: [PublicKey, number][],
+}
+
+export interface Metas {
+  mint: string,
+  name: string,
+  symbol: string,
+  image: string,
 }
 
 export interface LockedToken {

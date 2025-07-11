@@ -644,7 +644,7 @@ export default function FundsList() {
         {activeTab === 'proposals' && (
           // <div className='mt-40 border'>Hello behen ke tako</div>
           <div className='mt-20'>
-            <Proposals />
+            <Proposals fund={fund} />
           </div>
         )}
         {activeTab === 'create-proposal' && (
