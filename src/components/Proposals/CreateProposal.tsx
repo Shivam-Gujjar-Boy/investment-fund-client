@@ -1032,9 +1032,20 @@ const CreateProposal = ({
           }
 
           const fetchedProposalData = await proposalDataResponse.json();
-          const fromTokenMint = fetchedProposalData.fromToken;
-          const transferAmount = fetchedProposalData.fromAmount;
-          lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+          for (const swap of fetchedProposalData.swaps) {
+            const fromTokenMint = swap.fromToken;
+            const transferAmount = swap.fromAmount;
+            if (lockedTokensList.some(t => t.mint === fromTokenMint)) {
+              lockedTokensList.map(t => {
+                if (t.mint === fromTokenMint) {
+                  t.amount += transferAmount;
+                }
+                return t;
+              })
+            } else {
+              lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+            }
+          }
 
         }
         const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
@@ -1068,9 +1079,20 @@ const CreateProposal = ({
             }
 
             const fetchedProposalData = await proposalDataResponse.json();
-            const fromTokenMint = fetchedProposalData.fromToken;
-            const transferAmount = fetchedProposalData.fromAmount;
-            lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+            for (const swap of fetchedProposalData.swaps) {
+              const fromTokenMint = swap.fromToken;
+              const transferAmount = swap.fromAmount;
+              if (lockedTokensList.some(t => t.mint === fromTokenMint)) {
+                lockedTokensList.map(t => {
+                  if (t.mint === fromTokenMint) {
+                    t.amount += transferAmount;
+                  }
+                  return t;
+                })
+              } else {
+                lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+              }
+            }
 
           }
           const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
@@ -1100,8 +1122,9 @@ const CreateProposal = ({
 
   useEffect(() => {
     if (fetchedRefV2.current) return;
-    if (fromTokens && lockedTokens) {
-      // do your work
+    if (fromTokens.length && lockedTokens && lockedTokens.length !== 0) {
+      console.log(fromTokens);
+      console.log(lockedTokens);
       const fromTukens = fromTokens;
       for (const lockedToken of lockedTokens) {
         fromTukens.map(fromTuken => {
@@ -1205,11 +1228,11 @@ const CreateProposal = ({
                       <label className="block text-sm font-medium text-gray-300 mb-2">
                         Description *{" "}
                         <span className="text-xs text-violet-300">
-                          (Max 100 characters)
+                          (Max 5000 characters)
                         </span>
                       </label>
                       <textarea
-                        maxLength={100}
+                        maxLength={5000}
                         value={proposalData.description}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                           handleInputChange("description", e.target.value)
@@ -1626,7 +1649,7 @@ const CreateProposal = ({
 
                             <div>
                               <h3 className="text-md text-purple-400 font-semibold mb-1">Description</h3>
-                              <p className="text-white/90 whitespace-pre-wrap border border-slate-700/50 p-2 text-sm rounded-lg overflow-x-auto scrollbar-none">{proposalData.description || 'No description provided'}</p>
+                              <p className="text-white/90 whitespace-pre-wrap border border-slate-700/50 p-2 text-sm rounded-lg overflow-y-auto scrollbar-none h-[30vh]">{proposalData.description || 'No description provided'}</p>
                             </div>
                           </div>
 
@@ -1648,10 +1671,6 @@ const CreateProposal = ({
                                         alt={swap.fromToken.symbol}
                                         className="w-10 h-10 rounded-full object-cover bg-slate-700"
                                       />
-                                      {/* <div>
-                                        <p className="text-white text-sm">{swap.fromToken.symbol}</p>
-                                        <p className="text-xs text-slate-400 truncate w-24">{swap.fromToken.name}</p>
-                                      </div> */}
                                     </div>
 
                                     <div className="text-center w-1/2 text-sm text-slate-300">
@@ -1660,10 +1679,6 @@ const CreateProposal = ({
                                     </div>
 
                                     <div className="flex items-center gap-3 w-1/4 justify-end">
-                                      {/* <div className="text-right">
-                                        <p className="text-white text-sm">{swap.toToken.symbol}</p>
-                                        <p className="text-xs text-slate-400 truncate w-24">{swap.toToken.name}</p>
-                                      </div> */}
                                       <img
                                         src={swap.toToken.image || '/fallback.png'}
                                         alt={swap.toToken.symbol}
