@@ -1012,8 +1012,10 @@ const CreateProposal = ({
         programId
       );
 
+
       const currentAggregatorInfo = await connection.getAccountInfo(currentAggregatorPda);
       if (!currentAggregatorInfo) return;
+
 
       const currentAggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
 
@@ -1035,15 +1037,16 @@ const CreateProposal = ({
           for (const swap of fetchedProposalData.swaps) {
             const fromTokenMint = swap.fromToken;
             const transferAmount = swap.fromAmount;
+            console.log("Transfer Amount =", transferAmount);
             if (lockedTokensList.some(t => t.mint === fromTokenMint)) {
               lockedTokensList.map(t => {
                 if (t.mint === fromTokenMint) {
-                  t.amount += transferAmount;
+                  t.amount += Number(transferAmount);
                 }
                 return t;
               })
             } else {
-              lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+              lockedTokensList.push({mint: fromTokenMint, amount: Number(transferAmount)});
             }
           }
 
@@ -1085,13 +1088,15 @@ const CreateProposal = ({
               if (lockedTokensList.some(t => t.mint === fromTokenMint)) {
                 lockedTokensList.map(t => {
                   if (t.mint === fromTokenMint) {
-                    t.amount += transferAmount;
+                    t.amount = t.amount +  parseInt(transferAmount);
                   }
                   return t;
                 })
+                continue;
               } else {
-                lockedTokensList.push({mint: fromTokenMint, amount: transferAmount});
+                lockedTokensList.push({mint: fromTokenMint, amount: parseInt(transferAmount)});
               }
+              console.log(lockedTokensList);
             }
 
           }
