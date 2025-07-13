@@ -596,7 +596,7 @@ export default function FundsList() {
               {activeTab === 'proposals' && (
                 <div className="flex items-center gap-3">
                   <div className="bg-slate-800/50 rounded-lg p-1 flex">
-                    {['all', 'active', 'passed', 'failed'].map((filterType) => (
+                    {['active', 'passed', 'failed'].map((filterType) => (
                       <button
                         key={filterType}
                         onClick={() => setProposalStatus(filterType)}

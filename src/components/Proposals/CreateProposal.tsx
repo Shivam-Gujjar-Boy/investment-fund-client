@@ -174,6 +174,9 @@ const CreateProposal = ({
       new PublicKey(input);
       return true;
     } catch (err) {
+      if (err) {
+        return false;
+      }
       return false;
     }
   };
@@ -281,7 +284,7 @@ const CreateProposal = ({
       setTokens(tokensWithMetadata);
 
       setFromTokens(tokensWithMetadata.map(({pubkey, balance_as_usdc, ...rest}) => {
-        // console.log(pubkey);
+        if (pubkey && balance_as_usdc) return rest;
         return rest;
       }));
 
@@ -294,6 +297,7 @@ const CreateProposal = ({
 
         // Destructure to remove `pubkey` and `balance_as_usdc`
         const { pubkey, balance_as_usdc, ...rest } = selected;
+        if (pubkey && balance_as_usdc) return rest;
         return rest;
       });
 
@@ -1532,9 +1536,10 @@ const CreateProposal = ({
                                     ...prev,
                                     swaps: []
                                   }));
-                                  setFromTokens((prev) =>
-                                    (tokens ?? []).map(({ pubkey, balance_as_usdc, ...rest }) => rest)
-                                  );
+                                  setFromTokens((tokens ?? []).map(({ pubkey, balance_as_usdc, ...rest }) => {
+                                    return rest;
+                                    if (pubkey && balance_as_usdc) return rest;
+                                  }));
                                   setExpectedFromTokens([]);
                                 }}
                                 className="absolute z-50 right-3 bottom-3 px-4 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-slate-300 text-sm font-medium hover:bg-slate-700 hover:text-white hover:border-emerald-400 shadow-md shadow-emerald-500/10 backdrop-blur-md transition-all cursor-pointer"

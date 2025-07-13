@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle, XCircle, Calendar, Target, Zap, Copy } from 'lucide-react';
 import { LightFund, Metas, programId, Proposal, TOKEN_METADATA_PROGRAM_ID } from '../../types';
 import { PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
@@ -9,6 +8,7 @@ import axios from 'axios';
 import SOL from '../../assets/SOL.jpg';
 import USDC from '../../assets/USDC.png';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface ProposalProps {
   fund: LightFund
@@ -16,9 +16,12 @@ interface ProposalProps {
 
 const Proposals = ({fund}: ProposalProps) => {
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
-    const [proposals, setProposals] = useState<Proposal[] | null>(null);
+    const [activeProposals, setActiveProposals] = useState<Proposal[] | null>(null);
+    // const [passedProposals, setPassedProposals] = useState<Proposal[] | null>(null);
+    // const [failedProposals, setFailed] = useState<Proposal[] | null>(null);
     const [metas, setMetas] = useState<Metas[]>([]);
     const [voting, setVoting] = useState(false);
+    const [executionInitiated, setExecutionInitiated] = useState(false);
     // const [filter, setFilter] = useState('all');
 
 
@@ -245,14 +248,14 @@ const Proposals = ({fund}: ProposalProps) => {
           }
         }
         setMetas(tokens);
-        setProposals(fetchedProposals);
+        setActiveProposals(fetchedProposals);
       } catch (err) {
         console.log(err);
       }
     }, [connection, fund]);
 
     const fetchTokenMetadata = async () => {
-      if (!proposals || !metas) {
+      if (!activeProposals || !metas) {
         fetchedRefNew.current = false;
         return;
       }
@@ -335,7 +338,7 @@ const Proposals = ({fund}: ProposalProps) => {
       if (fetchedRefNew.current) return;
       fetchedRefNew.current = true;
       fetchTokenMetadata();
-    }, [proposals]);
+    }, [activeProposals]);
 
 
     useEffect(() => {
@@ -381,21 +384,59 @@ const Proposals = ({fund}: ProposalProps) => {
         return `${hours}h`;
     };
 
-    const formatNumber = (num: number) => {
-        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-        return num.toString();
-    };
+    // handle execution of proposals
+    const handleExecution = async (proposal: Proposal) => {
+      if (!proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58())) {
+        toast.error(`You can't initiate execution of proposal since you didn't vote`);
+        return;
+      }
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-    };
+      if (proposal.votesYes <= proposal.votesNo || ((Number(proposal.votesYes) + Number(proposal.votesNo)) / fund.numOfMembers * 100) < 30) {
+        toast.error(`Execution can't be executed because of less votes`);
+        return;
+      }
+
+      try {
+        const response = await fetch('https://investment-fund-server-production.up.railway.app/api/init-execution', {
+          method: "POST",
+          body: JSON.stringify({
+            fund: fund.name,
+            fundPubkey: fund.fundPubkey.toBase58(),
+            fundType: fund.fundType,
+            proposalIndex: proposal.proposalIndex,
+            vecIndex: proposal.vecIndex,
+            numOfSwaps: proposal.numOfSwaps,
+            fromAssets: proposal.fromAssets,
+            amounts: proposal.amounts,
+            toAssets: proposal.toAssets,
+            slippages: proposal.slippages,
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error Initiating or Executing Proposal');
+        }
+
+        const data = await response.json();
+        console.log(data);
+
+        // make immediate changes in proposal
+      } catch (err) {
+        console.log(err);
+      }
+    }
 
     const ProposalCard = ({proposal}: {proposal: Proposal}) => {
       const timeLeft = getTimeLeft(Number(proposal.deadline));
 
       return (
-        <div className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:shadow-purple-500/10 group space-y-6">
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          whileHover={{ y: 0, scale: 1.005 }}
+          className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:shadow-purple-500/10 group space-y-6">
           {/* Title + Status */}
           <div className="flex flex-col justify-between items-start">
               <div className="flex-1">
@@ -420,38 +461,6 @@ const Proposals = ({fund}: ProposalProps) => {
               </div>
           </div>
 
-          {/* Proposer Info */}
-          {/* <div className="flex items-center gap-3 text-sm text-slate-300 mb-4">
-              <img
-              src={proposal.proposer.image}
-              alt={proposal.proposer.name}
-              className="w-8 h-8 rounded-full border-2 border-purple-500/30 shadow-md"
-              />
-              <div className="flex flex-col">
-              <span>{proposal.proposer.name}</span>
-              <button
-                  onClick={() => copyToClipboard(proposal.proposer.address)}
-                  className="font-mono text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
-              >
-                  {proposal.proposer.address.slice(0, 6)}...{proposal.proposer.address.slice(-4)}
-                  <Copy className="w-3 h-3" />
-              </button>
-              </div>
-          </div> */}
-
-          {/* Swap Section */}
-          {/* <div className="bg-[#1C1F36] border border-[#2A2D4A] rounded-xl px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-5">
-              <TokenCard token={proposal.toAssets} />
-              <ArrowRight className="w-5 h-5 text-purple-400" />
-              <TokenCard token={proposal.swap.to} />
-              </div>
-              <div className="text-right text-xs text-slate-400">
-              <div className="mb-1">Slippage</div>
-              <div className="text-sm font-medium text-white">{proposal.slippage}%</div>
-              </div>
-          </div> */}
-
           {/* Voting Progress */}
           <div className="space-y-2">
               <div className="flex justify-between text-sm text-slate-400">
@@ -472,39 +481,59 @@ const Proposals = ({fund}: ProposalProps) => {
 
           {/* CTA Buttons */}
           <div className="grid grid-cols-3 gap-4">
-              <button className="group bg-green-500/10 hover:bg-green-500/20 border border-green-600/30 rounded-lg py-2 text-sm font-medium text-green-400 flex items-center justify-center gap-2 transition-all">
-                <CheckCircle className="w-4 h-4 group-hover:scale-110 transition" />
-                Vote Yes
-              </button>
-              <button className="group bg-red-500/10 hover:bg-red-500/20 border border-red-600/30 rounded-lg py-2 text-sm font-medium text-red-400 flex items-center justify-center gap-2 transition-all">
-                <XCircle className="w-4 h-4 group-hover:scale-110 transition" />
-                Vote No
-              </button>
+            <div className="col-span-2 flex gap-2">
+              {voting ? (
+                <button
+                  className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed"
+                >
+                  Voting...
+                </button>
+              ) : proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) ? (
+                <button
+                  className="flex-1 py-1 rounded-lg bg-gray-600 hover:bg-gray-500/50 transition text-white text-sm shadow cursor-default"
+                >
+                  Already Voted
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setVoting(true);
+                      voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                    }}
+                    className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 transition text-white text-sm shadow"
+                  >
+                    Vote Yes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVoting(true);
+                      voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                    }}
+                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition text-white text-sm shadow"
+                  >
+                    Vote No
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div>
               <button
                 onClick={() => setSelectedProposal(proposal)}
-                className="group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 text-sm font-medium text-purple-400 transition-all"
-                >
-                  Details
+                className="w-full group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 text-sm font-medium text-purple-400 transition-all"
+              >
+                Details
               </button>
+            </div>
           </div>
-        </div>
+        </motion.div>
       );
     };
-
-    // TokenCard subcomponent for cleaner layout
-    // const TokenCard = ({ token }: {token: Metas}) => (
-    // <div className="text-center space-y-0.5">
-    //     <div className="text-2xl">{token.name}</div>
-    //     <div className="text-sm font-medium text-white">{token.symbol}</div>
-    //     {/* <div className="text-xs text-slate-400">{formatNumber(token.amount)}</div> */}
-    // </div>
-    // );
 
 
     const ProposalModal = ({ proposal, onClose }: {proposal: Proposal, onClose: () => void}) => {
       if (!proposal) return null;
-
-      const timeLeft = getTimeLeft(Number(proposal.deadline));
 
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -548,15 +577,48 @@ const Proposals = ({fund}: ProposalProps) => {
                 {/* Voting Stats */}
                 <div className="bg-slate-800 p-4 rounded-b-xl absolute bottom-0 left-0 w-full">
                   <p className="text-sm text-slate-400 mb-1 font-semibold">Voting Progress</p>
-                  <div className="w-full bg-slate-700 rounded-full h-4 overflow-hidden mb-2">
+
+                  <div className="w-full bg-slate-700 rounded-full h-4 overflow-hidden mb-3">
                     <div
                       className="bg-green-500 h-full transition-all duration-300"
-                      style={{ width: `${Number(proposal.votesYes)/fund.numOfMembers * 100}%` }}
+                      style={{ width: `${(Number(proposal.votesYes) / fund.numOfMembers) * 100}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-green-400">Yes: {(Number(proposal.votesYes)/fund.numOfMembers * 100).toFixed(2)}% ({Number(proposal.votesYes)} votes)</span>
-                    <span className="text-red-400">No: {(Number(proposal.votesNo)/fund.numOfMembers * 100).toFixed(2)}% ({Number(proposal.votesNo)} votes)</span>
+
+                  <div className="flex justify-between text-sm font-medium mb-4">
+                    <span className="text-green-400">
+                      Yes: {(Number(proposal.votesYes) / fund.numOfMembers * 100).toFixed(2)}% ({Number(proposal.votesYes)} votes)
+                    </span>
+                    <span className="text-red-400">
+                      No: {(Number(proposal.votesNo) / fund.numOfMembers * 100).toFixed(2)}% ({Number(proposal.votesNo)} votes)
+                    </span>
+                  </div>
+
+                  {/* Time Info */}
+                  <div className="grid grid-cols-3 gap-4 text-sm text-slate-300 font-medium">
+                    <div className="bg-slate-700/60 p-3 rounded-xl flex flex-col items-start gap-1">
+                      <p className="text-slate-400 text-xs">🕒 Created</p>
+                      <p>{new Date(Number(proposal.creationTime) * 1000).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-slate-700/60 p-3 rounded-xl flex flex-col items-start gap-1">
+                      <p className="text-slate-400 text-xs">⏰ Deadline</p>
+                      <p>{new Date(Number(proposal.deadline)).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-slate-700/60 p-3 rounded-xl flex flex-col items-start gap-1">
+                      <p className="text-slate-400 text-xs">⏳ Voting Ends In</p>
+                      <p>
+                        {(() => {
+                          const now = Date.now();
+                          const end = Number(proposal.deadline);
+                          const diff = end - now;
+                          if (diff <= 0) return 'Ended';
+                          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                          return `${days}d ${hours}h ${minutes}m`;
+                        })()}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -617,26 +679,57 @@ const Proposals = ({fund}: ProposalProps) => {
                       Voting...
                     </button>
                   ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          setVoting(true);
-                          voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                        }}
-                        className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
-                      >
-                        Vote Yes
-                      </button>
-                      <button
-                        onClick={() => {
-                          setVoting(true);
-                          voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                        }}
-                        className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
-                      >
-                        Vote No
-                      </button>
-                    </>
+                    proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() > Date.now()) ? (
+                    <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
+                      Already Voted
+                    </button>
+                    ) : (
+                      !proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() > Date.now()) ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setVoting(true);
+                              voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                            }}
+                            className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
+                          >
+                            Vote Yes
+                          </button>
+                          <button
+                            onClick={() => {
+                              setVoting(true);
+                              voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                            }}
+                            className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
+                          >
+                            Vote No
+                          </button>
+                        </>
+                      ) : (
+                        proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() <= Date.now()) ? (
+                          <>
+                            <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
+                              Already Voted
+                            </button>
+                            <button
+                              onClick={() => {
+                                setExecutionInitiated(true);
+                                handleExecution(proposal);
+                              }}
+                              className="flex-1 ml-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
+                            >
+                              {executionInitiated ? 'Executing.. (may take a while)' : 'Initiate Execution'}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
+                              Voting Ended
+                            </button>
+                          </>
+                        )
+                      )
+                    )
                   )}
                 </div>
               </div>
@@ -651,12 +744,18 @@ const Proposals = ({fund}: ProposalProps) => {
         <div className="p-6 space-y-4 bg-gradient-to-br from-[#0B0E20] via-[#11142A] to-[#0A0C1C] min-h-screen">
           {/* Proposals Grid */}
           
-            {proposals ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
-                {proposals.map((proposal) => (
-                  <ProposalCard key={proposal.creationTime} proposal={proposal} />
-                ))}
-               </div>
+            {activeProposals ? (
+              activeProposals.length > 0 ? (
+                <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
+                  <AnimatePresence>
+                    {activeProposals.map((proposal) => (
+                      <ProposalCard key={proposal.creationTime} proposal={proposal} />
+                    ))}
+                  </AnimatePresence>
+                </motion.div>              
+               ) : (
+                <div className='text-slate-400 italic text-xl font-semibold h-[70vh] flex justify-center items-center'>No Active Proposals</div>
+              )
             ) : (
               <div className="h-[70vh] flex flex-col gap-3 justify-center items-center">
                 <div className="relative w-16 h-16">
