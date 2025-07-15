@@ -22,6 +22,7 @@ const Proposals = ({fund}: ProposalProps) => {
     const [metas, setMetas] = useState<Metas[]>([]);
     const [voting, setVoting] = useState(false);
     const [executionInitiated, setExecutionInitiated] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     // const [filter, setFilter] = useState('all');
 
 
@@ -96,6 +97,81 @@ const Proposals = ({fund}: ProposalProps) => {
         toast.error('Error Voting');
       } finally {
         setVoting(false);
+      }
+    }
+
+    const handleDeletion = async () => {
+      if (!wallet || !wallet.publicKey || !wallet.signTransaction || !selectedProposal || !fund) {
+        return;
+      }
+
+      const user = wallet.publicKey;
+
+      try {
+        const instructionTag = 13;
+        const nameBytes = Buffer.from(fund.name, 'utf8');
+
+        const buffer = Buffer.alloc(1 + 1 + 2 + nameBytes.length);
+        let offset = 0;
+
+        buffer.writeUInt8(instructionTag, offset);
+        offset += 1;
+        buffer.writeUInt8(selectedProposal.proposalIndex, offset);
+        offset += 1;
+        buffer.writeUInt16LE(selectedProposal.vecIndex, offset);
+        offset += 2;
+        nameBytes.copy(buffer, offset);
+
+        const instructionData = buffer;
+
+        const [proposalAggregatorPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('proposal-aggregator'), Buffer.from([selectedProposal.proposalIndex]), fund.fundPubkey.toBuffer()],
+          programId
+        );
+
+        const [rentPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('rent')],
+          programId
+        );
+
+        const instruction = new TransactionInstruction({
+          keys: [
+            {pubkey: user, isSigner: true, isWritable: true},
+            {pubkey: proposalAggregatorPda, isSigner: false, isWritable: true},
+            {pubkey: fund.fundPubkey, isSigner: false, isWritable: false},
+            {pubkey: rentPda, isSigner: false, isWritable: true}
+          ],
+          programId,
+          data: instructionData
+        });
+
+        const transaction = new Transaction().add(instruction);
+
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
+
+        // Sign the transaction
+        // transaction.partialSign(governanceMint);
+        const signedTransaction = await wallet.signTransaction(transaction);
+        
+        // Send and confirm transaction
+        const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+        
+        // Use the non-deprecated version of confirmTransaction with TransactionConfirmationStrategy
+        await connection.confirmTransaction({
+          signature,
+          blockhash,
+          lastValidBlockHeight
+        });
+
+        toast.success('Successfully Deleted the Proposal!');
+
+      } catch (err) {
+        console.log(err);
+        toast.error('Error Deleting Proposal');
+      } finally {
+        setDeleting(false);
       }
     }
 
@@ -674,6 +750,21 @@ const Proposals = ({fund}: ProposalProps) => {
 
                 {/* Voting Buttons */}
                 <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+                  {proposal.proposer.toBase58() === wallet.publicKey?.toBase58() && (
+                    <button
+                      onClick={() => {
+                        setDeleting(true);
+                        handleDeletion();
+                      }}
+                      disabled={deleting}
+                      className={`flex-1 mr-2 py-2 rounded-xl ${
+                        deleting ?
+                        'bg-gray-600 hover:bg-gray-500/50 cursor-not-allowed' :
+                        'bg-red-600 hover:bg-red-500/50 cursor-pointer'
+                      } transition text-white font-semibold text-lg shadow`}>
+                      {deleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  )}
                   {voting ? (
                     <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed'>
                       Voting...
