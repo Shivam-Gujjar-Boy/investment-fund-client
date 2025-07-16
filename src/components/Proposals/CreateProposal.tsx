@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {motion} from 'framer-motion';
 import clsx from "clsx";
+import { createHash } from 'crypto';
 import {
   X,
   ArrowDownUp,
@@ -29,7 +30,15 @@ interface Swap {
   fromAmount: string;
   toToken: ToToken;
   slippage: string;
+  hash: string;
 }
+
+interface SwapWithoutHash {
+  fromMint: string,
+  toMint: string,
+  amount: string,
+  slippage: string,
+};
 
 interface ProposalData {
   title: string;
@@ -159,6 +168,7 @@ const CreateProposal = ({
       balance: 0,
     },
     slippage: '',
+    hash: '',
   });
 
   const [currentSwapIndex, setCurrentSwapIndex] = useState(0);
@@ -774,6 +784,15 @@ const CreateProposal = ({
       });
     }
 
+    const swapData = {
+      fromMint: swap.fromToken.mint,
+      toMint: swap.toToken.mint,
+      amount: (Number(swap.fromAmount)*swap.fromToken.decimals).toString(), // as string
+      slippage: (Number(swap.slippage)*100).toString(), // 0.5% represented as basis points
+    };
+
+    const swapHash = hashSwapStruct(swapData);
+
     setFromTokens(frmTokens);
     setExpectedFromTokens(exptdTokens);
 
@@ -782,11 +801,23 @@ const CreateProposal = ({
       ...prev,
       swaps: [
         ...prev.swaps,
-        { fromToken: swap.fromToken, fromAmount: swap.fromAmount, toToken: swap.toToken, slippage: swap.slippage },
+        { fromToken: swap.fromToken, fromAmount: swap.fromAmount, toToken: swap.toToken, slippage: swap.slippage, hash: swapHash },
       ],
     }));
 
   };
+
+  function hashSwapStruct(swap: SwapWithoutHash) {
+    const fromMintBuf = Buffer.from(swap.fromMint, 'utf8');
+    const toMintBuf = Buffer.from(swap.toMint, 'utf8');
+    const amountBuf = Buffer.from(swap.amount, 'utf8');
+    const slippageBuf = Buffer.from(swap.slippage, 'utf8');
+
+    const all = Buffer.concat([fromMintBuf, toMintBuf, amountBuf, slippageBuf]);
+
+    const hash = createHash('sha256').update(all).digest('hex');
+    return hash;
+  }
 
   const toggleTag = (tag: string) => {
     if (!proposalData.tags.includes(tag)) {
@@ -813,6 +844,43 @@ const CreateProposal = ({
       setCurrentStep(currentStep - 1);
     }
   };
+
+  function hashPair(a: Buffer<ArrayBuffer>, b: Buffer<ArrayBuffer>) {
+    // const aBuffer = Buffer.from(a, 'utf8');
+    // const bBuffer = Buffer.from(b, 'utf8');
+    return createHash('sha256').update(Buffer.concat([a, b])).digest();
+  }
+
+  const padToPowerOfTwo = (leaves: Buffer<ArrayBuffer>[]) => {
+    const n = leaves.length;
+    let power = 1;
+    while (power < n) power *= 2;
+
+    const padded = [...leaves];
+    const last = leaves[leaves.length - 1];
+    while (padded.length < power) {
+      padded.push(last); // pad with last hash
+    }
+    return padded;
+  }
+
+  // Main: compute Merkle root
+  function computeMerkleRoot(hexHashes: string[]) {
+    // Convert all hex hashes to buffers
+    let level = padToPowerOfTwo(hexHashes.map(h => Buffer.from(h, 'hex')));
+    console.log(level.length);
+
+    while (level.length > 1) {
+      const nextLevel = [];
+      for (let i = 0; i < level.length; i += 2) {
+        const combined = hashPair(level[i], level[i + 1]);
+        nextLevel.push(combined);
+        console.log(i, level.length, combined.length, combined.toString('hex'));
+      }
+      level = nextLevel;
+    }
+    return level[0]; // Merkle root as hex
+  }
 
   const handleSubmit = async () => {
     if (!proposalData.deadline) {
@@ -842,7 +910,8 @@ const CreateProposal = ({
             fromToken: swap.fromToken.mint,
             fromAmount: swap.fromAmount,
             toToken: swap.toToken.mint,
-            slippage: swap.slippage
+            slippage: swap.slippage,
+            hash: swap.hash,
           }))
         })
       });
@@ -857,14 +926,21 @@ const CreateProposal = ({
       console.log(data.cid);
       setProposalStatus(Status.Creating);
 
+      const swapHashes = proposalData.swaps.map(swap => swap.hash);
+      const merkleRoot = computeMerkleRoot(swapHashes);
+      console.log(swapHashes);
+      console.log(merkleRoot);
+
       ////////////////////////////////////////////////////////////////
 
       // const cid = 'bafkreifszdbyfmuj2my6z6y5hbxocmzmfgbrsyi2hgeksds2egah4opcpy';
       const instructionTag = 1;
       const nameBytes = Buffer.from(fund.name, 'utf8');
+      // const merkelBytes = Buffer.from(merkleRoot, 'utf8');
       const cidBytes = Buffer.from(data.cid, 'utf8');
+      console.log(merkleRoot.length);
 
-      const buffer = Buffer.alloc(1 + 8 + 59 + nameBytes.length);
+      const buffer = Buffer.alloc(1 + 8 + 59 + 32 + nameBytes.length);
       let offset = 0;
 
       buffer.writeUInt8(instructionTag, offset);
@@ -873,6 +949,8 @@ const CreateProposal = ({
       offset += 8;
       cidBytes.copy(buffer, offset);
       offset += 59;
+      merkleRoot.copy(buffer, offset);
+      offset += 32;
       nameBytes.copy(buffer, offset);
 
       const instructionData = buffer;
