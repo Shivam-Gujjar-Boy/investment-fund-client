@@ -107,6 +107,8 @@ const Proposals = ({fund}: ProposalProps) => {
 
       const user = wallet.publicKey;
 
+      console.log(selectedProposal);
+
       try {
         const instructionTag = 13;
         const nameBytes = Buffer.from(fund.name, 'utf8');
@@ -277,6 +279,8 @@ const Proposals = ({fund}: ProposalProps) => {
             offset += 1;
             const vecIndex = currentAggregatorBuffer.readUint16LE(offset);
             offset += 2;
+            const swaps_status_bytes = currentAggregatorBuffer.readUInt16LE(offset);
+            offset += 2;
             const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset);
             offset += 4;
             console.log("Number of Voters", numOfVoters);
@@ -317,10 +321,11 @@ const Proposals = ({fund}: ProposalProps) => {
               deadline,
               executed: isExecuted,
               voters,
+              swaps_status: swaps_status_bytes
             })
           } else {
-            const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
-            offset += (130 + (numOfVoters * 5));
+            const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 128);
+            offset += (132 + (numOfVoters * 5));
           }
         }
         setMetas(tokens);

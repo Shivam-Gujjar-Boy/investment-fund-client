@@ -100,6 +100,7 @@ export interface Proposal {
   deadline: bigint,
   executed: number,
   voters: [PublicKey, number][],
+  swaps_status: number,
 }
 
 export interface Metas {
