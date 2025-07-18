@@ -493,12 +493,16 @@ const Proposals = ({fund}: ProposalProps) => {
         toast.error(`Execution can't be executed because of less votes`);
         return;
       }
-
+// investment-fund-server-production.up.railway.app
       try {
-        const response = await fetch('https://investment-fund-server-production.up.railway.app/api/init-execution', {
+        const response = await fetch('http://localhost:5000/api/init-execution', {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             fund: fund.name,
+            vault: fund.vault.toBase58(),
             fundPubkey: fund.fundPubkey.toBase58(),
             fundType: fund.fundType,
             proposalIndex: proposal.proposalIndex,
@@ -518,9 +522,14 @@ const Proposals = ({fund}: ProposalProps) => {
         const data = await response.json();
         console.log(data);
 
+        setExecutionInitiated(false);
+        toast.success('Execution Initiated');
+
         // make immediate changes in proposal
       } catch (err) {
         console.log(err);
+        setExecutionInitiated(false);
+        toast.error('Execution Initiation Failed');
       }
     }
 
@@ -831,9 +840,14 @@ const Proposals = ({fund}: ProposalProps) => {
                                 setExecutionInitiated(true);
                                 handleExecution(proposal);
                               }}
-                              className="flex-1 ml-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
+                              disabled={executionInitiated}
+                              className={`flex-1 ml-2 py-2 rounded-xl ${
+                                executionInitiated ?
+                                'bg-gray-600 hover:bg-gray-500 cursor-not-allowed' :
+                                'bg-green-600 hover:bg-green-500 cursor-pointer'
+                              } transition text-white font-semibold text-lg shadow`}
                             >
-                              {executionInitiated ? 'Executing.. (may take a while)' : 'Initiate Execution'}
+                              {executionInitiated ? 'Executing...' : 'Initiate Execution'}
                             </button>
                           </>
                         ) : (

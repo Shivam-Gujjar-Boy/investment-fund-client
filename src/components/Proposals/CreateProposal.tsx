@@ -24,20 +24,22 @@ import USDC from '../../assets/USDC.png';
 import { availableTags } from "../../types/tags";
 import toast from "react-hot-toast";
 import { SYSTEM_PROGRAM_ID } from "@raydium-io/raydium-sdk-v2";
+import bs58 from 'bs58';
 
 interface Swap {
   fromToken: FromToken;
   fromAmount: string;
   toToken: ToToken;
   slippage: string;
-  hash: string;
+  hashString: string;
+  rawHash: Buffer<ArrayBufferLike>,
 }
 
 interface SwapWithoutHash {
   fromMint: string,
   toMint: string,
-  amount: string,
-  slippage: string,
+  amount: bigint,
+  slippage: number,
 };
 
 interface ProposalData {
@@ -104,7 +106,7 @@ const CreateProposal = ({
   const applyTimer = () => {
     const now = new Date();
     const future = new Date(now.getTime() + (Number(timerHours) * 3600 + Number(timerMinutes) * 60 + Number(timerSeconds)) * 1000);
-    if (future.getTime() - now.getTime() <= 300000) {
+    if (future.getTime() - now.getTime() <= 30000) {
       toast.error('Deadline should be atleast 5 minutes');
       setProposalData((prev) => ({
         ...prev,
@@ -134,6 +136,8 @@ const CreateProposal = ({
   // useEffect(() => {
   //   toast.success(`Proposal Deadline: ${proposalData.deadline}`);
   // }, [proposalData]);
+
+  const raw = Buffer.from([0]);
 
   const [tooltipState, setTooltipState] = useState({
     visible: false,
@@ -168,7 +172,8 @@ const CreateProposal = ({
       balance: 0,
     },
     slippage: '',
-    hash: '',
+    hashString: '',
+    rawHash: raw
   });
 
   const [currentSwapIndex, setCurrentSwapIndex] = useState(0);
@@ -787,11 +792,11 @@ const CreateProposal = ({
     const swapData = {
       fromMint: swap.fromToken.mint,
       toMint: swap.toToken.mint,
-      amount: (Number(swap.fromAmount)*(10**(Number(swap.fromToken.decimals)))).toString(), // as string
-      slippage: (Number(swap.slippage)*100).toString(), // 0.5% represented as basis points
+      amount: BigInt(Number(swap.fromAmount)*(10**(Number(swap.fromToken.decimals)))),
+      slippage: (Number(swap.slippage)*100),
     };
 
-    const swapHash = hashSwapStruct(swapData);
+    const {hashString, rawHash} = hashSwapStruct(swapData);
 
     setFromTokens(frmTokens);
     setExpectedFromTokens(exptdTokens);
@@ -801,22 +806,39 @@ const CreateProposal = ({
       ...prev,
       swaps: [
         ...prev.swaps,
-        { fromToken: swap.fromToken, fromAmount: swap.fromAmount, toToken: swap.toToken, slippage: swap.slippage, hash: swapHash },
+        { fromToken: swap.fromToken, fromAmount: swap.fromAmount, toToken: swap.toToken, slippage: swap.slippage, hashString, rawHash },
       ],
     }));
 
   };
 
   function hashSwapStruct(swap: SwapWithoutHash) {
-    const fromMintBuf = Buffer.from(swap.fromMint, 'utf8');
-    const toMintBuf = Buffer.from(swap.toMint, 'utf8');
-    const amountBuf = Buffer.from(swap.amount, 'utf8');
-    const slippageBuf = Buffer.from(swap.slippage, 'utf8');
-
-    const all = Buffer.concat([fromMintBuf, toMintBuf, amountBuf, slippageBuf]);
-
-    const hash = createHash('sha256').update(all).digest('hex');
-    return hash;
+      const fromMintBuf = bs58.decode(swap.fromMint);
+      const toMintBuf = bs58.decode(swap.toMint);
+      
+      const amountBuf = Buffer.alloc(8);
+      amountBuf.writeBigUInt64LE(BigInt(swap.amount));
+      
+      const slippageBuf = Buffer.alloc(2);
+      slippageBuf.writeUInt16LE(Number(swap.slippage));
+      
+      // Debug logging
+      console.log('fromMint string:', swap.fromMint);
+      console.log('fromMintBuf bytes:', Array.from(fromMintBuf));
+      console.log('toMint string:', swap.toMint);
+      console.log('toMintBuf bytes:', Array.from(toMintBuf));
+      console.log('amount:', swap.amount);
+      console.log('amountBuf bytes:', Array.from(amountBuf));
+      console.log('slippage:', swap.slippage);
+      console.log('slippageBuf bytes:', Array.from(slippageBuf));
+      
+      const all = Buffer.concat([fromMintBuf, toMintBuf, amountBuf, slippageBuf]);
+      console.log('Total bytes to hash:', Array.from(all));
+      console.log('Total length:', all.length);
+      
+      const hashString = createHash('sha256').update(all).digest('hex');
+      const rawHash = createHash('sha256').update(all).digest();
+      return {hashString, rawHash};
   }
 
   const toggleTag = (tag: string) => {
@@ -846,8 +868,6 @@ const CreateProposal = ({
   };
 
   function hashPair(a: Buffer<ArrayBuffer>, b: Buffer<ArrayBuffer>) {
-    // const aBuffer = Buffer.from(a, 'utf8');
-    // const bBuffer = Buffer.from(b, 'utf8');
     return createHash('sha256').update(Buffer.concat([a, b])).digest();
   }
 
@@ -865,9 +885,9 @@ const CreateProposal = ({
   }
 
   // Main: compute Merkle root
-  function computeMerkleRoot(hexHashes: string[]) {
+  function computeMerkleRoot(hexHashes: Buffer<ArrayBufferLike>[]) {
     // Convert all hex hashes to buffers
-    let level = padToPowerOfTwo(hexHashes.map(h => Buffer.from(h, 'hex')));
+    let level = padToPowerOfTwo(hexHashes.map(h => h));
     console.log(level.length);
 
     while (level.length > 1) {
@@ -875,7 +895,6 @@ const CreateProposal = ({
       for (let i = 0; i < level.length; i += 2) {
         const combined = hashPair(level[i], level[i + 1]);
         nextLevel.push(combined);
-        console.log(i, level.length, combined.length, combined.toString('hex'));
       }
       level = nextLevel;
     }
@@ -911,14 +930,14 @@ const CreateProposal = ({
             fromAmount: (Number(swap.fromAmount)*(10**swap.fromToken.decimals)).toString(),
             toToken: swap.toToken.mint,
             slippage: (Number(swap.slippage)*100).toString(),
-            hash: swap.hash,
+            hash: swap.hashString,
             fromDecimals: swap.fromToken.decimals,
           }))
         })
       });
 
       if (!response.ok) {
-        toast.error('teri behen ka bhangi maaru');
+        toast.error('Error Uploading to IPFS');
         return;
       }
 
@@ -927,10 +946,10 @@ const CreateProposal = ({
       console.log(data.cid);
       setProposalStatus(Status.Creating);
 
-      const swapHashes = proposalData.swaps.map(swap => swap.hash);
+      const swapHashes = proposalData.swaps.map(swap => swap.rawHash);
       const merkleRoot = computeMerkleRoot(swapHashes);
-      console.log(swapHashes);
-      console.log(merkleRoot);
+      // console.log(swapHashes);
+      // console.log(merkleRoot);
 
       ////////////////////////////////////////////////////////////////
 
