@@ -97,10 +97,12 @@ export interface Proposal {
   votesYes: bigint,
   votesNo: bigint,
   creationTime: bigint,
+  fromDecimals: number[],
   deadline: bigint,
   executed: number,
   voters: [PublicKey, number][],
   swaps_status: number,
+  merkelRoot: string,
 }
 
 export interface Metas {

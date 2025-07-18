@@ -787,7 +787,7 @@ const CreateProposal = ({
     const swapData = {
       fromMint: swap.fromToken.mint,
       toMint: swap.toToken.mint,
-      amount: (Number(swap.fromAmount)*swap.fromToken.decimals).toString(), // as string
+      amount: (Number(swap.fromAmount)*(10**(Number(swap.fromToken.decimals)))).toString(), // as string
       slippage: (Number(swap.slippage)*100).toString(), // 0.5% represented as basis points
     };
 
@@ -908,10 +908,11 @@ const CreateProposal = ({
           deadline: proposalData.deadline,
           swaps: proposalData.swaps.map((swap) => ({
             fromToken: swap.fromToken.mint,
-            fromAmount: swap.fromAmount,
+            fromAmount: (Number(swap.fromAmount)*(10**swap.fromToken.decimals)).toString(),
             toToken: swap.toToken.mint,
-            slippage: swap.slippage,
+            slippage: (Number(swap.slippage)*100).toString(),
             hash: swap.hash,
+            fromDecimals: swap.fromToken.decimals,
           }))
         })
       });

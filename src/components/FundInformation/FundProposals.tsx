@@ -198,13 +198,19 @@ const Proposals = ({fund}: ProposalProps) => {
         const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
         let offset = 5;
         const tokens: Metas[] = [];
+
+        console.log(numOfProposals);
+
         for (let i=0; i<numOfProposals; i++) {
-          const isExecuted = currentAggregatorBuffer.readUInt8(offset + 123);
-          if (!isExecuted) {
+          const isExecuted = currentAggregatorBuffer.readUInt8(offset + 155);
+          console.log(isExecuted);
+          if (isExecuted === 0 || isExecuted === 1 || isExecuted === 2) {
             const proposer = new PublicKey(currentAggregatorBuffer.slice(offset, offset + 32));
             offset += 32;
             const cid = currentAggregatorBuffer.slice(offset, offset + 59).toString();
             offset += 59;
+            const merkelRoot = currentAggregatorBuffer.slice(offset, offset + 32).toString('hex');
+            offset += 32;
             const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
             const proposalDataResponse = await fetch(proposalDataUrl);
             if (!proposalDataResponse.ok) {
@@ -220,6 +226,7 @@ const Proposals = ({fund}: ProposalProps) => {
             const toAssets: string[] = [];
             const amounts: number[] = [];
             const slippages: number[] = [];
+            const fromDecimals: number[] = [];
 
             for (const swap of fetchedProposalData.swaps) {
               if (!tokens.some(m => m.mint === swap.fromToken)) {
@@ -266,6 +273,7 @@ const Proposals = ({fund}: ProposalProps) => {
               toAssets.push(swap.toToken);
               amounts.push(Number(swap.fromAmount));
               slippages.push(Number(swap.slippage));
+              fromDecimals.push(Number(swap.fromDecimals));
             }
 
             const votesYes = currentAggregatorBuffer.readBigInt64LE(offset);
@@ -321,8 +329,12 @@ const Proposals = ({fund}: ProposalProps) => {
               deadline,
               executed: isExecuted,
               voters,
-              swaps_status: swaps_status_bytes
+              swaps_status: swaps_status_bytes,
+              merkelRoot,
+              fromDecimals,
             })
+
+            console.log(merkelRoot);
           } else {
             const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 128);
             offset += (132 + (numOfVoters * 5));
@@ -432,6 +444,11 @@ const Proposals = ({fund}: ProposalProps) => {
       return () => window.removeEventListener('keydown', handleEsc);
     }, []);
 
+
+    useEffect(() => {
+      console.log(activeProposals);
+    }, [activeProposals]);
+
     const getStatusColor = (status: string) => {
         switch (status) {
         case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
@@ -520,16 +537,18 @@ const Proposals = ({fund}: ProposalProps) => {
           className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:shadow-purple-500/10 group space-y-6">
           {/* Title + Status */}
           <div className="flex flex-col justify-between items-start">
-              <div className="flex-1">
-                <div className="flex gap-3 mb-2 justify-between items-start">
+              <div className="flex-1 w-full">
+                <div className="flex gap-3 mb-2 justify-between items-start w-full">
                     <h3 className="text-lg font-semibold text-white group-hover:text-purple-400 transition">
                       {proposal.title}
                     </h3>
                     <div className='flex gap-1'>
-                      {proposal.tags.length && (
+                      {proposal.tags.length ? (
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${getCategoryColor(proposal.tags[0])}`}>
                           {proposal.tags[0].replace("-", " ")}
                         </span>
+                      ) : (
+                        <></>
                       )}
                       <span className={`text-xs font-medium px-3 py-1 border rounded-full ${getStatusColor(proposal.executed ? "passed" : "active")}`}>
                           {proposal.executed ? "passed" : "active"}
@@ -710,8 +729,8 @@ const Proposals = ({fund}: ProposalProps) => {
                 <div className="overflow-y-auto space-y-3 h-full scrollbar-none">
                   {proposal.fromAssets.map((fromMint, index) => {
                     const toMint = proposal.toAssets[index];
-                    const amount = proposal.amounts[index];
-                    const slippage = proposal.slippages[index];
+                    const amount = proposal.amounts[index]/10**proposal.fromDecimals[index];
+                    const slippage = proposal.slippages[index]/100;
 
                     const fromToken = metas.find(m => m.mint === fromMint);
                     const toToken = metas.find(m => m.mint === toMint);
