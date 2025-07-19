@@ -1120,13 +1120,16 @@ const CreateProposal = ({
 
 
       const currentAggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
+      console.log(currentAggregatorBuffer.length);
 
       const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
+      console.log(numOfProposals);
       let offset = 5;
       const lockedTokensList: LockedToken[] = [];
       for (let i=0; i<numOfProposals; i++) {
-        const isExecuted = currentAggregatorBuffer.readUInt8(offset + 123) ? true : false;
-        if (!isExecuted) {
+        console.log(i, offset);
+        const isExecuted = currentAggregatorBuffer.readUInt8(offset + 155);
+        if (isExecuted === 0 || isExecuted === 1) {
           const cid = currentAggregatorBuffer.slice(offset + 32, offset + 91).toString();
           // fetch proposal from tokens, and their amounts, and accordingly deduct that amount from the fromTokens
           const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
@@ -1153,8 +1156,8 @@ const CreateProposal = ({
           }
 
         }
-        const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 126);
-        offset += (130 + (numOfVoters * 5));
+        const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 160);
+        offset += (164 + (numOfVoters * 5));
       }
 
       if (currentAggregatorIndex > 0) {
@@ -1236,7 +1239,7 @@ const CreateProposal = ({
       for (const lockedToken of lockedTokens) {
         fromTukens.map(fromTuken => {
           if (fromTuken.mint === lockedToken.mint) {
-            fromTuken.balance -= lockedToken.amount;
+            fromTuken.balance -= lockedToken.amount/(10**fromTuken.decimals);
           }
         })
       }
