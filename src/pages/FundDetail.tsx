@@ -38,7 +38,7 @@ export default function FundsList() {
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [inviteAddress, setInviteAddress] = useState('');
   const [showInviteInput, setShowInviteInput] = useState(false);
-  const [proposalStatus, setProposalStatus] = useState('all');
+  const [proposalStatus, setProposalStatus] = useState('active');
   if (loading) {console.log()}
 
   const wallet = useWallet();
@@ -642,9 +642,8 @@ export default function FundsList() {
         )}
         {activeTab === 'members' && <FundMembers fund={fund} searchTerm={searchTerm} />}
         {activeTab === 'proposals' && (
-          // <div className='mt-40 border'>Hello behen ke tako</div>
           <div className='mt-20'>
-            <Proposals fund={fund} />
+            <Proposals fund={fund} filterType= {proposalStatus}/>
           </div>
         )}
         {activeTab === 'create-proposal' && (

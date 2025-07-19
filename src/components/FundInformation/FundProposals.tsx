@@ -11,14 +11,17 @@ import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface ProposalProps {
-  fund: LightFund
+  fund: LightFund,
+  filterType: string,
 }
 
-const Proposals = ({fund}: ProposalProps) => {
+const Proposals = ({fund, filterType}: ProposalProps) => {
     const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
     const [activeProposals, setActiveProposals] = useState<Proposal[] | null>(null);
-    // const [passedProposals, setPassedProposals] = useState<Proposal[] | null>(null);
-    // const [failedProposals, setFailed] = useState<Proposal[] | null>(null);
+    const [passedProposals, setPassedProposals] = useState<Proposal[] | null>(null);
+    const [failedProposals, setFailedProposals] = useState<Proposal[] | null>(null);
+    const [isPassedFetched, setIsPassedFetched] = useState(false); 
+    const [isFailedFetched, setIsFailedFetched] = useState(false); 
     const [metas, setMetas] = useState<Metas[]>([]);
     const [voting, setVoting] = useState(false);
     const [executionInitiated, setExecutionInitiated] = useState(false);
@@ -193,7 +196,11 @@ const Proposals = ({fund}: ProposalProps) => {
 
         const currentAggregatorBuffer = Buffer.from(currentAggregatorInfo.data);
 
-        const fetchedProposals: Proposal[] = [];
+        // const fetchedProposals: Proposal[] = [];
+        const activePirposals: Proposal[] = [];
+        const passedPirposals: Proposal[] = [];
+        const failedPirposals: Proposal[] = [];
+        const timestamp = Date.now();
 
         const numOfProposals = currentAggregatorBuffer.readUint32LE(1);
         let offset = 5;
@@ -201,22 +208,75 @@ const Proposals = ({fund}: ProposalProps) => {
 
         console.log(numOfProposals);
 
+// pub struct Proposal {
+//     pub proposer: Pubkey,
+//     pub cid: [u8; 59],
+//     pub merkel_root: [u8; 32],
+//     pub votes_yes: u64,
+//     pub votes_no: u64,
+//     pub creation_time: i64,
+//     pub deadline: i64,
+//     pub executed: u8,
+//     pub vec_index: u16,
+//     pub swaps_status: u16,
+//     pub voters_bitmap: Vec<(u32, u8)>,
+// }
+
         for (let i=0; i<numOfProposals; i++) {
           const isExecuted = currentAggregatorBuffer.readUInt8(offset + 155);
           console.log(isExecuted);
-          if (isExecuted === 0 || isExecuted === 1 || isExecuted === 2) {
-            const proposer = new PublicKey(currentAggregatorBuffer.slice(offset, offset + 32));
-            offset += 32;
-            const cid = currentAggregatorBuffer.slice(offset, offset + 59).toString();
-            offset += 59;
-            const merkelRoot = currentAggregatorBuffer.slice(offset, offset + 32).toString('hex');
-            offset += 32;
+
+          const proposer = new PublicKey(currentAggregatorBuffer.slice(offset, offset + 32));
+          offset += 32;
+          console.log(offset);
+          const cid = currentAggregatorBuffer.slice(offset, offset + 59).toString();
+          offset += 59;
+          console.log(cid);
+          const merkelRoot = currentAggregatorBuffer.slice(offset, offset + 32).toString('hex');
+          offset += 32;
+          const votesYes = currentAggregatorBuffer.readBigInt64LE(offset);
+          offset += 8;
+          const votesNo = currentAggregatorBuffer.readBigInt64LE(offset);
+          offset += 8;
+          const creationTime = currentAggregatorBuffer.readBigInt64LE(offset);
+          offset += 8;
+          const deadline = currentAggregatorBuffer.readBigInt64LE(offset);
+          offset += 8;
+          offset += 1;
+          const vecIndex = currentAggregatorBuffer.readUint16LE(offset);
+          offset += 2;
+          const swaps_status_bytes = currentAggregatorBuffer.readUInt16LE(offset);
+          offset += 2;
+          const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset);
+          console.log(numOfVoters);
+          offset += 4;
+          console.log("Number of Voters", numOfVoters);
+          console.log('Offset = ', offset);
+          const votersIndex: [number, number][] = [];
+          for (let i = 0; i < numOfVoters; i++) {
+            const voterIndex = currentAggregatorBuffer.readUInt32LE(offset);
+            offset += 4;
+            const vote = currentAggregatorBuffer.readUInt8(offset);
+            offset += 1;
+            votersIndex.push([voterIndex, vote]);
+          }
+
+          const voters: [PublicKey, number][] = [];
+
+          for (const v of votersIndex) {
+            const voter = fund.members.find((member) => member[1] === v[0]);
+            if (voter) {
+              voters.push(voter);
+            }
+          }
+
+          if ((isExecuted === 0 || isExecuted === 1) && deadline > timestamp) {
             const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
             const proposalDataResponse = await fetch(proposalDataUrl);
             if (!proposalDataResponse.ok) {
               throw new Error(`Failed to fetch metadata: ${proposalDataResponse.status}`);
             }
-
+  
             const fetchedProposalData = await proposalDataResponse.json();
             const tags = fetchedProposalData.tags;
             const title = fetchedProposalData.title;
@@ -227,7 +287,7 @@ const Proposals = ({fund}: ProposalProps) => {
             const amounts: number[] = [];
             const slippages: number[] = [];
             const fromDecimals: number[] = [];
-
+  
             for (const swap of fetchedProposalData.swaps) {
               if (!tokens.some(m => m.mint === swap.fromToken)) {
                 let name = '';
@@ -276,42 +336,7 @@ const Proposals = ({fund}: ProposalProps) => {
               fromDecimals.push(Number(swap.fromDecimals));
             }
 
-            const votesYes = currentAggregatorBuffer.readBigInt64LE(offset);
-            offset += 8;
-            const votesNo = currentAggregatorBuffer.readBigInt64LE(offset);
-            offset += 8;
-            const creationTime = currentAggregatorBuffer.readBigInt64LE(offset);
-            offset += 8;
-            const deadline = currentAggregatorBuffer.readBigInt64LE(offset);
-            offset += 8;
-            offset += 1;
-            const vecIndex = currentAggregatorBuffer.readUint16LE(offset);
-            offset += 2;
-            const swaps_status_bytes = currentAggregatorBuffer.readUInt16LE(offset);
-            offset += 2;
-            const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset);
-            offset += 4;
-            console.log("Number of Voters", numOfVoters);
-            console.log('Offset = ', offset);
-            const votersIndex: [number, number][] = [];
-            for (let i = 0; i < numOfVoters; i++) {
-              const voterIndex = currentAggregatorBuffer.readUInt32LE(offset);
-              offset += 4;
-              const vote = currentAggregatorBuffer.readUInt8(offset);
-              offset += 1;
-              votersIndex.push([voterIndex, vote]);
-            }
-
-            const voters: [PublicKey, number][] = [];
-
-            for (const v of votersIndex) {
-              const voter = fund.members.find((member) => member[1] === v[0]);
-              if (voter) {
-                voters.push(voter);
-              }
-            }
-
-            fetchedProposals.push({
+            activePirposals.push({
               tags,
               title,
               description,
@@ -332,34 +357,203 @@ const Proposals = ({fund}: ProposalProps) => {
               swaps_status: swaps_status_bytes,
               merkelRoot,
               fromDecimals,
+              cid,
             })
+          } else if ((isExecuted === 0 || isExecuted === 1) && deadline <= timestamp) {
+            if (votesYes > votesNo && (votesYes + votesNo) >= fund.numOfMembers/2) {
+              const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
+              const proposalDataResponse = await fetch(proposalDataUrl);
+              if (!proposalDataResponse.ok) {
+                throw new Error(`Failed to fetch metadata: ${proposalDataResponse.status}`);
+              }
+    
+              const fetchedProposalData = await proposalDataResponse.json();
+              const tags = fetchedProposalData.tags;
+              const title = fetchedProposalData.title;
+              const description = fetchedProposalData.description;
+              const numOfSwaps = fetchedProposalData.swaps.length;
+              const fromAssets: string[] = [];
+              const toAssets: string[] = [];
+              const amounts: number[] = [];
+              const slippages: number[] = [];
+              const fromDecimals: number[] = [];
+    
+              for (const swap of fetchedProposalData.swaps) {
+                if (!tokens.some(m => m.mint === swap.fromToken)) {
+                  let name = '';
+                  let symbol = '';
+                  let image = '';
+                  if (swap.fromToken === 'So11111111111111111111111111111111111111112') {
+                    name = 'SOL';
+                    symbol = 'SOL';
+                    image = SOL;
+                  } else if (swap.fromToken === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+                    name = 'USDC';
+                    symbol = 'USDC';
+                    image = USDC;
+                  }
+                  tokens.push({
+                    mint: swap.fromToken,
+                    name,
+                    symbol,
+                    image,
+                  });
+                }
+                if (!tokens.some(m => m.mint === swap.toToken)) {
+                  let name = '';
+                  let symbol = '';
+                  let image = '';
+                  if (swap.toToken === 'So11111111111111111111111111111111111111112') {
+                    name = 'SOL';
+                    symbol = 'SOL';
+                    image = SOL;
+                  } else if (swap.toToken === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+                    name = 'USDC';
+                    symbol = 'USDC';
+                    image = USDC;
+                  }
+                  tokens.push({
+                    mint: swap.toToken,
+                    name,
+                    symbol,
+                    image,
+                  });
+                }
+                fromAssets.push(swap.fromToken);
+                toAssets.push(swap.toToken);
+                amounts.push(Number(swap.fromAmount));
+                slippages.push(Number(swap.slippage));
+                fromDecimals.push(Number(swap.fromDecimals));
+              }
 
-            console.log(merkelRoot);
-          } else {
-            const numOfVoters = currentAggregatorBuffer.readUInt32LE(offset + 128);
-            offset += (132 + (numOfVoters * 5));
+              activePirposals.push({
+                tags,
+                title,
+                description,
+                proposalIndex: fund.currentIndex,
+                vecIndex,
+                proposer,
+                numOfSwaps,
+                fromAssets,
+                toAssets,
+                amounts,
+                slippages,
+                votesYes,
+                votesNo,
+                creationTime,
+                deadline,
+                executed: isExecuted,
+                voters,
+                swaps_status: swaps_status_bytes,
+                merkelRoot,
+                fromDecimals,
+                cid,
+              })
+            } else {
+              failedPirposals.push({
+                tags: [],
+                title: '',
+                description: '',
+                proposalIndex: fund.currentIndex,
+                vecIndex,
+                proposer,
+                numOfSwaps: 0,
+                fromAssets: [],
+                toAssets: [],
+                amounts: [],
+                slippages: [],
+                votesYes,
+                votesNo,
+                creationTime,
+                deadline,
+                executed: isExecuted,
+                voters,
+                swaps_status: swaps_status_bytes,
+                merkelRoot,
+                fromDecimals: [],
+                cid,
+              })
+            }
+          } else if (isExecuted === 2) {
+            if (swaps_status_bytes === 0) {
+              failedPirposals.push({
+                tags: [],
+                title: '',
+                description: '',
+                proposalIndex: fund.currentIndex,
+                vecIndex,
+                proposer,
+                numOfSwaps: 0,
+                fromAssets: [],
+                toAssets: [],
+                amounts: [],
+                slippages: [],
+                votesYes,
+                votesNo,
+                creationTime,
+                deadline,
+                executed: isExecuted,
+                voters,
+                swaps_status: swaps_status_bytes,
+                merkelRoot,
+                fromDecimals: [],
+                cid,
+              })
+            } else {
+              passedPirposals.push({
+                tags: [],
+                title: '',
+                description: '',
+                proposalIndex: fund.currentIndex,
+                vecIndex,
+                proposer,
+                numOfSwaps: 0,
+                fromAssets: [],
+                toAssets: [],
+                amounts: [],
+                slippages: [],
+                votesYes,
+                votesNo,
+                creationTime,
+                deadline,
+                executed: isExecuted,
+                voters,
+                swaps_status: swaps_status_bytes,
+                merkelRoot,
+                fromDecimals: [],
+                cid,
+              })
+            }
           }
+
+
+
+          console.log(merkelRoot);
+
+
         }
         setMetas(tokens);
-        setActiveProposals(fetchedProposals);
+        setActiveProposals(activePirposals);
+        setPassedProposals(passedPirposals);
+        setFailedProposals(failedPirposals);
       } catch (err) {
         console.log(err);
       }
     }, [connection, fund]);
 
-    const fetchTokenMetadata = async () => {
-      if (!activeProposals || !metas) {
+    const fetchTokenMetadata = async (proposals: Proposal[]) => {
+      if (!proposals || !metas) {
         fetchedRefNew.current = false;
         return;
       }
 
       try {
-        // const filteredMetas = metas.filter((meta) => {
-        //   if (!meta.name || !meta.symbol || !meta.image) {
-        //     return new PublicKey(meta.mint);
-        //   }
-        // });
-        const filteredMetas = metas;
+        const filteredMetas = metas.filter((meta) => {
+          if (!meta.name || !meta.symbol || !meta.image) {
+            return new PublicKey(meta.mint);
+          }
+        });
+        // const filteredMetas = metas;
         const metadataPdas = filteredMetas.map((mint) => {
           const [metadata] = PublicKey.findProgramAddressSync(
             [Buffer.from('metadata'), TOKEN_METADATA_PROGRAM_ID.toBuffer(), new PublicKey(mint.mint).toBuffer()],
@@ -428,10 +622,138 @@ const Proposals = ({fund}: ProposalProps) => {
     }, [fetchedProposals]);
 
     useEffect(() => {
-      if (fetchedRefNew.current) return;
+      if (fetchedRefNew.current || !activeProposals) return;
       fetchedRefNew.current = true;
-      fetchTokenMetadata();
+      fetchTokenMetadata(activeProposals);
     }, [activeProposals]);
+
+    useEffect(() => {
+      if (fetchedRefNew.current || !passedProposals) return;
+      fetchedRefNew.current = true;
+      fetchTokenMetadata(passedProposals);
+    }, [passedProposals]);
+
+    useEffect(() => {
+      if (fetchedRefNew.current || !failedProposals) return;
+      fetchedRefNew.current = true;
+      fetchTokenMetadata(failedProposals);
+    }, [failedProposals]);
+
+    const fetchRestProposalData = async (proposals: Proposal[], type: boolean) => {
+      const modifiedProposals: Proposal[] = [];
+      const tokens = metas;
+      for ( const proposal of proposals) {
+        const cid = proposal.cid;
+        const proposalDataUrl = `https://${cid}.ipfs.w3s.link/`;
+        const proposalDataResponse = await fetch(proposalDataUrl);
+        if (!proposalDataResponse.ok) {
+          throw new Error(`Failed to fetch metadata: ${proposalDataResponse.status}`);
+        }
+
+        const fetchedProposalData = await proposalDataResponse.json();
+        const tags = fetchedProposalData.tags;
+        const title = fetchedProposalData.title;
+        const description = fetchedProposalData.description;
+        const numOfSwaps = fetchedProposalData.swaps.length;
+        const fromAssets: string[] = [];
+        const toAssets: string[] = [];
+        const amounts: number[] = [];
+        const slippages: number[] = [];
+        const fromDecimals: number[] = [];
+
+        for (const swap of fetchedProposalData.swaps) {
+          if (!tokens.some(m => m.mint === swap.fromToken)) {
+            let name = '';
+            let symbol = '';
+            let image = '';
+            if (swap.fromToken === 'So11111111111111111111111111111111111111112') {
+              name = 'SOL';
+              symbol = 'SOL';
+              image = SOL;
+            } else if (swap.fromToken === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+              name = 'USDC';
+              symbol = 'USDC';
+              image = USDC;
+            }
+            tokens.push({
+              mint: swap.fromToken,
+              name,
+              symbol,
+              image,
+            });
+          }
+          if (!tokens.some(m => m.mint === swap.toToken)) {
+            let name = '';
+            let symbol = '';
+            let image = '';
+            if (swap.toToken === 'So11111111111111111111111111111111111111112') {
+              name = 'SOL';
+              symbol = 'SOL';
+              image = SOL;
+            } else if (swap.toToken === 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr') {
+              name = 'USDC';
+              symbol = 'USDC';
+              image = USDC;
+            }
+            tokens.push({
+              mint: swap.toToken,
+              name,
+              symbol,
+              image,
+            });
+          }
+          fromAssets.push(swap.fromToken);
+          toAssets.push(swap.toToken);
+          amounts.push(Number(swap.fromAmount));
+          slippages.push(Number(swap.slippage));
+          fromDecimals.push(Number(swap.fromDecimals));
+        }
+
+        modifiedProposals.push({
+          tags,
+          title,
+          description,
+          proposalIndex: fund.currentIndex,
+          vecIndex: proposal.vecIndex,
+          proposer: proposal.proposer,
+          numOfSwaps,
+          fromAssets,
+          toAssets,
+          amounts,
+          slippages,
+          votesYes: proposal.votesYes,
+          votesNo: proposal.votesNo,
+          creationTime: proposal.creationTime,
+          deadline: proposal.deadline,
+          executed: proposal.executed,
+          voters: proposal.voters,
+          swaps_status: proposal.swaps_status,
+          merkelRoot: proposal.merkelRoot,
+          fromDecimals,
+          cid,
+        })
+      }
+      if (type) {
+        setPassedProposals(modifiedProposals);
+        setIsPassedFetched(true);
+      } else {
+        setFailedProposals(modifiedProposals);
+        setIsFailedFetched(true);
+      }
+    }
+
+    const handleFilterChange = async () => {
+      console.log('Filter changed to:', filterType);
+      if (filterType === 'passed' && !isPassedFetched && passedProposals) {
+        fetchRestProposalData(passedProposals, true);
+      } else if (filterType === 'failed' && !isFailedFetched && failedProposals) {
+        fetchRestProposalData(failedProposals, false);
+      }
+    };
+
+    useEffect(() => {
+      handleFilterChange();
+    }, [filterType]);
 
 
     useEffect(() => {
@@ -447,7 +769,9 @@ const Proposals = ({fund}: ProposalProps) => {
 
     useEffect(() => {
       console.log(activeProposals);
-    }, [activeProposals]);
+      console.log(passedProposals);
+      console.log(failedProposals);
+    }, [activeProposals, passedProposals, failedProposals]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -877,9 +1201,15 @@ const Proposals = ({fund}: ProposalProps) => {
               activeProposals.length > 0 ? (
                 <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
                   <AnimatePresence>
-                    {activeProposals.map((proposal) => (
-                      <ProposalCard key={proposal.creationTime} proposal={proposal} />
-                    ))}
+                    {filterType === 'active' ? (
+                      <></>
+                    ) : (
+                      filterType === 'passed' ? (
+                        <></>
+                      ) : (
+                        <></>
+                      )
+                    )}
                   </AnimatePresence>
                 </motion.div>              
                ) : (

@@ -103,6 +103,7 @@ export interface Proposal {
   voters: [PublicKey, number][],
   swaps_status: number,
   merkelRoot: string,
+  cid: string,
 }
 
 export interface Metas {
