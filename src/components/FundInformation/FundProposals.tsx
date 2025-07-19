@@ -778,6 +778,7 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
         case 'active': return 'bg-green-500/20 text-green-400 border-green-500/30';
         case 'passed': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
         case 'failed': return 'bg-red-500/20 text-red-400 border-red-500/30';
+        case 'executing': return 'bg-green-500/20 text-green-400 border-green-500/30';
         default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
         }
     };
@@ -867,11 +868,11 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           whileHover={{ y: 0, scale: 1.005 }}
-          className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:shadow-purple-500/10 group space-y-6">
+          className="bg-gradient-to-br from-[#1A1C2C] to-[#111324] border border-[#2B2D43] rounded-2xl p-6 transition-all duration-300 hover:shadow-md hover:shadow-purple-500/10 group flex flex-col gap-6 justify-between">
           {/* Title + Status */}
           <div className="flex flex-col justify-between items-start">
               <div className="flex-1 w-full">
-                <div className="flex gap-3 mb-2 justify-between items-start w-full">
+                <div className="flex gap-1 mb-2 justify-between items-start w-full">
                     <h3 className="text-lg font-semibold text-white group-hover:text-purple-400 transition">
                       {proposal.title}
                     </h3>
@@ -883,8 +884,8 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                       ) : (
                         <></>
                       )}
-                      <span className={`text-xs font-medium px-3 py-1 border rounded-full ${getStatusColor(proposal.executed ? "passed" : "active")}`}>
-                          {proposal.executed ? "passed" : "active"}
+                      <span className={`text-xs font-medium px-3 py-1 border rounded-full ${getStatusColor(proposal.executed === 0 ? "active" : proposal.executed === 1 ? "executing" : "passed")}`}>
+                          {proposal.executed === 0 ? "active" : proposal.executed === 1 ? "executing" : "passed"}
                       </span>
                     </div>
                 </div>
@@ -894,70 +895,65 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
               </div>
           </div>
 
-          {/* Voting Progress */}
-          <div className="space-y-2">
-              <div className="flex justify-between text-sm text-slate-400">
-                <span>Votes: {fund.members.length}</span>
-                <span>Time left: {timeLeft}</span>
-              </div>
-              <div 
-                onClick={() => toast.success(`${proposal.votesYes} ${proposal.votesNo}`)}
-                className="relative h-3 bg-[#1C1F36] rounded-full overflow-hidden border border-slate-700/40">
-                <div className="absolute top-0 left-0 h-full bg-green-500/80" style={{ width: `${Number(proposal.votesYes)/fund.members.length * 100}%` }} />
-                <div className="absolute top-0 right-0 h-full bg-red-500/70" style={{ width: `${Number(proposal.votesNo)/fund.members.length * 100}%` }} />
-              </div>
-              <div className="flex justify-between text-xs mt-1">
-                <span className="text-green-400">Yes: {Number(proposal.votesYes)} ({(Number(proposal.votesYes)/fund.members.length * 100).toFixed(1)}%)</span>
-                <span className="text-red-400">No: {Number(proposal.votesNo)} ({(Number(proposal.votesNo)/fund.members.length * 100).toFixed(1)}%)</span>
-              </div>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2 flex gap-2">
-              {voting ? (
-                <button
-                  className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed"
-                >
-                  Voting...
-                </button>
-              ) : proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) ? (
-                <button
-                  className="flex-1 py-1 rounded-lg bg-gray-600 hover:bg-gray-500/50 transition text-white text-sm shadow cursor-default"
-                >
-                  Already Voted
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setVoting(true);
-                      voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                    }}
-                    className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 transition text-white text-sm shadow"
-                  >
-                    Vote Yes
-                  </button>
-                  <button
-                    onClick={() => {
-                      setVoting(true);
-                      voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                    }}
-                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition text-white text-sm shadow"
-                  >
-                    Vote No
-                  </button>
-                </>
-              )}
+          <div className='flex flex-col gap-4'>
+            {/* Voting Progress */}
+            <div className="space-y-2">
+                <div className="flex justify-between text-sm text-slate-400">
+                  <span>Votes: {fund.members.length}</span>
+                  <span>Time left: {timeLeft}</span>
+                </div>
+                <div 
+                  onClick={() => toast.success(`${proposal.votesYes} ${proposal.votesNo}`)}
+                  className="relative h-3 bg-[#1C1F36] rounded-full overflow-hidden border border-slate-700/40">
+                  <div className="absolute top-0 left-0 h-full bg-green-500/80" style={{ width: `${Number(proposal.votesYes)/fund.members.length * 100}%` }} />
+                  <div className="absolute top-0 right-0 h-full bg-red-500/70" style={{ width: `${Number(proposal.votesNo)/fund.members.length * 100}%` }} />
+                </div>
+                <div className="flex justify-between text-xs mt-1">
+                  <span className="text-green-400">Yes: {Number(proposal.votesYes)} ({(Number(proposal.votesYes)/fund.members.length * 100).toFixed(1)}%)</span>
+                  <span className="text-red-400">No: {Number(proposal.votesNo)} ({(Number(proposal.votesNo)/fund.members.length * 100).toFixed(1)}%)</span>
+                </div>
             </div>
 
-            <div>
-              <button
-                onClick={() => setSelectedProposal(proposal)}
-                className="w-full group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 text-sm font-medium text-purple-400 transition-all"
-              >
-                Details
-              </button>
+            {/* CTA Buttons */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2 flex gap-2">
+                {proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) ? (
+                  <button
+                    onClick={() => setSelectedProposal(proposal)}
+                    className="flex-1 py-1 rounded-lg bg-gray-600 hover:bg-gray-500/50 transition text-white text-sm shadow cursor-default"
+                  >
+                    Already Voted
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setSelectedProposal(proposal);
+                      }}
+                      className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 transition text-white text-sm shadow"
+                    >
+                      Vote Yes
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedProposal(proposal);
+                      }}
+                      className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition text-white text-sm shadow"
+                    >
+                      Vote No
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setSelectedProposal(proposal)}
+                  className="w-full group bg-purple-500/10 hover:bg-purple-500/20 border border-purple-600/30 rounded-lg py-2 text-sm font-medium text-purple-400 transition-all"
+                >
+                  Details
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1106,85 +1102,116 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                 </div>
 
                 {/* Voting Buttons */}
-                <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
-                  {proposal.proposer.toBase58() === wallet.publicKey?.toBase58() && (
-                    <button
-                      onClick={() => {
-                        setDeleting(true);
-                        handleDeletion();
-                      }}
-                      disabled={deleting}
-                      className={`flex-1 mr-2 py-2 rounded-xl ${
-                        deleting ?
-                        'bg-gray-600 hover:bg-gray-500/50 cursor-not-allowed' :
-                        'bg-red-600 hover:bg-red-500/50 cursor-pointer'
-                      } transition text-white font-semibold text-lg shadow`}>
-                      {deleting ? 'Deleting...' : 'Delete'}
-                    </button>
-                  )}
-                  {voting ? (
-                    <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed'>
-                      Voting...
-                    </button>
-                  ) : (
-                    proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() > Date.now()) ? (
-                    <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
-                      Already Voted
-                    </button>
-                    ) : (
-                      !proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() > Date.now()) ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              setVoting(true);
-                              voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                            }}
-                            className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
-                          >
-                            Vote Yes
-                          </button>
-                          <button
-                            onClick={() => {
-                              setVoting(true);
-                              voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                            }}
-                            className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
-                          >
-                            Vote No
-                          </button>
-                        </>
-                      ) : (
-                        proposal.voters.some(v => v[0].toBase58() === wallet.publicKey?.toBase58()) && ((new Date(Number(proposal.deadline))).getTime() <= Date.now()) ? (
-                          <>
-                            <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
-                              Already Voted
-                            </button>
-                            <button
-                              onClick={() => {
-                                setExecutionInitiated(true);
-                                handleExecution(proposal);
-                              }}
-                              disabled={executionInitiated}
-                              className={`flex-1 ml-2 py-2 rounded-xl ${
-                                executionInitiated ?
-                                'bg-gray-600 hover:bg-gray-500 cursor-not-allowed' :
-                                'bg-green-600 hover:bg-green-500 cursor-pointer'
-                              } transition text-white font-semibold text-lg shadow`}
-                            >
-                              {executionInitiated ? 'Executing...' : 'Initiate Execution'}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button className='flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default'>
-                              Voting Ended
-                            </button>
-                          </>
-                        )
-                      )
-                    )
-                  )}
-                </div>
+<div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+  {proposal.executed === 1 ? (
+    <button className="w-full py-2 rounded-xl bg-gray-600 transition text-white font-semibold text-lg shadow cursor-default">
+      Executing...
+    </button>
+  ) : proposal.executed === 2 ? (
+    <button className="w-full py-2 rounded-xl bg-emerald-600 transition text-white font-semibold text-lg shadow cursor-default">
+      Executed
+    </button>
+  ) : (
+    <>
+      {/* DELETE BUTTON */}
+      {proposal.proposer.toBase58() === wallet.publicKey?.toBase58() &&
+        proposal.deadline > Date.now() && (
+          <button
+            onClick={() => {
+              setDeleting(true);
+              handleDeletion();
+            }}
+            disabled={deleting}
+            className={`flex-1 mr-2 py-2 rounded-xl ${
+              deleting
+                ? 'bg-gray-600 hover:bg-gray-500/50 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-500/50 cursor-pointer'
+            } transition text-white font-semibold text-lg shadow`}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </button>
+        )}
+
+      {/* VOTING & EXECUTION LOGIC */}
+      {voting ? (
+        <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed">
+          Voting...
+        </button>
+      ) : (
+        (() => {
+          const hasVoted = proposal.voters.some(
+            (v) => v[0].toBase58() === wallet.publicKey?.toBase58()
+          );
+          const deadlinePassed = proposal.deadline <= Date.now();
+
+          if (deadlinePassed) {
+            if (hasVoted) {
+              return (
+                <>
+                  <button className="flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                    Already Voted
+                  </button>
+                  <button
+                    onClick={() => {
+                      setExecutionInitiated(true);
+                      handleExecution(proposal);
+                    }}
+                    disabled={executionInitiated}
+                    className={`flex-1 ml-2 py-2 rounded-xl ${
+                      executionInitiated
+                        ? 'bg-gray-600 hover:bg-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-500 cursor-pointer'
+                    } transition text-white font-semibold text-lg shadow`}
+                  >
+                    {executionInitiated ? 'Executing...' : 'Initiate Execution'}
+                  </button>
+                </>
+              );
+            } else {
+              return (
+                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                  Voting Ended
+                </button>
+              );
+            }
+          } else {
+            if (hasVoted) {
+              return (
+                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                  Already Voted
+                </button>
+              );
+            } else {
+              return (
+                <>
+                  <button
+                    onClick={() => {
+                      setVoting(true);
+                      voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                    }}
+                    className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
+                  >
+                    Vote Yes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setVoting(true);
+                      voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                    }}
+                    className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
+                  >
+                    Vote No
+                  </button>
+                </>
+              );
+            }
+          }
+        })()
+      )}
+    </>
+  )}
+</div>
+
               </div>
             </div>
           </div>
@@ -1202,12 +1229,46 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                 <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
                   <AnimatePresence>
                     {filterType === 'active' ? (
-                      <></>
+                        activeProposals.map((proposal) => (
+                          <ProposalCard key={proposal.creationTime} proposal={proposal} />
+                        ))
                     ) : (
                       filterType === 'passed' ? (
-                        <></>
+                        !passedProposals ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-cyan-400" />
+                          </div>
+                        ) : passedProposals.length === 0 ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center text-slate-400 text-lg">
+                            No passed proposals found.
+                          </div>
+                        ) : passedProposals[0].fromAssets.length === 0 ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-cyan-400" />
+                          </div>
+                        ) : (
+                          passedProposals.map((proposal) => (
+                            <ProposalCard key={proposal.creationTime} proposal={proposal} />
+                          ))
+                        )
                       ) : (
-                        <></>
+                        !failedProposals ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-pink-500" />
+                          </div>
+                        ) : failedProposals.length === 0 ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center text-slate-400 text-lg">
+                            No failed proposals found.
+                          </div>
+                        ) : failedProposals[0].fromAssets.length === 0 ? (
+                          <div className="w-[75vw] h-[70vh] flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-pink-500" />
+                          </div>
+                        ) : (
+                          failedProposals.map((proposal) => (
+                            <ProposalCard key={proposal.creationTime} proposal={proposal} />
+                          ))
+                        )
                       )
                     )}
                   </AnimatePresence>

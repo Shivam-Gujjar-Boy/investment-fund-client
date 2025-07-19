@@ -435,7 +435,12 @@ export default function FundsList() {
                     ].map(tab => (
                       <motion.button
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
+                        onClick={() => {
+                          if (tab.key === 'proposals') {
+                            setProposalStatus('active');
+                          }
+                          setActiveTab(tab.key);
+                        }}
                         whileHover={{ x: 4 }}
                         className={`relative group py-3 px-4 rounded-xl text-left transition-all duration-300 font-medium overflow-hidden ${
                           activeTab === tab.key
