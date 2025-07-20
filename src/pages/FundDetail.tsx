@@ -22,6 +22,7 @@ import FundMembers from '../components/FundInformation/FundMembers';
 import FundPerformance from '../components/FundInformation/FundPerformance';
 import Proposals from '../components/FundInformation/FundProposals';
 import CreateProposal from '../components/Proposals/CreateProposal';
+import { findBestPool } from '../functions/findBestPool';
 
 export default function FundsList() {
   const [fund, setFund] = useState<LightFund | null>(null);
@@ -287,6 +288,28 @@ export default function FundsList() {
       setisDepositing(false);
       setShowDepositModal(false);
       toast.success('Successfully deposited assets to fund');
+
+      // Token is successfully deposited
+      if (selectedToken.mint === 'So11111111111111111111111111111111111111111') {
+        return;
+      }
+      try {
+        const bestPool = await findBestPool(selectedToken.mint);
+
+        const res = await fetch('http://localhost:5000/api/add-pool', {
+          method: 'POST',
+          body: JSON.stringify({
+            tokenMint: selectedToken.mint,
+            pool: bestPool
+          })
+        });
+
+        if (!res.ok) {
+          throw new Error('Error Adding Liquidity Pool');
+        }
+      } catch (err) {
+        console.log(err);
+      }
     } catch (err) {
       toast.error('Error depositing assets');
       console.log(err);

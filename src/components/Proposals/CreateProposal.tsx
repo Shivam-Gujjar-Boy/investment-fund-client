@@ -1031,6 +1031,10 @@ const CreateProposal = ({
         tags: [],
         deadline: "",
       });
+
+      // Proposal has been created successfully
+
+      // make an api call to backend to add the toTokens and their pools
     } catch (err) {
       console.log(err);
       toast.error('Error Creating Proposal');

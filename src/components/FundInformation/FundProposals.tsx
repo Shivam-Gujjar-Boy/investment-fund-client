@@ -8,7 +8,7 @@ import axios from 'axios';
 import SOL from '../../assets/SOL.jpg';
 import USDC from '../../assets/USDC.png';
 import { SYSTEM_PROGRAM_ID } from '@raydium-io/raydium-sdk-v2';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface ProposalProps {
   fund: LightFund,
@@ -925,24 +925,33 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                     Already Voted
                   </button>
                 ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedProposal(proposal);
-                      }}
-                      className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 transition text-white text-sm shadow"
-                    >
-                      Vote Yes
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedProposal(proposal);
-                      }}
-                      className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition text-white text-sm shadow"
-                    >
-                      Vote No
-                    </button>
-                  </>
+                  proposal.deadline <= Date.now() ? (
+                  <button
+                    onClick={() => setSelectedProposal(proposal)}
+                    className="flex-1 py-1 rounded-lg bg-gray-600 hover:bg-gray-500/50 transition text-white text-sm shadow cursor-default"
+                  >
+                    Voting Ended
+                  </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setSelectedProposal(proposal);
+                        }}
+                        className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 transition text-white text-sm shadow"
+                      >
+                        Vote Yes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedProposal(proposal);
+                        }}
+                        className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 transition text-white text-sm shadow"
+                      >
+                        Vote No
+                      </button>
+                    </>
+                  )
                 )}
               </div>
 
@@ -1102,116 +1111,115 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                 </div>
 
                 {/* Voting Buttons */}
-<div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
-  {proposal.executed === 1 ? (
-    <button className="w-full py-2 rounded-xl bg-gray-600 transition text-white font-semibold text-lg shadow cursor-default">
-      Executing...
-    </button>
-  ) : proposal.executed === 2 ? (
-    <button className="w-full py-2 rounded-xl bg-emerald-600 transition text-white font-semibold text-lg shadow cursor-default">
-      Executed
-    </button>
-  ) : (
-    <>
-      {/* DELETE BUTTON */}
-      {proposal.proposer.toBase58() === wallet.publicKey?.toBase58() &&
-        proposal.deadline > Date.now() && (
-          <button
-            onClick={() => {
-              setDeleting(true);
-              handleDeletion();
-            }}
-            disabled={deleting}
-            className={`flex-1 mr-2 py-2 rounded-xl ${
-              deleting
-                ? 'bg-gray-600 hover:bg-gray-500/50 cursor-not-allowed'
-                : 'bg-red-600 hover:bg-red-500/50 cursor-pointer'
-            } transition text-white font-semibold text-lg shadow`}
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
-        )}
+                <div className="mt-4 pt-4 border-t border-slate-700 flex justify-between items-center">
+                  {proposal.executed === 1 ? (
+                    <button className="w-full py-2 rounded-xl bg-gray-600 transition text-white font-semibold text-lg shadow cursor-default">
+                      Executing...
+                    </button>
+                  ) : proposal.executed === 2 ? (
+                    <button className="w-full py-2 rounded-xl bg-emerald-600 transition text-white font-semibold text-lg shadow cursor-default">
+                      Executed
+                    </button>
+                  ) : (
+                    <>
+                      {/* DELETE BUTTON */}
+                      {proposal.proposer.toBase58() === wallet.publicKey?.toBase58() &&
+                        proposal.deadline > Date.now() && (
+                          <button
+                            onClick={() => {
+                              setDeleting(true);
+                              handleDeletion();
+                            }}
+                            disabled={deleting}
+                            className={`flex-1 mr-2 py-2 rounded-xl ${
+                              deleting
+                                ? 'bg-gray-600 hover:bg-gray-500/50 cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-500/50 cursor-pointer'
+                            } transition text-white font-semibold text-lg shadow`}
+                          >
+                            {deleting ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
 
-      {/* VOTING & EXECUTION LOGIC */}
-      {voting ? (
-        <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed">
-          Voting...
-        </button>
-      ) : (
-        (() => {
-          const hasVoted = proposal.voters.some(
-            (v) => v[0].toBase58() === wallet.publicKey?.toBase58()
-          );
-          const deadlinePassed = proposal.deadline <= Date.now();
+                      {/* VOTING & EXECUTION LOGIC */}
+                      {voting ? (
+                        <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-not-allowed">
+                          Voting...
+                        </button>
+                      ) : (
+                        (() => {
+                          const hasVoted = proposal.voters.some(
+                            (v) => v[0].toBase58() === wallet.publicKey?.toBase58()
+                          );
+                          const deadlinePassed = proposal.deadline <= Date.now();
 
-          if (deadlinePassed) {
-            if (hasVoted) {
-              return (
-                <>
-                  <button className="flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
-                    Already Voted
-                  </button>
-                  <button
-                    onClick={() => {
-                      setExecutionInitiated(true);
-                      handleExecution(proposal);
-                    }}
-                    disabled={executionInitiated}
-                    className={`flex-1 ml-2 py-2 rounded-xl ${
-                      executionInitiated
-                        ? 'bg-gray-600 hover:bg-gray-500 cursor-not-allowed'
-                        : 'bg-green-600 hover:bg-green-500 cursor-pointer'
-                    } transition text-white font-semibold text-lg shadow`}
-                  >
-                    {executionInitiated ? 'Executing...' : 'Initiate Execution'}
-                  </button>
-                </>
-              );
-            } else {
-              return (
-                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
-                  Voting Ended
-                </button>
-              );
-            }
-          } else {
-            if (hasVoted) {
-              return (
-                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
-                  Already Voted
-                </button>
-              );
-            } else {
-              return (
-                <>
-                  <button
-                    onClick={() => {
-                      setVoting(true);
-                      voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                    }}
-                    className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
-                  >
-                    Vote Yes
-                  </button>
-                  <button
-                    onClick={() => {
-                      setVoting(true);
-                      voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
-                    }}
-                    className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
-                  >
-                    Vote No
-                  </button>
-                </>
-              );
-            }
-          }
-        })()
-      )}
-    </>
-  )}
-</div>
-
+                          if (deadlinePassed) {
+                            if (hasVoted) {
+                              return (
+                                <>
+                                  <button className="flex-1 mr-2 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                                    Already Voted
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setExecutionInitiated(true);
+                                      handleExecution(proposal);
+                                    }}
+                                    disabled={executionInitiated}
+                                    className={`flex-1 ml-2 py-2 rounded-xl ${
+                                      executionInitiated
+                                        ? 'bg-gray-600 hover:bg-gray-500 cursor-not-allowed'
+                                        : 'bg-green-600 hover:bg-green-500 cursor-pointer'
+                                    } transition text-white font-semibold text-lg shadow`}
+                                  >
+                                    {executionInitiated ? 'Executing...' : 'Initiate Execution'}
+                                  </button>
+                                </>
+                              );
+                            } else {
+                              return (
+                                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                                  Voting Ended
+                                </button>
+                              );
+                            }
+                          } else {
+                            if (hasVoted) {
+                              return (
+                                <button className="flex-1 py-2 rounded-xl bg-gray-600 hover:bg-gray-500/50 transition text-white font-semibold text-lg shadow cursor-default">
+                                  Already Voted
+                                </button>
+                              );
+                            } else {
+                              return (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setVoting(true);
+                                      voteOnProposal(1, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                                    }}
+                                    className="flex-1 mr-2 py-2 rounded-xl bg-green-600 hover:bg-green-500 transition text-white font-semibold text-lg shadow"
+                                  >
+                                    Vote Yes
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setVoting(true);
+                                      voteOnProposal(0, proposal.proposalIndex, proposal.vecIndex, proposal.proposer);
+                                    }}
+                                    className="flex-1 ml-2 py-2 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold text-lg shadow"
+                                  >
+                                    Vote No
+                                  </button>
+                                </>
+                              );
+                            }
+                          }
+                        })()
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1226,8 +1234,7 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
           
             {activeProposals ? (
               activeProposals.length > 0 ? (
-                <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
-                  <AnimatePresence>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-2">
                     {filterType === 'active' ? (
                         activeProposals.map((proposal) => (
                           <ProposalCard key={proposal.creationTime} proposal={proposal} />
@@ -1271,8 +1278,7 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
                         )
                       )
                     )}
-                  </AnimatePresence>
-                </motion.div>              
+                </div>              
                ) : (
                 <div className='text-slate-400 italic text-xl font-semibold h-[70vh] flex justify-center items-center'>No Active Proposals</div>
               )
