@@ -10,6 +10,8 @@ import { Upload, X, User, Mail, Wallet, Sparkles, Shield, Zap } from 'lucide-rea
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../functions/cropImage';
 import { CustomWalletButton } from '../context/CustomWalletButton';
+import Secure from '../assets/secure.jpg';
+import Learn from '../assets/learn.jpg';
 
 interface SignUpData {
   username: string;
@@ -77,7 +79,7 @@ export default function Home() {
         if (accountInfo !== null) {
           console.log("User already exists");
           toast.success('Welcome back! Account found.');
-          navigate('/dashboard/create');
+          navigate('/dashboard/discover');
         } else {
           console.log("No user account found. Prompting sign-up.");
           setShowSignUpModal(true); // first modal (name, email, image)
@@ -147,7 +149,7 @@ export default function Home() {
       setSignUpData({ username: '', email: '', image: null });
       setImagePreview(null);
       setErrors({});
-      navigate('/dashboard/create');
+      navigate('/dashboard/discover');
     } catch (err) {
       console.error("Error creating user account:", err);
       toast.error('Error creating account. Please try again.');
@@ -458,7 +460,7 @@ export default function Home() {
           </header>
 
           <main className="flex-1 px-4 sm:px-8 lg:px-16 py-10 relative z-10 mt-16">
-            <div className="max-w-6xl mx-auto">
+            <div className=" mx-auto">
               {/* Hero Section */}
               <section className="text-center mb-32 animate-fadeInScale flex flex-col items-center">
                 <div className="relative">
@@ -475,14 +477,14 @@ export default function Home() {
                   Create and manage <span className="text-purple-400 font-semibold">trustless investment funds</span> on the Solana blockchain. 
                   Join forces with friends, colleagues or communities in the <span className="text-violet-400 font-semibold">decentralized future</span>.
                 </p>
-            <div className="mt-12 animate-slideInUp">
-              <div className="inline-block relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative bg-gray-800/30 backdrop-blur-sm border border-purple-500/30 rounded-full p-2 hover:border-purple-400/50 hover:bg-gray-800/50 transition-all duration-300">
-                  <CustomWalletButton />
+                <div className="mt-12 animate-slideInUp">
+                  <div className="inline-block relative group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 via-violet-600/20 to-indigo-600/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="relative bg-gray-800/30 backdrop-blur-sm border border-purple-500/30 rounded-full p-2 hover:border-purple-400/50 hover:bg-gray-800/50 transition-all duration-300">
+                      <CustomWalletButton />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
               </section>
 
               {/* Features Grid */}
@@ -534,7 +536,7 @@ export default function Home() {
               </section>
 
               {/* Why PeerFunds Section */}
-              <section className="mb-32 grid md:grid-cols-2 gap-16 items-center">
+              <section className="mb-32 grid md:grid-cols-2 gap-16 items-center w-[90vw]">
                 <div className="space-y-8 animate-slideInUp">
                   <h2 className="text-5xl font-bold text-white mb-6 animate-textGlow">
                     Why <span className="text-purple-400">PeerFunds</span>?
@@ -559,31 +561,77 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
-                <div className="relative h-80 animate-fadeInScale">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-900/30 via-indigo-900/30 to-gray-900/30 rounded-3xl border border-purple-500/30 backdrop-blur-xl flex items-center justify-center overflow-hidden group hover:scale-105 transition-transform duration-500">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-violet-500/10 animate-pulse"></div>
-                    <div className="text-center relative z-10">
-                      <div className="w-24 h-24 bg-gradient-to-r from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-glow">
-                        <Shield className="w-12 h-12 text-purple-300 animate-pulse" />
-                      </div>
-                      <p className="text-lg text-purple-300 font-semibold">Secure & Transparent</p>
+                <div className="relative w-[700px] h-[490px] animate-fadeInScale group cursor-pointer">
+                  {/* Outer glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-violet-500/20 to-indigo-500/20 rounded-[20%] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 scale-101"></div>
+                  
+                  {/* Main image container */}
+                  <div className="relative w-full h-full rounded-[20%] overflow-hidden transform group-hover:scale-[1.02] transition-all duration-500 shadow-2xl group-hover:shadow-[0_10px_10px_-12px_rgba(139,92,246,0.3)]">
+                    {/* Background gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-violet-900/20 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    {/* Animated border */}
+                    <div className="absolute inset-0 rounded-[20%] bg-gradient-to-r from-purple-500/50 via-violet-500/50 to-indigo-500/50 p-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="w-full h-full rounded-[20%] bg-gray-900"></div>
                     </div>
+                    
+                    {/* Image */}
+                    <img 
+                      src={Secure} 
+                      alt="Secure and Transparent" 
+                      className="relative z-20 w-full h-full rounded-[20%] object-cover transform group-hover:brightness-110 transition-all duration-500" 
+                    />
+                    
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 z-30 rounded-[20%] bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                    
+                    {/* Corner accent lights */}
+                    <div className="absolute top-4 right-4 w-8 h-8 bg-gradient-to-br from-purple-400/30 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div>
+                    <div className="absolute bottom-4 left-4 w-6 h-6 bg-gradient-to-tl from-violet-400/30 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                   </div>
+                  
+                  {/* Floating particles effect */}
+                  <div className="absolute top-10 left-10 w-2 h-2 bg-purple-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="absolute top-20 right-16 w-1.5 h-1.5 bg-violet-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '0.8s' }}></div>
+                  <div className="absolute bottom-16 right-20 w-2.5 h-2.5 bg-indigo-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '1.2s' }}></div>
                 </div>
               </section>
 
               {/* Learning Section */}
-              <section className="mb-32 grid md:grid-cols-2 gap-16 items-center">
-                <div className="relative h-80 animate-fadeInScale">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-900/30 via-purple-900/30 to-gray-900/30 rounded-3xl border border-violet-500/30 backdrop-blur-xl flex items-center justify-center overflow-hidden group hover:scale-105 transition-transform duration-500">
-                    <div className="absolute inset-0 bg-gradient-to-l from-violet-500/10 via-transparent to-purple-500/10 animate-pulse"></div>
-                    <div className="text-center relative z-10">
-                      <div className="w-24 h-24 bg-gradient-to-r from-violet-500/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6 animate-glow">
-                        <User className="w-12 h-12 text-violet-300 animate-pulse" />
-                      </div>
-                      <p className="text-lg text-violet-300 font-semibold">Learn & Grow</p>
+              <section className="mb-32 grid md:grid-cols-2 gap-20 items-start w-[90vw]">
+                <div className="relative w-[700px] h-[490px] animate-fadeInScale group cursor-pointer">
+                  {/* Outer glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-violet-500/20 to-indigo-500/20 rounded-[20%] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 scale-101"></div>
+                  
+                  {/* Main image container */}
+                  <div className="relative w-full h-full rounded-[20%] overflow-hidden transform group-hover:scale-[1.02] transition-all duration-500 shadow-2xl group-hover:shadow-[0_10px_10px_-12px_rgba(139,92,246,0.3)]">
+                    {/* Background gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-transparent to-violet-900/20 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    {/* Animated border */}
+                    <div className="absolute inset-0 rounded-[20%] bg-gradient-to-r from-purple-500/50 via-violet-500/50 to-indigo-500/50 p-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="w-full h-full rounded-[20%] bg-gray-900"></div>
                     </div>
+                    
+                    {/* Image */}
+                    <img 
+                      src={Learn} 
+                      alt="Learn and Grow" 
+                      className="relative z-20 w-full h-full rounded-[20%] object-cover transform group-hover:brightness-110 transition-all duration-500" 
+                    />
+                    
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 z-30 rounded-[20%] bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"></div>
+                    
+                    {/* Corner accent lights */}
+                    <div className="absolute top-4 right-4 w-8 h-8 bg-gradient-to-br from-purple-400/30 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-pulse"></div>
+                    <div className="absolute bottom-4 left-4 w-6 h-6 bg-gradient-to-tl from-violet-400/30 to-transparent rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
                   </div>
+                  
+                  {/* Floating particles effect */}
+                  <div className="absolute top-10 left-10 w-2 h-2 bg-purple-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="absolute top-20 right-16 w-1.5 h-1.5 bg-violet-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '0.8s' }}></div>
+                  <div className="absolute bottom-16 right-20 w-2.5 h-2.5 bg-indigo-400/60 rounded-full opacity-0 group-hover:opacity-100 group-hover:animate-bounce transition-all duration-500" style={{ animationDelay: '1.2s' }}></div>
                 </div>
                 <div className="space-y-8 animate-slideInUp">
                   <h2 className="text-5xl font-bold text-white mb-6 animate-textGlow">
