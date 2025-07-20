@@ -818,9 +818,9 @@ const Proposals = ({fund, filterType}: ProposalProps) => {
         toast.error(`Execution can't be executed because of less votes`);
         return;
       }
-// investment-fund-server-production.up.railway.app
+
       try {
-        const response = await fetch('http://localhost:5000/api/init-execution', {
+        const response = await fetch('https://investment-fund-server-production.up.railway.app/api/init-execution', {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
